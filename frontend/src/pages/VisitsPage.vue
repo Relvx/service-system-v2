@@ -1,0 +1,306 @@
+<template>
+  <Layout>
+    <div>
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Выезды</h1>
+          <p class="text-gray-600 mt-1">Всего: {{ visits.length }}</p>
+        </div>
+        <button @click="openCreate" class="btn btn-primary flex items-center">
+          <Plus class="w-5 h-5 mr-2" />Создать выезд
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="card mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <select v-model="filters.status" class="input">
+            <option value="">Все статусы</option>
+            <option v-for="s in cfg.visitStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+          </select>
+          <select v-model="filters.priority" class="input">
+            <option value="">Все приоритеты</option>
+            <option v-for="p in cfg.priorities" :key="p.code" :value="p.code">{{ p.display_name }}</option>
+          </select>
+          <input v-model="filters.date_from" type="date" class="input" />
+          <input v-model="filters.date_to" type="date" class="input" />
+          <button @click="loadVisits" class="btn btn-primary flex items-center justify-center">
+            <Filter class="w-5 h-5 mr-2" />Применить
+          </button>
+        </div>
+      </div>
+
+      <div v-if="loading" class="flex items-center justify-center h-64">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+
+      <div v-else class="space-y-4">
+        <div v-for="v in visits" :key="v.id" class="card hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-3">
+                <h3 class="text-lg font-semibold text-gray-900">{{ v.site_title }}</h3>
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(v.status)">
+                  {{ cfg.visitStatusLabel(v.status) }}
+                </span>
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(v.priority)">
+                  {{ cfg.priorityLabel(v.priority) }}
+                </span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="flex items-center text-gray-600"><MapPin class="w-4 h-4 mr-2" /><span class="truncate">{{ v.site_address }}</span></div>
+                <div class="flex items-center text-gray-600">
+                  <Calendar class="w-4 h-4 mr-2" />{{ formatDate(v.planned_date) }}
+                  <span v-if="v.planned_time_from"> в {{ v.planned_time_from.slice(0,5) }}</span>
+                </div>
+                <div class="flex items-center text-gray-600"><User class="w-4 h-4 mr-2" />{{ v.master_name || 'Не назначен' }}</div>
+              </div>
+              <p v-if="v.work_summary" class="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded">{{ v.work_summary }}</p>
+            </div>
+            <div class="ml-4 flex items-center gap-2">
+              <button @click="openEdit(v)" class="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center">
+                <Pencil class="w-4 h-4 mr-1" />Изменить
+              </button>
+              <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
+                <Eye class="w-4 h-4 mr-1" />Подробнее
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="visits.length === 0" class="text-center py-12 card">
+          <Calendar class="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 class="text-lg font-medium text-gray-900 mb-2">Выезды не найдены</h3>
+        </div>
+      </div>
+
+      <!-- Detail Modal -->
+      <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+            <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <div class="p-6 space-y-4">
+            <div class="flex gap-2">
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
+            </div>
+            <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
+            <div class="grid grid-cols-2 gap-4">
+              <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
+              <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
+            </div>
+            <div><p class="text-sm text-gray-500">Мастер</p><p class="text-gray-900">{{ detailVisit.master_name || 'Не назначен' }}</p></div>
+            <div><p class="text-sm text-gray-500">Тип</p><p class="text-gray-900">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</p></div>
+            <div v-if="detailVisit.client_name"><p class="text-sm text-gray-500">Клиент</p><p class="text-gray-900">{{ detailVisit.client_name }}</p></div>
+            <div v-if="detailVisit.work_summary"><p class="text-sm text-gray-500">Итог работ</p><p class="text-gray-900">{{ detailVisit.work_summary }}</p></div>
+            <div v-if="detailVisit.office_notes"><p class="text-sm text-gray-500">Заметки офиса</p><p class="text-gray-900">{{ detailVisit.office_notes }}</p></div>
+            <div v-if="detailVisit.recommendations"><p class="text-sm text-gray-500">Рекомендации</p><p class="text-gray-900">{{ detailVisit.recommendations }}</p></div>
+            <div v-if="attachments.length > 0">
+              <p class="text-sm text-gray-500 mb-2 flex items-center gap-1"><ImageIcon class="w-4 h-4" /> Фотографии ({{ attachments.length }})</p>
+              <div class="flex flex-wrap gap-2">
+                <img v-for="a in attachments" :key="a.id" :src="a.file_url" @click="() => openUrl(a.file_url)"
+                  class="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80" />
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 p-6 border-t">
+            <button @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
+            <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create / Edit Modal -->
+      <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <h2 class="text-xl font-semibold text-gray-900">{{ editing ? 'Редактировать выезд' : 'Создать выезд' }}</h2>
+            <button @click="closeModal" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="handleSave" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
+              <select v-model="form.site_id" required class="input">
+                <option value="">Выберите объект</option>
+                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }} — {{ s.address }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Мастер</label>
+              <select v-model="form.assigned_user_id" class="input">
+                <option value="">Не назначен</option>
+                <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
+              <input v-model="form.planned_date" type="date" required class="input" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Время с</label><input v-model="form.planned_time_from" type="time" class="input" /></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Время до</label><input v-model="form.planned_time_to" type="time" class="input" /></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
+                <select v-model="form.visit_type" class="input">
+                  <option v-for="t in cfg.visitTypes" :key="t.code" :value="t.code">{{ t.display_name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+                <select v-model="form.priority" class="input">
+                  <option v-for="p in cfg.priorities" :key="p.code" :value="p.code">{{ p.display_name }}</option>
+                </select>
+              </div>
+            </div>
+            <div v-if="editing">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+              <select v-model="form.status" class="input">
+                <option v-for="s in cfg.visitStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
+              <textarea v-model="form.office_notes" class="input" rows="3" placeholder="Дополнительная информация..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+              <button type="button" @click="closeModal" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : (editing ? 'Сохранить' : 'Создать') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </Layout>
+</template>
+
+<script setup>
+import { ref, onMounted, watch } from 'vue'
+import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Image as ImageIcon } from 'lucide-vue-next'
+import Layout from '../components/Layout.vue'
+import { useConfigStore } from '../stores/config.js'
+import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI } from '../services/api.js'
+
+const cfg = useConfigStore()
+
+const visits = ref([])
+const loading = ref(true)
+const filters = ref({ status: '', priority: '', date_from: '', date_to: '' })
+const modalOpen = ref(false)
+const detailVisit = ref(null)
+const editing = ref(null)
+const saving = ref(false)
+const sites = ref([])
+const masters = ref([])
+const attachments = ref([])
+
+const form = ref({
+  site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '',
+  planned_time_to: '', visit_type: 'maintenance', priority: 'medium',
+  office_notes: '', status: 'planned',
+})
+
+async function loadVisits() {
+  loading.value = true
+  try {
+    const params = {}
+    if (filters.value.status) params.status = filters.value.status
+    if (filters.value.priority) params.priority = filters.value.priority
+    if (filters.value.date_from) params.date_from = filters.value.date_from
+    if (filters.value.date_to) params.date_to = filters.value.date_to
+    const res = await visitsAPI.getAll(params)
+    visits.value = res.data
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadFormData() {
+  const [sr, mr] = await Promise.all([sitesAPI.getAll({ active_only: true }), usersAPI.getMasters()])
+  sites.value = sr.data
+  masters.value = mr.data
+}
+
+function openCreate() {
+  editing.value = null
+  form.value = { site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '', planned_time_to: '', visit_type: 'maintenance', priority: 'medium', office_notes: '', status: 'planned' }
+  loadFormData()
+  modalOpen.value = true
+}
+
+function openEdit(v) {
+  editing.value = v
+  form.value = {
+    site_id: v.site_id || '', assigned_user_id: v.assigned_user_id || '',
+    planned_date: v.planned_date?.slice(0, 10) || '', planned_time_from: v.planned_time_from?.slice(0, 5) || '',
+    planned_time_to: v.planned_time_to?.slice(0, 5) || '', visit_type: v.visit_type || 'maintenance',
+    priority: v.priority || 'medium', office_notes: v.office_notes || '', status: v.status || 'planned',
+  }
+  detailVisit.value = null
+  loadFormData()
+  modalOpen.value = true
+}
+
+async function openDetail(v) {
+  try {
+    const [vr, ar] = await Promise.all([visitsAPI.getById(v.id), attachmentsAPI.getAll(v.id)])
+    detailVisit.value = vr.data
+    attachments.value = ar.data
+  } catch {
+    detailVisit.value = v
+    attachments.value = []
+  }
+}
+
+async function handleSave() {
+  saving.value = true
+  try {
+    const payload = {
+      site_id: form.value.site_id, assigned_user_id: form.value.assigned_user_id || null,
+      planned_date: form.value.planned_date, planned_time_from: form.value.planned_time_from || null,
+      planned_time_to: form.value.planned_time_to || null, visit_type: form.value.visit_type,
+      priority: form.value.priority, office_notes: form.value.office_notes || null,
+    }
+    if (editing.value) {
+      await visitsAPI.update(editing.value.id, { ...payload, status: form.value.status })
+    } else {
+      await visitsAPI.create(payload)
+    }
+    closeModal()
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+function closeModal() { modalOpen.value = false; editing.value = null }
+function openUrl(url) { window.open(url, '_blank') }
+
+function statusClass(s) {
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', closed: 'bg-gray-400 text-white', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
+  return m[s] || 'bg-gray-100 text-gray-700'
+}
+function priorityClass(p) {
+  const m = { low: 'bg-gray-100 text-gray-600', medium: 'bg-yellow-100 text-yellow-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' }
+  return m[p] || 'bg-gray-100 text-gray-700'
+}
+function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
+
+// Open specific visit from history state (from calendar)
+watch(visits, (vl) => {
+  const id = window.history.state?.openVisitId
+  if (id && vl?.length) {
+    const v = vl.find((x) => x.id === id)
+    if (v) openDetail(v)
+  }
+}, { once: true })
+
+onMounted(loadVisits)
+</script>

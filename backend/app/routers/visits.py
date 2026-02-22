@@ -1,0 +1,224 @@
+from typing import List, Optional
+from uuid import UUID
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, text
+
+from app.dependencies import get_db, get_current_user
+from app.models.visit import Visit
+from app.models.site import Site
+from app.models.client import Client
+from app.models.user import User
+from app.models.attachment import Attachment
+from app.schemas.visit import VisitOut, VisitCreate, VisitUpdate, VisitComplete
+from app.utils.notifications import create_notification
+
+router = APIRouter(prefix="/visits", tags=["visits"])
+
+
+def _build_visit_query(
+    master_id=None, site_id=None, status_=None, date_from=None, date_to=None, priority=None
+):
+    act_count = (
+        select(func.count())
+        .where(Attachment.visit_id == Visit.id, Attachment.kind == "act_photo")
+        .correlate(Visit)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(
+            Visit,
+            Site.title.label("site_title"),
+            Site.address.label("site_address"),
+            Site.latitude,
+            Site.longitude,
+            Site.access_notes,
+            Site.onsite_contact,
+            Client.name.label("client_name"),
+            Client.contacts.label("client_contacts"),
+            User.full_name.label("master_name"),
+            User.phone.label("master_phone"),
+            act_count.label("act_photos_count"),
+        )
+        .outerjoin(Site, Visit.site_id == Site.id)
+        .outerjoin(Client, Site.client_id == Client.id)
+        .outerjoin(User, Visit.assigned_user_id == User.id)
+    )
+
+    if master_id:
+        stmt = stmt.where(Visit.assigned_user_id == master_id)
+    if site_id:
+        stmt = stmt.where(Visit.site_id == site_id)
+    if status_:
+        if status_ == "closed":
+            stmt = stmt.where(Visit.status.in_(["done", "closed"]))
+        else:
+            stmt = stmt.where(Visit.status == status_)
+    if priority:
+        stmt = stmt.where(Visit.priority == priority)
+    if date_from:
+        stmt = stmt.where(Visit.planned_date >= date_from)
+    if date_to:
+        stmt = stmt.where(Visit.planned_date <= date_to)
+
+    return stmt
+
+
+def _row_to_visit_out(row) -> VisitOut:
+    visit = row[0]
+    obj = VisitOut.model_validate(visit)
+    obj.site_title = row[1]
+    obj.site_address = row[2]
+    obj.latitude = row[3]
+    obj.longitude = row[4]
+    obj.access_notes = row[5]
+    obj.onsite_contact = row[6]
+    obj.client_name = row[7]
+    obj.client_contacts = row[8]
+    obj.master_name = row[9]
+    obj.master_phone = row[10]
+    obj.act_photos_count = row[11]
+    return obj
+
+
+@router.get("", response_model=List[VisitOut])
+async def get_visits(
+    master_id: Optional[UUID] = None,
+    site_id: Optional[UUID] = None,
+    status: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    priority: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    stmt = _build_visit_query(master_id, site_id, status, date_from, date_to, priority)
+    stmt = stmt.order_by(Visit.planned_date.desc(), Visit.planned_time_from)
+    result = await db.execute(stmt)
+    return [_row_to_visit_out(r) for r in result.all()]
+
+
+@router.get("/calendar", response_model=List[VisitOut])
+async def get_calendar(
+    start: date,
+    end: date,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    stmt = _build_visit_query(date_from=start, date_to=end)
+    stmt = stmt.order_by(Visit.planned_date, Visit.planned_time_from)
+    result = await db.execute(stmt)
+    return [_row_to_visit_out(r) for r in result.all()]
+
+
+@router.get("/{visit_id}", response_model=VisitOut)
+async def get_visit(visit_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit_id)
+    result = await db.execute(stmt)
+    row = result.first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    return _row_to_visit_out(row)
+
+
+@router.post("", response_model=VisitOut, status_code=status.HTTP_201_CREATED)
+async def create_visit(body: VisitCreate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    visit = Visit(**body.model_dump())
+    db.add(visit)
+    await db.flush()  # get id before commit
+
+    await create_notification(
+        db,
+        user_id=body.assigned_user_id,
+        type_="visit_assigned",
+        title="Новый выезд",
+        message=f"Вам назначен новый выезд на {body.planned_date}",
+        related_visit_id=visit.id,
+    )
+
+    await db.commit()
+    await db.refresh(visit)
+
+    # return with joined fields
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit.id)
+    result = await db.execute(stmt)
+    return _row_to_visit_out(result.first())
+
+
+@router.put("/{visit_id}", response_model=VisitOut)
+async def update_visit(
+    visit_id: UUID,
+    body: VisitUpdate,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    result = await db.execute(select(Visit).where(Visit.id == visit_id))
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    old_master = visit.assigned_user_id
+    old_date = visit.planned_date
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(visit, field, value)
+
+    new_master = visit.assigned_user_id
+    new_date = visit.planned_date
+
+    if new_master and (old_master != new_master or old_date != new_date):
+        message = "Выезд переназначен вам" if old_master != new_master else f"Дата выезда изменена на {new_date}"
+        await create_notification(
+            db, user_id=new_master, type_="visit_updated",
+            title="Изменение выезда", message=message, related_visit_id=visit_id,
+        )
+
+    await db.commit()
+
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit_id)
+    result = await db.execute(stmt)
+    return _row_to_visit_out(result.first())
+
+
+@router.post("/{visit_id}/complete", response_model=VisitOut)
+async def complete_visit(
+    visit_id: UUID,
+    body: VisitComplete,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    result = await db.execute(select(Visit).where(Visit.id == visit_id))
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    from datetime import datetime
+    visit.status = "closed"
+    visit.work_summary = body.work_summary
+    visit.checklist = body.checklist
+    visit.defects_present = body.defects_present or False
+    visit.defects_summary = body.defects_summary
+    visit.recommendations = body.recommendations
+    visit.completed_at = datetime.utcnow()
+
+    await db.commit()
+
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit_id)
+    result = await db.execute(stmt)
+    return _row_to_visit_out(result.first())
+
+
+@router.delete("/{visit_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_visit(visit_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    result = await db.execute(select(Visit).where(Visit.id == visit_id))
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    await db.delete(visit)
+    await db.commit()
