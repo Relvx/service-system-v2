@@ -13,4 +13,5 @@ class Attachment(Base):
     kind = Column(String(30), nullable=False, default="act_photo")
     file_url = Column(Text, nullable=False)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

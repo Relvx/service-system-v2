@@ -17,5 +17,5 @@ class Defect(Base):
     action_type = Column(String(20), nullable=False, default="repair")
     suggested_parts = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="open")
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
