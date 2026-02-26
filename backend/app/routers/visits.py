@@ -1,9 +1,9 @@
 from typing import List, Optional
 from uuid import UUID
-from datetime import date
+from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func
 
 from app.dependencies import get_db, get_current_user
 from app.models.visit import Visit
@@ -11,8 +11,10 @@ from app.models.site import Site
 from app.models.client import Client
 from app.models.user import User
 from app.models.attachment import Attachment
+from app.models.history import VisitHistory
 from app.schemas.visit import VisitOut, VisitCreate, VisitUpdate, VisitComplete
 from app.utils.notifications import create_notification
+from app.utils.audit import save_history, save_log
 
 router = APIRouter(prefix="/visits", tags=["visits"])
 
@@ -125,10 +127,14 @@ async def get_visit(visit_id: UUID, db: AsyncSession = Depends(get_db), _=Depend
 
 
 @router.post("", response_model=VisitOut, status_code=status.HTTP_201_CREATED)
-async def create_visit(body: VisitCreate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def create_visit(
+    body: VisitCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     visit = Visit(**body.model_dump())
     db.add(visit)
-    await db.flush()  # get id before commit
+    await db.flush()
 
     await create_notification(
         db,
@@ -139,10 +145,11 @@ async def create_visit(body: VisitCreate, db: AsyncSession = Depends(get_db), _=
         related_visit_id=visit.id,
     )
 
+    await save_log(db, current_user.id, "create", "visit", visit.id)
+
     await db.commit()
     await db.refresh(visit)
 
-    # return with joined fields
     stmt = _build_visit_query()
     stmt = stmt.where(Visit.id == visit.id)
     result = await db.execute(stmt)
@@ -154,12 +161,15 @@ async def update_visit(
     visit_id: UUID,
     body: VisitUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Visit).where(Visit.id == visit_id))
     visit = result.scalar_one_or_none()
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
+
+    # Save snapshot before changes
+    await save_history(db, VisitHistory, visit, current_user.id)
 
     old_master = visit.assigned_user_id
     old_date = visit.planned_date
@@ -177,6 +187,7 @@ async def update_visit(
             title="Изменение выезда", message=message, related_visit_id=visit_id,
         )
 
+    await save_log(db, current_user.id, "update", "visit", visit_id)
     await db.commit()
 
     stmt = _build_visit_query()
@@ -190,14 +201,15 @@ async def complete_visit(
     visit_id: UUID,
     body: VisitComplete,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Visit).where(Visit.id == visit_id))
     visit = result.scalar_one_or_none()
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    from datetime import datetime
+    await save_history(db, VisitHistory, visit, current_user.id)
+
     visit.status = "closed"
     visit.work_summary = body.work_summary
     visit.checklist = body.checklist
@@ -206,6 +218,7 @@ async def complete_visit(
     visit.recommendations = body.recommendations
     visit.completed_at = datetime.utcnow()
 
+    await save_log(db, current_user.id, "complete", "visit", visit_id)
     await db.commit()
 
     stmt = _build_visit_query()
@@ -215,10 +228,17 @@ async def complete_visit(
 
 
 @router.delete("/{visit_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_visit(visit_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def delete_visit(
+    visit_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     result = await db.execute(select(Visit).where(Visit.id == visit_id))
     visit = result.scalar_one_or_none()
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
+
+    await save_log(db, current_user.id, "delete", "visit", visit_id,
+                   details={"title": str(visit.id)})
     await db.delete(visit)
     await db.commit()

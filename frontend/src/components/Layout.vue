@@ -30,7 +30,7 @@
         <div class="flex items-center mb-3">
           <div class="flex-1">
             <p class="text-sm font-medium text-gray-900">{{ user?.full_name }}</p>
-            <p class="text-xs text-gray-500 capitalize">{{ user?.role }}</p>
+            <p class="text-xs text-gray-500">{{ userGroupLabel }}</p>
           </div>
           <RouterLink
             to="/notifications"
@@ -69,7 +69,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, Map, Calendar, Users, Building2,
-  ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell,
+  ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell, Settings,
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth.js'
 import { notificationsAPI } from '../services/api.js'
@@ -80,20 +80,33 @@ const router = useRouter()
 const user = computed(() => auth.user)
 const unreadCount = ref(0)
 
+const GROUP_LABELS = {
+  admin_group: 'Администратор',
+  office_group: 'Офис',
+  master_group: 'Мастер',
+}
+
+const userGroupLabel = computed(() => {
+  const groups = auth.groups
+  if (!groups.length) return ''
+  return groups.map((g) => GROUP_LABELS[g] || g).join(', ')
+})
+
 const allNav = [
-  { name: 'Дашборд', href: '/dashboard', icon: LayoutDashboard, roles: ['office', 'admin'] },
-  { name: 'Карта', href: '/map', icon: Map, roles: ['office', 'admin'] },
-  { name: 'Календарь', href: '/calendar', icon: Calendar, roles: ['office', 'admin', 'master'] },
-  { name: 'Мои выезды', href: '/my-visits', icon: ClipboardList, roles: ['master'] },
-  { name: 'Клиенты', href: '/clients', icon: Users, roles: ['office', 'admin'] },
-  { name: 'Объекты', href: '/sites', icon: Building2, roles: ['office', 'admin'] },
-  { name: 'Выезды', href: '/visits', icon: ClipboardList, roles: ['office', 'admin'] },
-  { name: 'Дефекты', href: '/defects', icon: AlertTriangle, roles: ['office', 'admin'] },
-  { name: 'Закупки', href: '/purchases', icon: ShoppingCart, roles: ['office', 'admin'] },
+  { name: 'Дашборд',   href: '/dashboard', icon: LayoutDashboard, groups: ['office_group', 'admin_group'] },
+  { name: 'Карта',     href: '/map',        icon: Map,             groups: ['office_group', 'admin_group'] },
+  { name: 'Календарь', href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group'] },
+  { name: 'Мои выезды',href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
+  { name: 'Клиенты',   href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
+  { name: 'Объекты',   href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group'] },
+  { name: 'Выезды',    href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group'] },
+  { name: 'Дефекты',   href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },
+  { name: 'Закупки',   href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group'] },
+  { name: 'Админ',     href: '/admin',      icon: Settings,        groups: ['admin_group'] },
 ]
 
 const filteredNav = computed(() =>
-  allNav.filter((item) => item.roles.includes(auth.role))
+  allNav.filter((item) => item.groups.some((g) => auth.groups.includes(g)))
 )
 
 async function fetchUnread() {

@@ -13,11 +13,11 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <select v-model="filterStatus" @change="loadDefects" class="input">
             <option value="">Все статусы</option>
-            <option v-for="s in cfg.defectStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+            <option v-for="s in cfg.defectStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
           </select>
           <select v-model="filterPriority" @change="loadDefects" class="input">
             <option value="">Все приоритеты</option>
-            <option v-for="p in cfg.priorities" :key="p.code" :value="p.code">{{ p.display_name }}</option>
+            <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
           </select>
           <button @click="loadDefects" class="btn btn-primary">Обновить</button>
         </div>
@@ -82,7 +82,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Изменить статус</label>
               <div class="flex gap-2">
                 <select v-model="newStatus" class="input flex-1">
-                  <option v-for="s in cfg.defectStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+                  <option v-for="s in cfg.defectStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
                 </select>
                 <button @click="updateStatus" :disabled="saving" class="btn btn-primary disabled:opacity-50 whitespace-nowrap">
                   {{ saving ? '...' : 'Применить' }}

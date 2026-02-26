@@ -16,11 +16,11 @@
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
           <select v-model="filters.status" class="input">
             <option value="">Все статусы</option>
-            <option v-for="s in cfg.visitStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+            <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
           </select>
           <select v-model="filters.priority" class="input">
             <option value="">Все приоритеты</option>
-            <option v-for="p in cfg.priorities" :key="p.code" :value="p.code">{{ p.display_name }}</option>
+            <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
           </select>
           <input v-model="filters.date_from" type="date" class="input" />
           <input v-model="filters.date_to" type="date" class="input" />
@@ -146,20 +146,20 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
                 <select v-model="form.visit_type" class="input">
-                  <option v-for="t in cfg.visitTypes" :key="t.code" :value="t.code">{{ t.display_name }}</option>
+                  <option v-for="t in cfg.visitTypes" :key="t.sysname" :value="t.sysname">{{ t.display_name }}</option>
                 </select>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
                 <select v-model="form.priority" class="input">
-                  <option v-for="p in cfg.priorities" :key="p.code" :value="p.code">{{ p.display_name }}</option>
+                  <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
                 </select>
               </div>
             </div>
             <div v-if="editing">
               <label class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
               <select v-model="form.status" class="input">
-                <option v-for="s in cfg.visitStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+                <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
               </select>
             </div>
             <div>

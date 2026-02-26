@@ -93,7 +93,6 @@ export const dashboardAPI = {
 }
 
 export const configAPI = {
-  getRoles: () => api.get('/config/roles'),
   getVisitStatuses: () => api.get('/config/visit-statuses'),
   getVisitTypes: () => api.get('/config/visit-types'),
   getPriorities: () => api.get('/config/priorities'),
@@ -102,6 +101,35 @@ export const configAPI = {
   getAttachmentKinds: () => api.get('/config/attachment-kinds'),
   getPurchaseStatuses: () => api.get('/config/purchase-statuses'),
   getServiceFrequencies: () => api.get('/config/service-frequencies'),
+  // Admin CRUD
+  createItem: (resource, data) => api.post(`/config/${resource}`, data),
+  updateItem: (resource, sysname, data) => api.put(`/config/${resource}/${sysname}`, data),
+  deleteItem: (resource, sysname) => api.delete(`/config/${resource}/${sysname}`),
+}
+
+export const adminAPI = {
+  // Users
+  getUsers: () => api.get('/admin/users'),
+  createUser: (data) => api.post('/admin/users', data),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  addUserToGroup: (userId, groupSysname) =>
+    api.post(`/admin/users/${userId}/groups/${groupSysname}`),
+  removeUserFromGroup: (userId, groupSysname) =>
+    api.delete(`/admin/users/${userId}/groups/${groupSysname}`),
+
+  // Permission groups
+  getPermissionGroups: () => api.get('/admin/permission-groups'),
+  createPermissionGroup: (data) => api.post('/admin/permission-groups', data),
+  updatePermissionGroup: (sysname, data) => api.put(`/admin/permission-groups/${sysname}`, data),
+  deletePermissionGroup: (sysname) => api.delete(`/admin/permission-groups/${sysname}`),
+
+  // Permissions
+  getPermissions: () => api.get('/admin/permissions'),
+  addPermissionToGroup: (groupSysname, permSysname) =>
+    api.post(`/admin/permission-groups/${groupSysname}/permissions/${permSysname}`),
+  removePermissionFromGroup: (groupSysname, permSysname) =>
+    api.delete(`/admin/permission-groups/${groupSysname}/permissions/${permSysname}`),
 }
 
 export default api

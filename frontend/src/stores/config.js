@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { configAPI } from '../services/api.js'
 
 export const useConfigStore = defineStore('config', () => {
-  const roles = ref([])
   const visitStatuses = ref([])
   const visitTypes = ref([])
   const priorities = ref([])
@@ -12,13 +11,13 @@ export const useConfigStore = defineStore('config', () => {
   const attachmentKinds = ref([])
   const purchaseStatuses = ref([])
   const serviceFrequencies = ref([])
+  const permissionGroups = ref([])
   const loaded = ref(false)
 
   async function loadAll() {
     if (loaded.value) return
     try {
-      const [r, vs, vt, p, ds, dat, ak, ps, sf] = await Promise.all([
-        configAPI.getRoles(),
+      const [vs, vt, p, ds, dat, ak, ps, sf] = await Promise.all([
         configAPI.getVisitStatuses(),
         configAPI.getVisitTypes(),
         configAPI.getPriorities(),
@@ -28,7 +27,6 @@ export const useConfigStore = defineStore('config', () => {
         configAPI.getPurchaseStatuses(),
         configAPI.getServiceFrequencies(),
       ])
-      roles.value = r.data
       visitStatuses.value = vs.data
       visitTypes.value = vt.data
       priorities.value = p.data
@@ -43,34 +41,26 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  function getLabel(list, code, fallback = code) {
-    return list.find((i) => i.code === code)?.display_name || fallback
+  function getLabel(list, sysname, fallback = sysname) {
+    return list.find((i) => i.sysname === sysname)?.display_name || fallback
   }
 
-  function getColor(list, code, fallback = 'gray') {
-    return list.find((i) => i.code === code)?.color || fallback
-  }
-
-  function visitStatusLabel(code) { return getLabel(visitStatuses.value, code) }
-  function visitStatusColor(code) { return getColor(visitStatuses.value, code) }
-  function visitTypeLabel(code) { return getLabel(visitTypes.value, code) }
-  function priorityLabel(code) { return getLabel(priorities.value, code) }
-  function priorityColor(code) { return getColor(priorities.value, code) }
-  function defectStatusLabel(code) { return getLabel(defectStatuses.value, code) }
-  function defectStatusColor(code) { return getColor(defectStatuses.value, code) }
-  function defectActionLabel(code) { return getLabel(defectActionTypes.value, code) }
-  function purchaseStatusLabel(code) { return getLabel(purchaseStatuses.value, code) }
-  function purchaseStatusColor(code) { return getColor(purchaseStatuses.value, code) }
-  function serviceFrequencyLabel(code) { return getLabel(serviceFrequencies.value, code) }
+  function visitStatusLabel(sysname) { return getLabel(visitStatuses.value, sysname) }
+  function visitTypeLabel(sysname) { return getLabel(visitTypes.value, sysname) }
+  function priorityLabel(sysname) { return getLabel(priorities.value, sysname) }
+  function defectStatusLabel(sysname) { return getLabel(defectStatuses.value, sysname) }
+  function defectActionLabel(sysname) { return getLabel(defectActionTypes.value, sysname) }
+  function purchaseStatusLabel(sysname) { return getLabel(purchaseStatuses.value, sysname) }
+  function serviceFrequencyLabel(sysname) { return getLabel(serviceFrequencies.value, sysname) }
 
   return {
-    roles, visitStatuses, visitTypes, priorities,
+    visitStatuses, visitTypes, priorities,
     defectStatuses, defectActionTypes, attachmentKinds,
-    purchaseStatuses, serviceFrequencies, loaded,
+    purchaseStatuses, serviceFrequencies, permissionGroups, loaded,
     loadAll,
-    visitStatusLabel, visitStatusColor, visitTypeLabel,
-    priorityLabel, priorityColor,
-    defectStatusLabel, defectStatusColor, defectActionLabel,
-    purchaseStatusLabel, purchaseStatusColor, serviceFrequencyLabel,
+    visitStatusLabel, visitTypeLabel,
+    priorityLabel,
+    defectStatusLabel, defectActionLabel,
+    purchaseStatusLabel, serviceFrequencyLabel,
   }
 })

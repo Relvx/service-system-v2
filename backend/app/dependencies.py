@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import AsyncSessionLocal
-from app.utils.auth import decode_token
 
 bearer_scheme = HTTPBearer()
 
@@ -21,7 +20,9 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
+    """Decode JWT, load User with eagerly-loaded permission groups."""
     from app.models.user import User
+    from app.utils.auth import decode_token
 
     token = credentials.credentials
     payload = decode_token(token)
@@ -35,7 +36,9 @@ async def get_current_user(
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    result = await db.execute(select(User).where(User.id == UUID(user_id), User.is_active == True))
+    result = await db.execute(
+        select(User).where(User.id == UUID(user_id), User.is_active == True)
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
@@ -43,9 +46,31 @@ async def get_current_user(
     return user
 
 
-def require_roles(*roles: str):
+def require_permission(permission_sysname: str):
+    """Return a dependency that enforces a specific permission."""
     async def checker(current_user=Depends(get_current_user)):
-        if current_user.role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        user_perms = {
+            perm.sysname
+            for group in current_user.groups
+            for perm in group.permissions
+        }
+        if permission_sysname not in user_perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return current_user
+    return checker
+
+
+def require_groups(*group_sysnames: str):
+    """Return a dependency that requires the user to belong to at least one of the given groups."""
+    async def checker(current_user=Depends(get_current_user)):
+        user_groups = {g.sysname for g in current_user.groups}
+        if not user_groups.intersection(group_sysnames):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
         return current_user
     return checker

@@ -1,7 +1,6 @@
 from uuid import UUID
-from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from typing import Optional, List, Any
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class UserOut(BaseModel):
@@ -11,8 +10,20 @@ class UserOut(BaseModel):
     email: str
     full_name: str
     phone: Optional[str] = None
-    role: str
     is_active: bool
+    groups: List[str] = []
+
+    @field_validator("groups", mode="before")
+    @classmethod
+    def coerce_groups(cls, v: Any) -> List[str]:
+        """Accept both list[str] and list[PermissionGroup] objects."""
+        result = []
+        for item in v:
+            if isinstance(item, str):
+                result.append(item)
+            else:
+                result.append(item.sysname)
+        return result
 
 
 class UserCreate(BaseModel):
@@ -20,13 +31,12 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     phone: Optional[str] = None
-    role: str
+    groups: List[str] = []
 
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
-    role: Optional[str] = None
     is_active: Optional[bool] = None
 
 
