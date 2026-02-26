@@ -8,7 +8,9 @@ from app.dependencies import get_db, get_current_user
 from app.models.purchase import Purchase
 from app.models.defect import Defect
 from app.models.site import Site
+from app.models.history import PurchaseHistory
 from app.schemas.purchase import PurchaseOut, PurchaseCreate, PurchaseUpdate
+from app.utils.audit import save_history, save_log
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
 
@@ -51,9 +53,15 @@ async def get_purchases(
 
 
 @router.post("", response_model=PurchaseOut, status_code=status.HTTP_201_CREATED)
-async def create_purchase(body: PurchaseCreate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def create_purchase(
+    body: PurchaseCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     p = Purchase(**body.model_dump())
     db.add(p)
+    await db.flush()
+    await save_log(db, current_user.id, "create", "purchase", p.id)
     await db.commit()
     await db.refresh(p)
 
@@ -67,16 +75,19 @@ async def update_purchase(
     purchase_id: UUID,
     body: PurchaseUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Purchase).where(Purchase.id == purchase_id))
     p = result.scalar_one_or_none()
     if p is None:
         raise HTTPException(status_code=404, detail="Purchase not found")
 
+    await save_history(db, PurchaseHistory, p, current_user.id)
+
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(p, field, value)
 
+    await save_log(db, current_user.id, "update", "purchase", purchase_id)
     await db.commit()
 
     stmt = _build_query().where(Purchase.id == purchase_id)

@@ -7,7 +7,11 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
-  const role = computed(() => user.value?.role || null)
+  const groups = computed(() => user.value?.groups || [])
+
+  function hasGroup(sysname) {
+    return groups.value.includes(sysname)
+  }
 
   async function login(email, password) {
     const res = await authAPI.login(email, password)
@@ -35,5 +39,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, isAuthenticated, role, login, logout, fetchMe }
+  return { token, user, isAuthenticated, groups, hasGroup, login, logout, fetchMe }
 })

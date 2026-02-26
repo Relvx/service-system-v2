@@ -128,7 +128,7 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Частота обслуживания</label>
               <select v-model="form.service_frequency" class="input">
-                <option v-for="f in cfg.serviceFrequencies" :key="f.code" :value="f.code">{{ f.display_name }}</option>
+                <option v-for="f in cfg.serviceFrequencies" :key="f.sysname" :value="f.sysname">{{ f.display_name }}</option>
               </select>
             </div>
             <div class="flex justify-end gap-3 pt-4">

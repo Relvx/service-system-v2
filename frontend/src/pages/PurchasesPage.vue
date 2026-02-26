@@ -15,7 +15,7 @@
         <div class="flex gap-4">
           <select v-model="filterStatus" @change="loadPurchases" class="input flex-1">
             <option value="">Все статусы</option>
-            <option v-for="s in cfg.purchaseStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+            <option v-for="s in cfg.purchaseStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
           </select>
           <button @click="loadPurchases" class="btn btn-primary">Обновить</button>
         </div>
@@ -46,7 +46,7 @@
             </div>
             <div class="ml-4 flex flex-col gap-2">
               <select v-model="p._newStatus" @change="updateStatus(p)" class="input text-sm py-1.5">
-                <option v-for="s in cfg.purchaseStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
+                <option v-for="s in cfg.purchaseStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
               </select>
             </div>
           </div>

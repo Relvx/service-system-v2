@@ -107,7 +107,7 @@ async function loadVisits(isRefresh = false) {
 
 function goToDetail() {
   if (!selectedVisit.value) return
-  const isMaster = auth.role === 'master'
+  const isMaster = auth.hasGroup('master_group') && !auth.hasGroup('office_group') && !auth.hasGroup('admin_group')
   const path = isMaster ? '/my-visits' : '/visits'
   router.push({ path, state: { openVisitId: selectedVisit.value.id } })
   selectedVisit.value = null

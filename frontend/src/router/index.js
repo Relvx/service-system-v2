@@ -7,12 +7,12 @@ const routes = [
   {
     path: '/dashboard',
     component: () => import('../pages/DashboardPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['office', 'admin'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
     path: '/map',
     component: () => import('../pages/MapPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['office', 'admin'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
     path: '/calendar',
@@ -22,37 +22,42 @@ const routes = [
   {
     path: '/clients',
     component: () => import('../pages/ClientsPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['office', 'admin'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
     path: '/sites',
     component: () => import('../pages/SitesPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['office', 'admin'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
     path: '/visits',
     component: () => import('../pages/VisitsPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['office', 'admin'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
     path: '/my-visits',
     component: () => import('../pages/MyVisitsPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['master'] },
+    meta: { requiresAuth: true, allowedGroups: ['master_group'] },
   },
   {
     path: '/defects',
     component: () => import('../pages/DefectsPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['office', 'admin'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
     path: '/purchases',
     component: () => import('../pages/PurchasesPage.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['office', 'admin'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
     path: '/notifications',
     component: () => import('../pages/NotificationsPage.vue'),
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/admin',
+    component: () => import('../pages/AdminPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['admin_group'] },
   },
   { path: '/', redirect: () => '/dashboard' },
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -78,17 +83,20 @@ router.beforeEach(async (to) => {
     await config.loadAll()
   }
 
-  const role = auth.role
-  if (to.meta.allowedRoles && !to.meta.allowedRoles.includes(role)) {
-    // redirect to role default
-    const roleConfig = config.roles.find((r) => r.code === role)
-    return roleConfig?.default_redirect || '/notifications'
+  const userGroups = auth.groups
+  if (to.meta.allowedGroups && !to.meta.allowedGroups.some((g) => userGroups.includes(g))) {
+    // Redirect to default page for first group, or notifications
+    if (userGroups.includes('master_group')) return '/my-visits'
+    if (userGroups.includes('office_group')) return '/dashboard'
+    return '/notifications'
   }
 
-  // Root redirect by role
+  // Root redirect based on groups
   if (to.path === '/') {
-    const roleConfig = config.roles.find((r) => r.code === role)
-    return roleConfig?.default_redirect || '/notifications'
+    if (userGroups.includes('master_group') && !userGroups.includes('office_group') && !userGroups.includes('admin_group')) {
+      return '/my-visits'
+    }
+    return '/dashboard'
   }
 
   return true

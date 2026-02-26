@@ -6,7 +6,9 @@ from sqlalchemy import select
 
 from app.dependencies import get_db, get_current_user
 from app.models.client import Client
+from app.models.history import ClientHistory
 from app.schemas.client import ClientOut, ClientCreate, ClientUpdate
+from app.utils.audit import save_history, save_log
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -42,9 +44,15 @@ async def get_client(client_id: UUID, db: AsyncSession = Depends(get_db), _=Depe
 
 
 @router.post("", response_model=ClientOut, status_code=status.HTTP_201_CREATED)
-async def create_client(body: ClientCreate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def create_client(
+    body: ClientCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     client = Client(**body.model_dump())
     db.add(client)
+    await db.flush()
+    await save_log(db, current_user.id, "create", "client", client.id)
     await db.commit()
     await db.refresh(client)
     return client
@@ -55,26 +63,36 @@ async def update_client(
     client_id: UUID,
     body: ClientUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Client).where(Client.id == client_id))
     client = result.scalar_one_or_none()
     if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
 
+    await save_history(db, ClientHistory, client, current_user.id)
+
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(client, field, value)
 
+    await save_log(db, current_user.id, "update", "client", client_id)
     await db.commit()
     await db.refresh(client)
     return client
 
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_client(client_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def delete_client(
+    client_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     result = await db.execute(select(Client).where(Client.id == client_id))
     client = result.scalar_one_or_none()
     if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
+
+    await save_log(db, current_user.id, "delete", "client", client_id,
+                   details={"name": client.name})
     await db.delete(client)
     await db.commit()

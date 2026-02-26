@@ -83,8 +83,12 @@ async function handleSubmit() {
   try {
     const user = await auth.login(email.value, password.value)
     await config.loadAll()
-    const roleConfig = config.roles.find((r) => r.code === user.role)
-    router.push(roleConfig?.default_redirect || '/notifications')
+    const groups = user.groups || []
+    if (groups.includes('master_group') && !groups.includes('office_group') && !groups.includes('admin_group')) {
+      router.push('/my-visits')
+    } else {
+      router.push('/dashboard')
+    }
   } catch (e) {
     error.value = e.response?.data?.detail || 'Неверный email или пароль'
   } finally {

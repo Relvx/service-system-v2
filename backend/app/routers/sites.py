@@ -8,7 +8,9 @@ from app.dependencies import get_db, get_current_user
 from app.models.site import Site
 from app.models.client import Client
 from app.models.visit import Visit
+from app.models.history import SiteHistory
 from app.schemas.site import SiteOut, SiteCreate, SiteUpdate
+from app.utils.audit import save_history, save_log
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -78,9 +80,15 @@ async def get_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(
 
 
 @router.post("", response_model=SiteOut, status_code=status.HTTP_201_CREATED)
-async def create_site(body: SiteCreate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def create_site(
+    body: SiteCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     site = Site(**body.model_dump())
     db.add(site)
+    await db.flush()
+    await save_log(db, current_user.id, "create", "site", site.id)
     await db.commit()
     await db.refresh(site)
     return SiteOut.model_validate(site)
@@ -91,26 +99,35 @@ async def update_site(
     site_id: UUID,
     body: SiteUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Site).where(Site.id == site_id))
     site = result.scalar_one_or_none()
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
 
+    await save_history(db, SiteHistory, site, current_user.id)
+
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(site, field, value)
 
+    await save_log(db, current_user.id, "update", "site", site_id)
     await db.commit()
     await db.refresh(site)
     return SiteOut.model_validate(site)
 
 
 @router.delete("/{site_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def delete_site(
+    site_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     result = await db.execute(select(Site).where(Site.id == site_id))
     site = result.scalar_one_or_none()
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
+    await save_log(db, current_user.id, "delete", "site", site_id,
+                   details={"title": site.title})
     await db.delete(site)
     await db.commit()
