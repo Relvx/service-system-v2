@@ -46,9 +46,9 @@ async def save_history(
             return False
 
     kwargs = _build_v_kwargs(record)
-    kwargs["v_date"] = datetime.now()
-    kwargs["v_user_id"] = user_id
-    kwargs["v_method"] = method
+    kwargs["changed_at"] = datetime.now()
+    kwargs["changed_by_user_id"] = user_id
+    kwargs["method"] = method
 
     db.add(history_model(**kwargs))
     return True

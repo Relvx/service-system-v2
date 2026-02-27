@@ -31,9 +31,9 @@ class ClientHistory(Base):
     v_is_active       = Column(Boolean,      nullable=True)
     v_created_at      = Column(DateTime,     nullable=True)
     v_updated_at      = Column(DateTime,     nullable=True)
-    v_date    = Column(DateTime, default=datetime.now, nullable=False)
-    v_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    v_method  = Column(String(20), nullable=False)
+    changed_at         = Column(DateTime, default=datetime.now, nullable=False)
+    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    method             = Column(String(20), nullable=False)
 
 
 class SiteHistory(Base):
@@ -53,9 +53,9 @@ class SiteHistory(Base):
     v_is_active          = Column(Boolean,     nullable=True)
     v_created_at         = Column(DateTime,    nullable=True)
     v_updated_at         = Column(DateTime,    nullable=True)
-    v_date    = Column(DateTime, default=datetime.now, nullable=False)
-    v_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    v_method  = Column(String(20), nullable=False)
+    changed_at         = Column(DateTime, default=datetime.now, nullable=False)
+    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    method             = Column(String(20), nullable=False)
 
 
 class UserHistory(Base):
@@ -74,9 +74,9 @@ class UserHistory(Base):
     v_is_active    = Column(Boolean,     nullable=True)
     v_created_at   = Column(DateTime,    nullable=True)
     v_updated_at   = Column(DateTime,    nullable=True)
-    v_date    = Column(DateTime, default=datetime.now, nullable=False)
-    v_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    v_method  = Column(String(20), nullable=False)
+    changed_at         = Column(DateTime, default=datetime.now, nullable=False)
+    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    method             = Column(String(20), nullable=False)
 
 
 class VisitHistory(Base):
@@ -102,9 +102,9 @@ class VisitHistory(Base):
     v_office_notes      = Column(Text,       nullable=True)
     v_created_at        = Column(DateTime,   nullable=True)
     v_updated_at        = Column(DateTime,   nullable=True)
-    v_date    = Column(DateTime, default=datetime.now, nullable=False)
-    v_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    v_method  = Column(String(20), nullable=False)
+    changed_at         = Column(DateTime, default=datetime.now, nullable=False)
+    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    method             = Column(String(20), nullable=False)
 
 
 class PurchaseHistory(Base):
@@ -122,6 +122,6 @@ class PurchaseHistory(Base):
     v_notes      = Column(Text,        nullable=True)
     v_created_at = Column(DateTime,    nullable=True)
     v_updated_at = Column(DateTime,    nullable=True)
-    v_date    = Column(DateTime, default=datetime.now, nullable=False)
-    v_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    v_method  = Column(String(20), nullable=False)
+    changed_at         = Column(DateTime, default=datetime.now, nullable=False)
+    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    method             = Column(String(20), nullable=False)

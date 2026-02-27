@@ -252,10 +252,10 @@ M2M: в каких группах состоит пользователь.
 
 **Структура каждой history-таблицы:**
 - `id` — UUID PK (собственный идентификатор записи версии)
-- `v_<поле>` — все поля оригинальной таблицы с префиксом `v_` (значения **до** изменения)
-- `v_date` — момент записи версии (TIMESTAMP)
-- `v_user_id` — кто инициировал изменение (FK → users.id, SET NULL)
-- `v_method` — тип операции: `create` / `update` / `delete`
+- `v_<поле>` — все поля оригинальной таблицы с префиксом `v_` (значения на момент изменения)
+- `changed_at` — момент записи версии (TIMESTAMP)
+- `changed_by_user_id` — кто инициировал изменение (FK → users.id, SET NULL)
+- `method` — тип операции: `create` / `update` / `delete`
 
 Таблицы: `clients_history`, `sites_history`, `users_history`, `visits_history`, `purchases_history`.
 
