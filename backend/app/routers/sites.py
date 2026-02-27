@@ -2,7 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func
 
 from app.dependencies import get_db, get_current_user
 from app.models.site import Site
@@ -11,6 +11,7 @@ from app.models.visit import Visit
 from app.models.history import SiteHistory
 from app.schemas.site import SiteOut, SiteCreate, SiteUpdate
 from app.utils.audit import save_history, save_log
+from app.enums import enums
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
@@ -23,19 +24,12 @@ async def get_sites(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    from sqlalchemy.orm import aliased
-
-    # subquery for total_visits
     visit_count = (
         select(func.count()).where(Visit.site_id == Site.id).correlate(Site).scalar_subquery()
     )
 
     stmt = (
-        select(
-            Site,
-            Client.name.label("client_name"),
-            visit_count.label("total_visits"),
-        )
+        select(Site, Client.name.label("client_name"), visit_count.label("total_visits"))
         .outerjoin(Client, Site.client_id == Client.id)
     )
 
@@ -88,7 +82,7 @@ async def create_site(
     site = Site(**body.model_dump())
     db.add(site)
     await db.flush()
-    await save_log(db, current_user.id, "create", "site", site.id)
+    await save_log(db, current_user.id, enums.log_actions.site_create, "site", site.id)
     await db.commit()
     await db.refresh(site)
     return SiteOut.model_validate(site)
@@ -113,7 +107,8 @@ async def update_site(
     for field, value in changed.items():
         setattr(site, field, value)
 
-    await save_log(db, current_user.id, "update", "site", site_id)
+    await save_log(db, current_user.id, enums.log_actions.site_update, "site", site_id,
+                   details={"changed": list(changed.keys())})
     await db.commit()
     await db.refresh(site)
     return SiteOut.model_validate(site)
@@ -129,7 +124,7 @@ async def delete_site(
     site = result.scalar_one_or_none()
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
-    await save_log(db, current_user.id, "delete", "site", site_id,
+    await save_log(db, current_user.id, enums.log_actions.site_delete, "site", site_id,
                    details={"title": site.title})
     await db.delete(site)
     await db.commit()

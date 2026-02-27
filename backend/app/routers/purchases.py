@@ -11,6 +11,7 @@ from app.models.site import Site
 from app.models.history import PurchaseHistory
 from app.schemas.purchase import PurchaseOut, PurchaseCreate, PurchaseUpdate
 from app.utils.audit import save_history, save_log
+from app.enums import enums
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
 
@@ -61,7 +62,7 @@ async def create_purchase(
     p = Purchase(**body.model_dump())
     db.add(p)
     await db.flush()
-    await save_log(db, current_user.id, "create", "purchase", p.id)
+    await save_log(db, current_user.id, enums.log_actions.purchase_create, "purchase", p.id)
     await db.commit()
     await db.refresh(p)
 
@@ -73,8 +74,8 @@ async def create_purchase(
 @router.put("/{purchase_id}", response_model=PurchaseOut)
 async def update_purchase(
     purchase_id: UUID,
-    body: PurchaseUpdate,
     db: AsyncSession = Depends(get_db),
+    body: PurchaseUpdate,
     current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Purchase).where(Purchase.id == purchase_id))
@@ -89,7 +90,13 @@ async def update_purchase(
     for field, value in changed.items():
         setattr(p, field, value)
 
-    await save_log(db, current_user.id, "update", "purchase", purchase_id)
+    action = (
+        enums.log_actions.purchase_change_status
+        if "status" in changed
+        else enums.log_actions.purchase_update
+    )
+    await save_log(db, current_user.id, action, "purchase", purchase_id,
+                   details={"changed": list(changed.keys())})
     await db.commit()
 
     stmt = _build_query().where(Purchase.id == purchase_id)

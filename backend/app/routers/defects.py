@@ -10,6 +10,8 @@ from app.models.site import Site
 from app.models.client import Client
 from app.models.visit import Visit
 from app.schemas.defect import DefectOut, DefectCreate, DefectUpdate
+from app.utils.audit import save_log
+from app.enums import enums
 
 router = APIRouter(prefix="/defects", tags=["defects"])
 
@@ -62,9 +64,15 @@ async def get_defects(
 
 
 @router.post("", response_model=DefectOut, status_code=status.HTTP_201_CREATED)
-async def create_defect(body: DefectCreate, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def create_defect(
+    body: DefectCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     defect = Defect(**body.model_dump())
     db.add(defect)
+    await db.flush()
+    await save_log(db, current_user.id, enums.log_actions.defect_create, "defect", defect.id)
     await db.commit()
     await db.refresh(defect)
 
@@ -78,16 +86,28 @@ async def update_defect(
     defect_id: UUID,
     body: DefectUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Defect).where(Defect.id == defect_id))
     defect = result.scalar_one_or_none()
     if defect is None:
         raise HTTPException(status_code=404, detail="Defect not found")
 
-    for field, value in body.model_dump(exclude_unset=True).items():
+    changed = body.model_dump(exclude_unset=True)
+    for field, value in changed.items():
         setattr(defect, field, value)
 
+    # Выбираем наиболее специфичное действие
+    new_status = changed.get("status")
+    if new_status == "approved":
+        action = enums.log_actions.defect_approve
+    elif "status" in changed:
+        action = enums.log_actions.defect_change_status
+    else:
+        action = enums.log_actions.defect_update
+
+    await save_log(db, current_user.id, action, "defect", defect_id,
+                   details={"changed": list(changed.keys())})
     await db.commit()
 
     stmt = _build_defect_query().where(Defect.id == defect_id)

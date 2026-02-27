@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,7 +8,22 @@ from app.routers import (
 )
 from app.routers import admin, logs
 
-app = FastAPI(title="Service System v2 API", version="2.0.0", redirect_slashes=False)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.database import AsyncSessionLocal
+    from app.enums import load_enums
+    async with AsyncSessionLocal() as db:
+        await load_enums(db)
+    yield
+
+
+app = FastAPI(
+    title="Service System v2 API",
+    version="2.0.0",
+    redirect_slashes=False,
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,

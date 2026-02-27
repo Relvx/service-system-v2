@@ -15,6 +15,7 @@ from app.models.history import VisitHistory
 from app.schemas.visit import VisitOut, VisitCreate, VisitUpdate, VisitComplete
 from app.utils.notifications import create_notification
 from app.utils.audit import save_history, save_log
+from app.enums import enums
 
 router = APIRouter(prefix="/visits", tags=["visits"])
 
@@ -145,7 +146,7 @@ async def create_visit(
         related_visit_id=visit.id,
     )
 
-    await save_log(db, current_user.id, "create", "visit", visit.id)
+    await save_log(db, current_user.id, enums.log_actions.visit_create, "visit", visit.id)
 
     await db.commit()
     await db.refresh(visit)
@@ -188,7 +189,16 @@ async def update_visit(
             title="Изменение выезда", message=message, related_visit_id=visit_id,
         )
 
-    await save_log(db, current_user.id, "update", "visit", visit_id)
+    # Выбираем наиболее специфичное действие
+    if "assigned_user_id" in changed:
+        action = enums.log_actions.visit_assign
+    elif "status" in changed:
+        action = enums.log_actions.visit_change_status
+    else:
+        action = enums.log_actions.visit_update
+
+    await save_log(db, current_user.id, action, "visit", visit_id,
+                   details={"changed": list(changed.keys())})
     await db.commit()
 
     stmt = _build_visit_query()
@@ -223,7 +233,7 @@ async def complete_visit(
     visit.recommendations = body.recommendations
     visit.completed_at = datetime.utcnow()
 
-    await save_log(db, current_user.id, "complete", "visit", visit_id)
+    await save_log(db, current_user.id, enums.log_actions.visit_complete, "visit", visit_id)
     await db.commit()
 
     stmt = _build_visit_query()
@@ -243,7 +253,7 @@ async def delete_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    await save_log(db, current_user.id, "delete", "visit", visit_id,
-                   details={"title": str(visit.id)})
+    await save_log(db, current_user.id, enums.log_actions.visit_delete, "visit", visit_id,
+                   details={"site_id": str(visit.site_id), "planned_date": str(visit.planned_date)})
     await db.delete(visit)
     await db.commit()

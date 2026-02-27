@@ -9,6 +9,7 @@ from app.models.client import Client
 from app.models.history import ClientHistory
 from app.schemas.client import ClientOut, ClientCreate, ClientUpdate
 from app.utils.audit import save_history, save_log
+from app.enums import enums
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -52,7 +53,7 @@ async def create_client(
     client = Client(**body.model_dump())
     db.add(client)
     await db.flush()
-    await save_log(db, current_user.id, "create", "client", client.id)
+    await save_log(db, current_user.id, enums.log_actions.client_create, "client", client.id)
     await db.commit()
     await db.refresh(client)
     return client
@@ -77,7 +78,13 @@ async def update_client(
     for field, value in changed.items():
         setattr(client, field, value)
 
-    await save_log(db, current_user.id, "update", "client", client_id)
+    action = (
+        enums.log_actions.client_change_status
+        if "is_active" in changed
+        else enums.log_actions.client_update
+    )
+    await save_log(db, current_user.id, action, "client", client_id,
+                   details={"changed": list(changed.keys())})
     await db.commit()
     await db.refresh(client)
     return client
@@ -94,7 +101,7 @@ async def delete_client(
     if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    await save_log(db, current_user.id, "delete", "client", client_id,
+    await save_log(db, current_user.id, enums.log_actions.client_delete, "client", client_id,
                    details={"name": client.name})
     await db.delete(client)
     await db.commit()

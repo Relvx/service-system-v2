@@ -44,12 +44,34 @@
             <label class="block text-xs font-medium text-gray-500 mb-1">Тип действия</label>
             <select v-model="filters.action_sysname" class="input" @change="resetAndLoad">
               <option value="">Все действия</option>
-              <option value="create">Создание</option>
-              <option value="update">Изменение</option>
-              <option value="delete">Удаление</option>
-              <option value="complete">Завершение</option>
-              <option value="approve">Согласование</option>
-              <option value="assign">Назначение</option>
+              <optgroup label="Создание">
+                <option value="client_create">Создание клиента</option>
+                <option value="site_create">Создание объекта</option>
+                <option value="visit_create">Создание выезда</option>
+                <option value="defect_create">Создание дефекта</option>
+                <option value="purchase_create">Создание закупки</option>
+              </optgroup>
+              <optgroup label="Изменение">
+                <option value="client_update">Изменение клиента</option>
+                <option value="site_update">Изменение объекта</option>
+                <option value="visit_update">Изменение выезда</option>
+                <option value="defect_update">Изменение дефекта</option>
+                <option value="purchase_update">Изменение закупки</option>
+              </optgroup>
+              <optgroup label="Статус">
+                <option value="client_change_status">Статус клиента</option>
+                <option value="visit_change_status">Статус выезда</option>
+                <option value="defect_change_status">Статус дефекта</option>
+                <option value="defect_approve">Согласование дефекта</option>
+                <option value="purchase_change_status">Статус закупки</option>
+                <option value="visit_assign">Назначение мастера</option>
+                <option value="visit_complete">Завершение выезда</option>
+              </optgroup>
+              <optgroup label="Удаление">
+                <option value="client_delete">Удаление клиента</option>
+                <option value="site_delete">Удаление объекта</option>
+                <option value="visit_delete">Удаление выезда</option>
+              </optgroup>
             </select>
           </div>
 
@@ -326,13 +348,38 @@ function formatDate(iso) {
 }
 
 const ACTION_LABELS = {
-  create:   'Создание',
-  update:   'Изменение',
-  delete:   'Удаление',
-  complete: 'Завершение',
-  approve:  'Согласование',
-  assign:   'Назначение',
+  // legacy
+  create: 'Создание', update: 'Изменение', delete: 'Удаление',
+  complete: 'Завершение', approve: 'Согласование', assign: 'Назначение',
+  // clients
+  client_create: 'Создание клиента', client_update: 'Изменение клиента',
+  client_delete: 'Удаление клиента', client_change_status: 'Статус клиента',
+  // sites
+  site_create: 'Создание объекта', site_update: 'Изменение объекта',
+  site_delete: 'Удаление объекта',
+  // visits
+  visit_create: 'Создание выезда', visit_update: 'Изменение выезда',
+  visit_delete: 'Удаление выезда', visit_complete: 'Завершение выезда',
+  visit_assign: 'Назначение мастера', visit_change_status: 'Статус выезда',
+  // defects
+  defect_create: 'Создание дефекта', defect_update: 'Изменение дефекта',
+  defect_change_status: 'Статус дефекта', defect_approve: 'Согласование дефекта',
+  // purchases
+  purchase_create: 'Создание закупки', purchase_update: 'Изменение закупки',
+  purchase_change_status: 'Статус закупки',
 }
+
+function _actionGroup(s) {
+  if (!s) return 'other'
+  if (s.endsWith('_create') || s === 'create') return 'create'
+  if (s.endsWith('_delete') || s === 'delete') return 'delete'
+  if (s.endsWith('_complete') || s === 'complete') return 'complete'
+  if (s.endsWith('_approve') || s === 'approve') return 'approve'
+  if (s.endsWith('_assign') || s === 'assign') return 'assign'
+  if (s.endsWith('_change_status')) return 'status'
+  return 'update'
+}
+
 const ACTION_CLASSES = {
   create:   'bg-green-100 text-green-700',
   update:   'bg-blue-100 text-blue-700',
@@ -340,6 +387,8 @@ const ACTION_CLASSES = {
   complete: 'bg-purple-100 text-purple-700',
   approve:  'bg-indigo-100 text-indigo-700',
   assign:   'bg-yellow-100 text-yellow-700',
+  status:   'bg-orange-100 text-orange-700',
+  other:    'bg-gray-100 text-gray-600',
 }
 const ENTITY_LABELS = {
   visit:    'Выезд',
@@ -350,7 +399,7 @@ const ENTITY_LABELS = {
 }
 
 function actionLabel(s) { return ACTION_LABELS[s] || s || '—' }
-function actionClass(s)  { return ACTION_CLASSES[s] || 'bg-gray-100 text-gray-600' }
+function actionClass(s)  { return ACTION_CLASSES[_actionGroup(s)] || ACTION_CLASSES.other }
 function entityLabel(s)  { return ENTITY_LABELS[s] || s || '—' }
 
 onMounted(load)
