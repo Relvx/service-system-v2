@@ -106,9 +106,11 @@ async def update_site(
     if site is None:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    await save_history(db, SiteHistory, site, current_user.id)
+    changed = body.model_dump(exclude_unset=True)
+    await save_history(db, SiteHistory, site, current_user.id,
+                       method="update", new_values=changed)
 
-    for field, value in body.model_dump(exclude_unset=True).items():
+    for field, value in changed.items():
         setattr(site, field, value)
 
     await save_log(db, current_user.id, "update", "site", site_id)

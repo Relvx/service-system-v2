@@ -1,3 +1,5 @@
+"""Модель клиента — юридического или физического лица, заказывающего обслуживание."""
+
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, Text
@@ -6,6 +8,11 @@ from app.database import Base
 
 
 class Client(Base):
+    """Клиент системы.
+
+    Содержит реквизиты организации (ИНН, КПП) и контактные данные.
+    К клиенту привязаны объекты обслуживания (Site).
+    """
     __tablename__ = "clients"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

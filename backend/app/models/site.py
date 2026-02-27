@@ -1,3 +1,5 @@
+"""Модель объекта обслуживания — физического адреса, где проводятся выезды."""
+
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, Text, Float, ForeignKey
@@ -6,6 +8,11 @@ from app.database import Base
 
 
 class Site(Base):
+    """Объект обслуживания (котельная, здание и т.п.).
+
+    Привязан к клиенту (Client). Хранит адрес, координаты для карты,
+    инструкции по доступу и периодичность обслуживания.
+    """
     __tablename__ = "sites"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

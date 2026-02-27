@@ -82,9 +82,11 @@ async def update_purchase(
     if p is None:
         raise HTTPException(status_code=404, detail="Purchase not found")
 
-    await save_history(db, PurchaseHistory, p, current_user.id)
+    changed = body.model_dump(exclude_unset=True)
+    await save_history(db, PurchaseHistory, p, current_user.id,
+                       method="update", new_values=changed)
 
-    for field, value in body.model_dump(exclude_unset=True).items():
+    for field, value in changed.items():
         setattr(p, field, value)
 
     await save_log(db, current_user.id, "update", "purchase", purchase_id)

@@ -107,6 +107,10 @@ export const configAPI = {
   deleteItem: (resource, sysname) => api.delete(`/config/${resource}/${sysname}`),
 }
 
+export const logsAPI = {
+  getAll: (params) => api.get('/logs', { params }),
+}
+
 export const adminAPI = {
   // Users
   getUsers: () => api.get('/admin/users'),

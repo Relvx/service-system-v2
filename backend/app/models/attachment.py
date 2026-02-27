@@ -1,3 +1,5 @@
+"""Модель файлового вложения, прикреплённого к выезду."""
+
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Text, ForeignKey
@@ -6,6 +8,11 @@ from app.database import Base
 
 
 class Attachment(Base):
+    """Файловое вложение (фото акта, фото дефекта и др.).
+
+    Привязано к выезду (Visit). Хранит URL файла в облачном хранилище
+    и тип вложения (kind).
+    """
     __tablename__ = "attachments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

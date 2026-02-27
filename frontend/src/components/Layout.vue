@@ -69,7 +69,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, Map, Calendar, Users, Building2,
-  ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell, Settings,
+  ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell, Settings, ScrollText,
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth.js'
 import { notificationsAPI } from '../services/api.js'
@@ -102,6 +102,7 @@ const allNav = [
   { name: 'Выезды',    href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group'] },
   { name: 'Дефекты',   href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },
   { name: 'Закупки',   href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group'] },
+  { name: 'Журнал',    href: '/logs',       icon: ScrollText,      groups: ['office_group', 'admin_group'] },
   { name: 'Админ',     href: '/admin',      icon: Settings,        groups: ['admin_group'] },
 ]
 

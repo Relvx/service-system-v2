@@ -97,15 +97,20 @@
                 <h3 class="font-semibold text-gray-900">{{ g.display_name }}</h3>
                 <p class="text-xs text-gray-500">{{ g.sysname }} → {{ g.default_redirect }}</p>
               </div>
-              <button @click="openGroupEdit(g)" class="text-gray-400 hover:text-gray-700">
-                <Pencil class="w-4 h-4" />
-              </button>
+              <div class="flex gap-2">
+                <button @click="openPermEdit(g)" class="text-gray-400 hover:text-primary-600" title="Редактировать права">
+                  <Key class="w-4 h-4" />
+                </button>
+                <button @click="openGroupEdit(g)" class="text-gray-400 hover:text-gray-700" title="Изменить группу">
+                  <Pencil class="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div class="flex flex-wrap gap-1">
               <span
                 v-for="p in g.permissions" :key="p.sysname"
-                class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600"
-              >{{ p.sysname }}</span>
+                class="px-2 py-0.5 rounded text-xs bg-primary-50 text-primary-700"
+              >{{ p.display_name }}</span>
               <span v-if="!g.permissions.length" class="text-xs text-gray-400">Нет прав</span>
             </div>
           </div>
@@ -225,6 +230,42 @@
       </div>
     </div>
 
+    <!-- Permission editing modal for group -->
+    <div v-if="permEditModal.open" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[80vh] flex flex-col">
+        <h3 class="text-lg font-semibold mb-1">Права группы: {{ permEditModal.group?.display_name }}</h3>
+        <p class="text-xs text-gray-500 mb-4">Отметьте нужные права и снимите лишние</p>
+
+        <div class="overflow-y-auto flex-1 space-y-4">
+          <div v-for="(perms, resource) in permsByResource" :key="resource">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              {{ RESOURCE_LABELS[resource] || resource }}
+            </p>
+            <div class="space-y-1 pl-1">
+              <label
+                v-for="p in perms"
+                :key="p.sysname"
+                class="flex items-center gap-2 text-sm cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  :checked="permEditModal.groupPerms.includes(p.sysname)"
+                  @change="toggleGroupPerm(p.sysname, $event.target.checked)"
+                  class="accent-primary-600"
+                />
+                <span class="text-gray-800">{{ p.display_name }}</span>
+                <span class="text-gray-400 font-mono text-xs ml-auto">{{ p.sysname }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 flex justify-end">
+          <button @click="permEditModal.open = false" class="btn btn-primary">Готово</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Config item create/edit modal -->
     <div v-if="configModal.open" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
@@ -244,7 +285,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Plus, Pencil, Trash2, Shield } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, Shield, Key } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { adminAPI, configAPI } from '../services/api.js'
 
@@ -353,6 +394,65 @@ async function saveGroup() {
   await loadGroups()
 }
 
+// ─── All permissions + group permission editing ───────────────────────────────
+
+const allPermissions = ref([])
+
+async function loadPermissions() {
+  const res = await adminAPI.getPermissions()
+  allPermissions.value = res.data
+}
+
+const RESOURCE_LABELS = {
+  visits:    'Выезды',
+  clients:   'Клиенты',
+  sites:     'Объекты',
+  defects:   'Дефекты',
+  purchases: 'Закупки',
+  users:     'Пользователи',
+  reports:   'Отчёты',
+  config:    'Справочники',
+  admin:     'Администрирование',
+}
+
+const permsByResource = computed(() => {
+  const grouped = {}
+  for (const p of allPermissions.value) {
+    const r = p.resource || 'other'
+    if (!grouped[r]) grouped[r] = []
+    grouped[r].push(p)
+  }
+  return grouped
+})
+
+const permEditModal = ref({ open: false, group: null, groupPerms: [] })
+
+function openPermEdit(g) {
+  permEditModal.value = {
+    open: true,
+    group: g,
+    groupPerms: g.permissions.map((p) => p.sysname),
+  }
+}
+
+async function toggleGroupPerm(permSysname, checked) {
+  const groupSysname = permEditModal.value.group.sysname
+  if (checked) {
+    await adminAPI.addPermissionToGroup(groupSysname, permSysname)
+    permEditModal.value.groupPerms.push(permSysname)
+  } else {
+    await adminAPI.removePermissionFromGroup(groupSysname, permSysname)
+    permEditModal.value.groupPerms = permEditModal.value.groupPerms.filter((s) => s !== permSysname)
+  }
+  await loadGroups()
+  // Sync updated group into modal
+  const updated = permissionGroups.value.find((g) => g.sysname === groupSysname)
+  if (updated) {
+    permEditModal.value.group = updated
+    permEditModal.value.groupPerms = updated.permissions.map((p) => p.sysname)
+  }
+}
+
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const activeConfig = ref(null)
@@ -428,6 +528,6 @@ async function deleteConfigItem(item) {
 // ─── Initial load ─────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  await Promise.all([loadUsers(), loadGroups()])
+  await Promise.all([loadUsers(), loadGroups(), loadPermissions()])
 })
 </script>

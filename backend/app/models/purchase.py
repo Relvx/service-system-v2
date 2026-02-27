@@ -1,3 +1,5 @@
+"""Модель закупки запасных частей или материалов."""
+
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Text, Date, Numeric, ForeignKey
@@ -6,6 +8,11 @@ from app.database import Base
 
 
 class Purchase(Base):
+    """Закупка материала или запчасти для устранения дефекта.
+
+    Привязана к дефекту (Defect) и объекту (Site).
+    Проходит статусы: черновик → согласовано → заказано → получено → установлено → закрыто.
+    """
     __tablename__ = "purchases"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

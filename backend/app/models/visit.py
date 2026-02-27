@@ -1,3 +1,5 @@
+"""Модель выезда — основная рабочая единица системы."""
+
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, ForeignKey
@@ -6,6 +8,12 @@ from app.database import Base
 
 
 class Visit(Base):
+    """Выезд мастера на объект.
+
+    Содержит плановую дату/время, тип работ, приоритет и статус.
+    После завершения хранит итоги работ, чек-лист и рекомендации.
+    Связан с объектом (Site) и назначенным мастером (User).
+    """
     __tablename__ = "visits"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

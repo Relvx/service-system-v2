@@ -1,4 +1,4 @@
-"""Audit log tables."""
+"""Модели аудит-лога — запись всех значимых действий пользователей."""
 
 import uuid
 from datetime import datetime

@@ -168,13 +168,14 @@ async def update_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    # Save snapshot before changes
-    await save_history(db, VisitHistory, visit, current_user.id)
+    changed = body.model_dump(exclude_unset=True)
+    await save_history(db, VisitHistory, visit, current_user.id,
+                       method="update", new_values=changed)
 
     old_master = visit.assigned_user_id
     old_date = visit.planned_date
 
-    for field, value in body.model_dump(exclude_unset=True).items():
+    for field, value in changed.items():
         setattr(visit, field, value)
 
     new_master = visit.assigned_user_id
@@ -208,7 +209,11 @@ async def complete_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    await save_history(db, VisitHistory, visit, current_user.id)
+    complete_vals = {"status": "closed", "work_summary": body.work_summary,
+                     "checklist": body.checklist, "defects_present": body.defects_present or False,
+                     "defects_summary": body.defects_summary, "recommendations": body.recommendations}
+    await save_history(db, VisitHistory, visit, current_user.id,
+                       method="update", new_values=complete_vals)
 
     visit.status = "closed"
     visit.work_summary = body.work_summary

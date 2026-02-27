@@ -14,13 +14,5 @@ class LogOut(BaseModel):
     entity_id: UUID
     details: Optional[Any] = None
     created_at: datetime
-
-
-class HistoryOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    record_id: UUID
-    changed_by_user_id: Optional[UUID] = None
-    changed_at: datetime
-    snapshot: Any
+    # Денормализованное имя пользователя (заполняется в роутере)
+    user_name: Optional[str] = None

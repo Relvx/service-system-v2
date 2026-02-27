@@ -70,9 +70,11 @@ async def update_client(
     if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    await save_history(db, ClientHistory, client, current_user.id)
+    changed = body.model_dump(exclude_none=True)
+    await save_history(db, ClientHistory, client, current_user.id,
+                       method="update", new_values=changed)
 
-    for field, value in body.model_dump(exclude_none=True).items():
+    for field, value in changed.items():
         setattr(client, field, value)
 
     await save_log(db, current_user.id, "update", "client", client_id)

@@ -5,7 +5,7 @@ from app.routers import (
     auth, config, users, clients, sites, visits, defects,
     purchases, attachments, notifications, dashboard,
 )
-from app.routers import admin
+from app.routers import admin, logs
 
 app = FastAPI(title="Service System v2 API", version="2.0.0", redirect_slashes=False)
 
@@ -34,6 +34,7 @@ app.include_router(purchases.router, prefix="/api")
 app.include_router(attachments.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(logs.router, prefix="/api")
 
 
 @app.get("/api/health")

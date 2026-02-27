@@ -1,3 +1,5 @@
+"""Модель дефекта, выявленного во время выезда."""
+
 import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Text, ForeignKey
@@ -6,6 +8,12 @@ from app.database import Base
 
 
 class Defect(Base):
+    """Дефект, обнаруженный мастером на объекте.
+
+    Привязан к выезду (Visit) и объекту (Site).
+    Имеет тип действия (ремонт/замена/наблюдение) и статус жизненного цикла.
+    Может порождать закупки (Purchase).
+    """
     __tablename__ = "defects"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
