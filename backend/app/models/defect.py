@@ -15,6 +15,7 @@ class Defect(Base):
     Может порождать закупки (Purchase).
     """
     __tablename__ = "defects"
+    __table_args__ = {"info": {"display_name": "Дефект", "display_name_plural": "Дефекты", "entity_type": "defect"}}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     visit_id = Column(UUID(as_uuid=True), ForeignKey("visits.id", ondelete="CASCADE"), nullable=True)

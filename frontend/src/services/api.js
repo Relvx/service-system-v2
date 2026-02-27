@@ -101,6 +101,7 @@ export const configAPI = {
   getAttachmentKinds: () => api.get('/config/attachment-kinds'),
   getPurchaseStatuses: () => api.get('/config/purchase-statuses'),
   getServiceFrequencies: () => api.get('/config/service-frequencies'),
+  getEntityTypes: () => api.get('/config/entity-types'),
   // Admin CRUD
   createItem: (resource, data) => api.post(`/config/${resource}`, data),
   updateItem: (resource, sysname, data) => api.put(`/config/${resource}/${sysname}`, data),

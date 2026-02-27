@@ -15,6 +15,7 @@ class Visit(Base):
     Связан с объектом (Site) и назначенным мастером (User).
     """
     __tablename__ = "visits"
+    __table_args__ = {"info": {"display_name": "Выезд", "display_name_plural": "Выезды", "entity_type": "visit"}}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     site_id = Column(UUID(as_uuid=True), ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)

@@ -75,16 +75,16 @@
             </select>
           </div>
 
-          <!-- Сущность -->
+          <!-- Сущность (тип документа) -->
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Раздел</label>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Тип документа</label>
             <select v-model="filters.entity_type" class="input" @change="resetAndLoad">
-              <option value="">Все разделы</option>
-              <option value="visit">Выезды</option>
-              <option value="client">Клиенты</option>
-              <option value="site">Объекты</option>
-              <option value="purchase">Закупки</option>
-              <option value="defect">Дефекты</option>
+              <option value="">Все документы</option>
+              <option
+                v-for="et in entityTypes"
+                :key="et.sysname"
+                :value="et.sysname"
+              >{{ et.display_name_plural }}</option>
             </select>
           </div>
         </div>
@@ -123,7 +123,7 @@
               v-if="filters.entity_type"
               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs"
             >
-              Раздел: {{ entityLabel(filters.entity_type) }}
+              Документ: {{ activeEntityLabel }}
               <button @click="filters.entity_type = ''; resetAndLoad()">
                 <X class="w-3 h-3" />
               </button>
@@ -276,9 +276,10 @@ import {
   ChevronLeft, ChevronRight,
 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
-import { logsAPI } from '../services/api.js'
+import { logsAPI, configAPI } from '../services/api.js'
 
 const logs = ref([])
+const entityTypes = ref([])   // [{sysname, display_name, display_name_plural}]
 const loading = ref(false)
 const limit = 100
 const offset = ref(0)
@@ -390,17 +391,24 @@ const ACTION_CLASSES = {
   status:   'bg-orange-100 text-orange-700',
   other:    'bg-gray-100 text-gray-600',
 }
-const ENTITY_LABELS = {
-  visit:    'Выезд',
-  client:   'Клиент',
-  site:     'Объект',
-  purchase: 'Закупка',
-  defect:   'Дефект',
-}
+// Динамически строится из entityTypes после загрузки
+const entityLabelMap = computed(() => {
+  const m = {}
+  for (const et of entityTypes.value) m[et.sysname] = et.display_name
+  return m
+})
 
 function actionLabel(s) { return ACTION_LABELS[s] || s || '—' }
 function actionClass(s)  { return ACTION_CLASSES[_actionGroup(s)] || ACTION_CLASSES.other }
-function entityLabel(s)  { return ENTITY_LABELS[s] || s || '—' }
+function entityLabel(s)  { return entityLabelMap.value[s] || s || '—' }
 
-onMounted(load)
+// Фильтр фишки — русское название активного типа документа
+const activeEntityLabel = computed(() =>
+  filters.entity_type ? (entityLabelMap.value[filters.entity_type] || filters.entity_type) : ''
+)
+
+onMounted(async () => {
+  const [, etRes] = await Promise.all([load(), configAPI.getEntityTypes()])
+  entityTypes.value = etRes.data
+})
 </script>

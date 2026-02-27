@@ -14,6 +14,7 @@ class Site(Base):
     инструкции по доступу и периодичность обслуживания.
     """
     __tablename__ = "sites"
+    __table_args__ = {"info": {"display_name": "Объект", "display_name_plural": "Объекты", "entity_type": "site"}}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)

@@ -94,6 +94,13 @@ class PermissionGroupOut(BaseModel):
     permissions: List[PermissionOut] = []
 
 
+class EntityTypeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    sysname: str
+    display_name: str
+    display_name_plural: str
+
+
 # ─── Config CRUD input schemas ──────────────────────────────────────────────
 
 class ConfigItemCreate(BaseModel):

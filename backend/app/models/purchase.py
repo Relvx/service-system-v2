@@ -14,6 +14,7 @@ class Purchase(Base):
     Проходит статусы: черновик → согласовано → заказано → получено → установлено → закрыто.
     """
     __tablename__ = "purchases"
+    __table_args__ = {"info": {"display_name": "Закупка", "display_name_plural": "Закупки", "entity_type": "purchase"}}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     defect_id = Column(UUID(as_uuid=True), ForeignKey("defects.id", ondelete="CASCADE"), nullable=True)

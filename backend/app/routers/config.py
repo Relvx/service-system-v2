@@ -11,10 +11,12 @@ from app.models.config_tables import (
     DefectStatus, DefectActionType, AttachmentKind,
     PurchaseStatus, ServiceFrequency, NotificationType,
 )
+from app.models.entity_type import EntityType
 from app.schemas.config import (
     RoleOut, VisitStatusOut, VisitTypeOut, PriorityOut,
     DefectStatusOut, DefectActionTypeOut, AttachmentKindOut,
     PurchaseStatusOut, ServiceFrequencyOut, NotificationTypeOut,
+    EntityTypeOut,
     ConfigItemCreate, ConfigItemUpdate,
 )
 
@@ -94,6 +96,12 @@ async def get_service_frequencies(db: AsyncSession = Depends(get_db), _=Depends(
 @router.get("/notification-types", response_model=List[NotificationTypeOut])
 async def get_notification_types(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
     result = await db.execute(select(NotificationType))
+    return result.scalars().all()
+
+
+@router.get("/entity-types", response_model=List[EntityTypeOut])
+async def get_entity_types(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    result = await db.execute(select(EntityType))
     return result.scalars().all()
 
 

@@ -14,6 +14,7 @@ class Client(Base):
     К клиенту привязаны объекты обслуживания (Site).
     """
     __tablename__ = "clients"
+    __table_args__ = {"info": {"display_name": "Клиент", "display_name_plural": "Клиенты", "entity_type": "client"}}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, nullable=False)
