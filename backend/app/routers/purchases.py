@@ -74,8 +74,8 @@ async def create_purchase(
 @router.put("/{purchase_id}", response_model=PurchaseOut)
 async def update_purchase(
     purchase_id: UUID,
-    db: AsyncSession = Depends(get_db),
     body: PurchaseUpdate,
+    db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     result = await db.execute(select(Purchase).where(Purchase.id == purchase_id))
