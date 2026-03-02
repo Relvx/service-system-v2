@@ -142,3 +142,70 @@ class TestVisitCRUD:
         assert res.status_code == 200
         for v in res.json():
             assert v["priority"] == "high"
+
+
+class TestVisitArchive:
+    async def test_archive_visit(self, http_client: AsyncClient, admin_token: str,
+                                  site_id: str, admin_user_id: str):
+        """PATCH /archive устанавливает is_archived=true."""
+        headers = auth_headers(admin_token)
+        payload = {
+            "planned_date": TODAY,
+            "site_id": site_id,
+            "assigned_user_id": admin_user_id,
+            "visit_type": "maintenance",
+            "priority": "medium",
+        }
+
+        res = await http_client.post("/api/visits", headers=headers, json=payload)
+        visit_id = res.json()["id"]
+
+        arc = await http_client.patch(f"/api/visits/{visit_id}/archive", headers=headers)
+        assert arc.status_code == 200
+        assert arc.json()["is_archived"] is True
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+    async def test_archived_hidden_by_default(self, http_client: AsyncClient, admin_token: str,
+                                               site_id: str, admin_user_id: str):
+        """Архивированный выезд не появляется в стандартном списке."""
+        headers = auth_headers(admin_token)
+        payload = {
+            "planned_date": TODAY,
+            "site_id": site_id,
+            "assigned_user_id": admin_user_id,
+            "visit_type": "maintenance",
+            "priority": "medium",
+        }
+
+        res = await http_client.post("/api/visits", headers=headers, json=payload)
+        visit_id = res.json()["id"]
+        await http_client.patch(f"/api/visits/{visit_id}/archive", headers=headers)
+
+        list_res = await http_client.get("/api/visits", headers=headers)
+        ids = [v["id"] for v in list_res.json()]
+        assert visit_id not in ids
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+    async def test_show_archived_param(self, http_client: AsyncClient, admin_token: str,
+                                        site_id: str, admin_user_id: str):
+        """show_archived=true включает архивные выезды в список."""
+        headers = auth_headers(admin_token)
+        payload = {
+            "planned_date": TODAY,
+            "site_id": site_id,
+            "assigned_user_id": admin_user_id,
+            "visit_type": "maintenance",
+            "priority": "medium",
+        }
+
+        res = await http_client.post("/api/visits", headers=headers, json=payload)
+        visit_id = res.json()["id"]
+        await http_client.patch(f"/api/visits/{visit_id}/archive", headers=headers)
+
+        list_res = await http_client.get("/api/visits?show_archived=true", headers=headers)
+        ids = [v["id"] for v in list_res.json()]
+        assert visit_id in ids
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)

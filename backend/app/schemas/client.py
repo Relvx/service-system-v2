@@ -15,6 +15,7 @@ class ClientOut(BaseModel):
     contact_person: Optional[str] = None
     notes: Optional[str] = None
     is_active: bool
+    is_archived: bool
     created_at: datetime
     updated_at: datetime
 

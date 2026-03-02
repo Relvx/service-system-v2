@@ -17,6 +17,7 @@ class SiteOut(BaseModel):
     onsite_contact: Optional[str] = None
     service_frequency: Optional[str] = None
     is_active: bool
+    is_archived: bool
     created_at: datetime
     updated_at: datetime
     # joined fields

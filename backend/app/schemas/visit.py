@@ -23,6 +23,7 @@ class VisitOut(BaseModel):
     recommendations: Optional[str] = None
     completed_at: Optional[datetime] = None
     office_notes: Optional[str] = None
+    is_archived: bool = False
     created_at: datetime
     updated_at: datetime
     # joined fields

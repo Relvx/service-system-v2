@@ -26,5 +26,6 @@ class Site(Base):
     onsite_contact = Column(Text, nullable=True)
     service_frequency = Column(String(30), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_archived = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)

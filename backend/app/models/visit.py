@@ -33,5 +33,6 @@ class Visit(Base):
     recommendations = Column(Text, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     office_notes = Column(Text, nullable=True)
+    is_archived = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)

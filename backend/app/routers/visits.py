@@ -94,10 +94,13 @@ async def get_visits(
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     priority: Optional[str] = None,
+    show_archived: bool = False,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
     stmt = _build_visit_query(master_id, site_id, status, date_from, date_to, priority)
+    if not show_archived:
+        stmt = stmt.where(Visit.is_archived == False)
     stmt = stmt.order_by(Visit.planned_date.desc(), Visit.planned_time_from)
     result = await db.execute(stmt)
     return [_row_to_visit_out(r) for r in result.all()]
@@ -234,6 +237,28 @@ async def complete_visit(
     visit.completed_at = datetime.utcnow()
 
     await save_log(db, current_user.id, enums.log_actions.visit_complete, "visit", visit_id)
+    await db.commit()
+
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit_id)
+    result = await db.execute(stmt)
+    return _row_to_visit_out(result.first())
+
+
+@router.patch("/{visit_id}/archive", response_model=VisitOut)
+async def archive_visit(
+    visit_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    result = await db.execute(select(Visit).where(Visit.id == visit_id))
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    visit.is_archived = True
+    await save_log(db, current_user.id, enums.log_actions.visit_delete, "visit", visit_id,
+                   details={"action": "archive", "planned_date": str(visit.planned_date)})
     await db.commit()
 
     stmt = _build_visit_query()

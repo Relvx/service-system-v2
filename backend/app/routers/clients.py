@@ -18,10 +18,13 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 async def get_clients(
     search: Optional[str] = None,
     active_only: Optional[bool] = None,
+    show_archived: bool = False,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
     stmt = select(Client)
+    if not show_archived:
+        stmt = stmt.where(Client.is_archived == False)
     if active_only:
         stmt = stmt.where(Client.is_active == True)
     if search:
@@ -85,6 +88,25 @@ async def update_client(
     )
     await save_log(db, current_user.id, action, "client", client_id,
                    details={"changed": list(changed.keys())})
+    await db.commit()
+    await db.refresh(client)
+    return client
+
+
+@router.patch("/{client_id}/archive", response_model=ClientOut)
+async def archive_client(
+    client_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    result = await db.execute(select(Client).where(Client.id == client_id))
+    client = result.scalar_one_or_none()
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    client.is_archived = True
+    await save_log(db, current_user.id, enums.log_actions.client_delete, "client", client_id,
+                   details={"name": client.name, "action": "archive"})
     await db.commit()
     await db.refresh(client)
     return client

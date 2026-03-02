@@ -13,7 +13,7 @@
 
       <!-- Filters -->
       <div class="card mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-3">
           <select v-model="filters.status" class="input">
             <option value="">Все статусы</option>
             <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
@@ -28,6 +28,10 @@
             <Filter class="w-5 h-5 mr-2" />Применить
           </button>
         </div>
+        <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+          <input type="checkbox" v-model="showArchived" @change="loadVisits" class="rounded" />
+          Показать архивные
+        </label>
       </div>
 
       <div v-if="loading" class="flex items-center justify-center h-64">
@@ -35,7 +39,11 @@
       </div>
 
       <div v-else class="space-y-4">
-        <div v-for="v in visits" :key="v.id" class="card hover:shadow-md transition-shadow">
+        <div
+          v-for="v in visits" :key="v.id"
+          class="card hover:shadow-md transition-shadow"
+          :class="{ 'opacity-50 bg-gray-50': v.is_archived }"
+        >
           <div class="flex items-start justify-between">
             <div class="flex-1">
               <div class="flex items-center gap-3 mb-3">
@@ -46,6 +54,7 @@
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(v.priority)">
                   {{ cfg.priorityLabel(v.priority) }}
                 </span>
+                <span v-if="v.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div class="flex items-center text-gray-600"><MapPin class="w-4 h-4 mr-2" /><span class="truncate">{{ v.site_address }}</span></div>
@@ -58,12 +67,22 @@
               <p v-if="v.work_summary" class="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded">{{ v.work_summary }}</p>
             </div>
             <div class="ml-4 flex items-center gap-2">
-              <button @click="openEdit(v)" class="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center">
-                <Pencil class="w-4 h-4 mr-1" />Изменить
-              </button>
-              <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
-                <Eye class="w-4 h-4 mr-1" />Подробнее
-              </button>
+              <template v-if="!v.is_archived">
+                <button @click="openEdit(v)" class="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center">
+                  <Pencil class="w-4 h-4 mr-1" />Изменить
+                </button>
+                <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
+                  <Eye class="w-4 h-4 mr-1" />Подробнее
+                </button>
+                <button @click="archiveConfirm = v" class="text-amber-600 hover:text-amber-800 text-sm font-medium flex items-center" title="В архив">
+                  <Archive class="w-4 h-4" />
+                </button>
+              </template>
+              <template v-else>
+                <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
+                  <Eye class="w-4 h-4 mr-1" />Подробнее
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -106,7 +125,7 @@
             </div>
           </div>
           <div class="flex justify-end gap-3 p-6 border-t">
-            <button @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
+            <button v-if="!detailVisit.is_archived" @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
             <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
           </div>
         </div>
@@ -175,26 +194,43 @@
           </form>
         </div>
       </div>
+
+      <!-- Archive Confirm -->
+      <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">Отправить в архив?</h2>
+          <p class="text-gray-600 mb-1">Выезд <strong>{{ archiveConfirm.site_title }}</strong> будет скрыт из основного списка.</p>
+          <p class="text-sm text-gray-500 mb-6">Все данные сохранятся.</p>
+          <div class="flex justify-end gap-3">
+            <button @click="archiveConfirm = null" class="btn btn-secondary">Отмена</button>
+            <button @click="handleArchive" class="btn bg-amber-600 text-white hover:bg-amber-700">В архив</button>
+          </div>
+        </div>
+      </div>
     </div>
   </Layout>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Image as ImageIcon } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, Image as ImageIcon } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { useConfigStore } from '../stores/config.js'
+import { useAuthStore } from '../stores/auth.js'
 import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI } from '../services/api.js'
 
 const cfg = useConfigStore()
+const auth = useAuthStore()
 
 const visits = ref([])
 const loading = ref(true)
 const filters = ref({ status: '', priority: '', date_from: '', date_to: '' })
+const showArchived = ref(false)
 const modalOpen = ref(false)
 const detailVisit = ref(null)
 const editing = ref(null)
 const saving = ref(false)
+const archiveConfirm = ref(null)
 const sites = ref([])
 const masters = ref([])
 const attachments = ref([])
@@ -213,6 +249,7 @@ async function loadVisits() {
     if (filters.value.priority) params.priority = filters.value.priority
     if (filters.value.date_from) params.date_from = filters.value.date_from
     if (filters.value.date_to) params.date_to = filters.value.date_to
+    if (showArchived.value) params.show_archived = true
     const res = await visitsAPI.getAll(params)
     visits.value = res.data
   } finally {
@@ -277,6 +314,16 @@ async function handleSave() {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
   } finally {
     saving.value = false
+  }
+}
+
+async function handleArchive() {
+  try {
+    await visitsAPI.archive(archiveConfirm.value.id)
+    archiveConfirm.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
   }
 }
 

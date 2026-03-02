@@ -89,3 +89,50 @@ class TestSiteCRUD:
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200
         assert res.json() == []
+
+
+class TestSiteArchive:
+    async def test_archive_site(self, http_client: AsyncClient, admin_token: str):
+        """PATCH /archive устанавливает is_archived=true."""
+        headers = auth_headers(admin_token)
+
+        res = await http_client.post("/api/sites", headers=headers, json=SITE_PAYLOAD)
+        site_id = res.json()["id"]
+
+        arc = await http_client.patch(f"/api/sites/{site_id}/archive", headers=headers)
+        assert arc.status_code == 200
+        assert arc.json()["is_archived"] is True
+
+        await http_client.delete(f"/api/sites/{site_id}", headers=headers)
+
+    async def test_archived_hidden_by_default(self, http_client: AsyncClient, admin_token: str):
+        """Архивированный объект не появляется в стандартном списке."""
+        headers = auth_headers(admin_token)
+
+        res = await http_client.post("/api/sites", headers=headers, json={
+            **SITE_PAYLOAD, "title": "__test__ Архивный объект"
+        })
+        site_id = res.json()["id"]
+        await http_client.patch(f"/api/sites/{site_id}/archive", headers=headers)
+
+        list_res = await http_client.get("/api/sites", headers=headers)
+        ids = [s["id"] for s in list_res.json()]
+        assert site_id not in ids
+
+        await http_client.delete(f"/api/sites/{site_id}", headers=headers)
+
+    async def test_show_archived_param(self, http_client: AsyncClient, admin_token: str):
+        """show_archived=true включает архивные объекты в список."""
+        headers = auth_headers(admin_token)
+
+        res = await http_client.post("/api/sites", headers=headers, json={
+            **SITE_PAYLOAD, "title": "__test__ Показать архивный объект"
+        })
+        site_id = res.json()["id"]
+        await http_client.patch(f"/api/sites/{site_id}/archive", headers=headers)
+
+        list_res = await http_client.get("/api/sites?show_archived=true", headers=headers)
+        ids = [s["id"] for s in list_res.json()]
+        assert site_id in ids
+
+        await http_client.delete(f"/api/sites/{site_id}", headers=headers)

@@ -44,6 +44,7 @@ export const clientsAPI = {
   getById: (id) => api.get(`/clients/${id}`),
   create: (data) => api.post('/clients', data),
   update: (id, data) => api.put(`/clients/${id}`, data),
+  archive: (id) => api.patch(`/clients/${id}/archive`),
   delete: (id) => api.delete(`/clients/${id}`),
 }
 
@@ -52,6 +53,7 @@ export const sitesAPI = {
   getById: (id) => api.get(`/sites/${id}`),
   create: (data) => api.post('/sites', data),
   update: (id, data) => api.put(`/sites/${id}`, data),
+  archive: (id) => api.patch(`/sites/${id}/archive`),
   delete: (id) => api.delete(`/sites/${id}`),
 }
 
@@ -62,6 +64,7 @@ export const visitsAPI = {
   create: (data) => api.post('/visits', data),
   update: (id, data) => api.put(`/visits/${id}`, data),
   complete: (id, data) => api.post(`/visits/${id}/complete`, data),
+  archive: (id) => api.patch(`/visits/${id}/archive`),
   delete: (id) => api.delete(`/visits/${id}`),
 }
 

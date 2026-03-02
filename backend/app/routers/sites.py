@@ -21,6 +21,7 @@ async def get_sites(
     client_id: Optional[UUID] = None,
     search: Optional[str] = None,
     active_only: Optional[bool] = None,
+    show_archived: bool = False,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -33,6 +34,8 @@ async def get_sites(
         .outerjoin(Client, Site.client_id == Client.id)
     )
 
+    if not show_archived:
+        stmt = stmt.where(Site.is_archived == False)
     if active_only:
         stmt = stmt.where(Site.is_active == True)
     if client_id:
@@ -109,6 +112,25 @@ async def update_site(
 
     await save_log(db, current_user.id, enums.log_actions.site_update, "site", site_id,
                    details={"changed": list(changed.keys())})
+    await db.commit()
+    await db.refresh(site)
+    return SiteOut.model_validate(site)
+
+
+@router.patch("/{site_id}/archive", response_model=SiteOut)
+async def archive_site(
+    site_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    result = await db.execute(select(Site).where(Site.id == site_id))
+    site = result.scalar_one_or_none()
+    if site is None:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    site.is_archived = True
+    await save_log(db, current_user.id, enums.log_actions.site_delete, "site", site_id,
+                   details={"title": site.title, "action": "archive"})
     await db.commit()
     await db.refresh(site)
     return SiteOut.model_validate(site)

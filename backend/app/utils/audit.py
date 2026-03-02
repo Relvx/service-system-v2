@@ -18,10 +18,19 @@ def _has_changes(record: Any, new_values: Dict[str, Any]) -> bool:
     return False
 
 
+_EXCLUDE_FROM_SNAPSHOT = {"is_archived", "created_at", "updated_at"}
+
+
 def _build_v_kwargs(record: Any) -> Dict[str, Any]:
-    """Возвращает словарь {v_<col>: value} по всем колонкам записи."""
+    """Возвращает словарь {v_<col>: value} по всем колонкам записи.
+
+    Системные поля (is_archived, created_at, updated_at) исключаются —
+    они не несут бизнес-смысла в исторических снапшотах.
+    """
     kwargs: Dict[str, Any] = {}
     for col in record.__table__.columns:
+        if col.name in _EXCLUDE_FROM_SNAPSHOT:
+            continue
         kwargs[f"v_{col.name}"] = getattr(record, col.name)
     return kwargs
 

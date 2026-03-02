@@ -100,3 +100,57 @@ class TestClientCRUD:
         fake_id = "00000000-0000-0000-0000-000000000001"
         res = await http_client.delete(f"/api/clients/{fake_id}", headers=auth_headers(admin_token))
         assert res.status_code == 404
+
+
+class TestClientArchive:
+    async def test_archive_client(self, http_client: AsyncClient, admin_token: str):
+        """PATCH /archive устанавливает is_archived=true."""
+        headers = auth_headers(admin_token)
+
+        res = await http_client.post("/api/clients", headers=headers, json=CLIENT_PAYLOAD)
+        client_id = res.json()["id"]
+
+        arc = await http_client.patch(f"/api/clients/{client_id}/archive", headers=headers)
+        assert arc.status_code == 200
+        assert arc.json()["is_archived"] is True
+
+        await http_client.delete(f"/api/clients/{client_id}", headers=headers)
+
+    async def test_archived_hidden_by_default(self, http_client: AsyncClient, admin_token: str):
+        """Архивированный клиент не появляется в стандартном списке."""
+        headers = auth_headers(admin_token)
+
+        res = await http_client.post("/api/clients", headers=headers, json={
+            **CLIENT_PAYLOAD, "name": "__test__ Архивный"
+        })
+        client_id = res.json()["id"]
+        await http_client.patch(f"/api/clients/{client_id}/archive", headers=headers)
+
+        list_res = await http_client.get("/api/clients", headers=headers)
+        ids = [c["id"] for c in list_res.json()]
+        assert client_id not in ids
+
+        await http_client.delete(f"/api/clients/{client_id}", headers=headers)
+
+    async def test_show_archived_param(self, http_client: AsyncClient, admin_token: str):
+        """show_archived=true включает архивные записи в список."""
+        headers = auth_headers(admin_token)
+
+        res = await http_client.post("/api/clients", headers=headers, json={
+            **CLIENT_PAYLOAD, "name": "__test__ Показать архивный"
+        })
+        client_id = res.json()["id"]
+        await http_client.patch(f"/api/clients/{client_id}/archive", headers=headers)
+
+        list_res = await http_client.get("/api/clients?show_archived=true", headers=headers)
+        ids = [c["id"] for c in list_res.json()]
+        assert client_id in ids
+
+        await http_client.delete(f"/api/clients/{client_id}", headers=headers)
+
+    async def test_archive_not_found(self, http_client: AsyncClient, admin_token: str):
+        """PATCH /archive несуществующего ID → 404."""
+        fake_id = "00000000-0000-0000-0000-000000000002"
+        res = await http_client.patch(f"/api/clients/{fake_id}/archive",
+                                       headers=auth_headers(admin_token))
+        assert res.status_code == 404
