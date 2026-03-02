@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, require_groups
 from app.models.visit import Visit
 from app.models.defect import Defect
 from app.models.purchase import Purchase
@@ -13,7 +13,10 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/stats", response_model=DashboardStats)
-async def get_stats(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def get_stats(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_groups("admin_group", "office_group")),
+):
     today = date.today()
     week_end = today + timedelta(days=7)
 
