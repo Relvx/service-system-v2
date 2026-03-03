@@ -59,6 +59,11 @@
           </div>
           <div class="text-sm text-gray-500 mb-3">Выездов: {{ s.total_visits || 0 }}</div>
 
+          <div v-if="s.is_archived && auth.hasGroup('admin_group')" class="flex gap-2 mt-auto pt-3 border-t">
+            <button @click="handleUnarchive(s)" class="flex-1 btn bg-green-50 text-green-700 hover:bg-green-100 text-sm py-2 flex items-center justify-center">
+              <ArchiveRestore class="w-4 h-4 mr-1" />Восстановить
+            </button>
+          </div>
           <div v-if="!s.is_archived" class="flex gap-2 mt-auto pt-3 border-t">
             <button @click="openDetail(s)" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
               <Eye class="w-4 h-4 mr-1" />Подробнее
@@ -157,7 +162,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Plus, MapPin, Building2, Phone, X, Eye, Edit, Archive } from 'lucide-vue-next'
+import { Search, Plus, MapPin, Building2, Phone, X, Eye, Edit, Archive, ArchiveRestore } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -234,6 +239,15 @@ async function handleArchive() {
   try {
     await sitesAPI.archive(archiveConfirm.value.id)
     archiveConfirm.value = null
+    await loadSites()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleUnarchive(s) {
+  try {
+    await sitesAPI.unarchive(s.id)
     await loadSites()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))

@@ -45,6 +45,7 @@ export const clientsAPI = {
   create: (data) => api.post('/clients', data),
   update: (id, data) => api.put(`/clients/${id}`, data),
   archive: (id) => api.patch(`/clients/${id}/archive`),
+  unarchive: (id) => api.patch(`/clients/${id}/unarchive`),
   delete: (id) => api.delete(`/clients/${id}`),
   // Контакты
   addContact: (clientId, data) => api.post(`/clients/${clientId}/contacts`, data),
@@ -60,6 +61,7 @@ export const sitesAPI = {
   create: (data) => api.post('/sites', data),
   update: (id, data) => api.put(`/sites/${id}`, data),
   archive: (id) => api.patch(`/sites/${id}/archive`),
+  unarchive: (id) => api.patch(`/sites/${id}/unarchive`),
   delete: (id) => api.delete(`/sites/${id}`),
 }
 
@@ -71,6 +73,7 @@ export const visitsAPI = {
   update: (id, data) => api.put(`/visits/${id}`, data),
   complete: (id, data) => api.post(`/visits/${id}/complete`, data),
   archive: (id) => api.patch(`/visits/${id}/archive`),
+  unarchive: (id) => api.patch(`/visits/${id}/unarchive`),
   delete: (id) => api.delete(`/visits/${id}`),
 }
 

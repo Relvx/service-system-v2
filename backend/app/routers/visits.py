@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, require_groups
 from app.models.visit import Visit
 from app.models.site import Site
 from app.models.client import Client
@@ -272,6 +272,28 @@ async def archive_visit(
     visit.is_archived = True
     await save_log(db, current_user.id, enums.log_actions.visit_delete, "visit", visit_id,
                    details={"action": "archive", "planned_date": str(visit.planned_date)})
+    await db.commit()
+
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit_id)
+    result = await db.execute(stmt)
+    return _row_to_visit_out(result.first())
+
+
+@router.patch("/{visit_id}/unarchive", response_model=VisitOut)
+async def unarchive_visit(
+    visit_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_groups("admin_group")),
+):
+    result = await db.execute(select(Visit).where(Visit.id == visit_id))
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    visit.is_archived = False
+    await save_log(db, current_user.id, enums.log_actions.visit_update, "visit", visit_id,
+                   details={"action": "unarchive", "planned_date": str(visit.planned_date)})
     await db.commit()
 
     stmt = _build_visit_query()

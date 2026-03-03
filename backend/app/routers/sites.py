@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, require_groups
 from app.models.site import Site
 from app.models.client import Client
 from app.models.visit import Visit
@@ -190,6 +190,25 @@ async def archive_site(
     site.is_archived = True
     await save_log(db, current_user.id, enums.log_actions.site_delete, "site", site_id,
                    details={"title": site.title, "action": "archive"})
+    await db.commit()
+    await db.refresh(site)
+    return SiteOut.model_validate(site)
+
+
+@router.patch("/{site_id}/unarchive", response_model=SiteOut)
+async def unarchive_site(
+    site_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_groups("admin_group")),
+):
+    result = await db.execute(select(Site).where(Site.id == site_id))
+    site = result.scalar_one_or_none()
+    if site is None:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    site.is_archived = False
+    await save_log(db, current_user.id, enums.log_actions.site_update, "site", site_id,
+                   details={"title": site.title, "action": "unarchive"})
     await db.commit()
     await db.refresh(site)
     return SiteOut.model_validate(site)

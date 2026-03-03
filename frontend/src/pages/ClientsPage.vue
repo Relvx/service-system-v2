@@ -62,6 +62,11 @@
           </div>
           <p v-if="c.notes" class="text-sm text-gray-500 mb-3 border-t pt-3">{{ c.notes }}</p>
 
+          <div v-if="c.is_archived && auth.hasGroup('admin_group')" class="flex gap-2 mt-auto pt-3 border-t">
+            <button @click="handleUnarchive(c)" class="flex-1 btn bg-green-50 text-green-700 hover:bg-green-100 text-sm py-2 flex items-center justify-center">
+              <ArchiveRestore class="w-4 h-4 mr-1" />Восстановить
+            </button>
+          </div>
           <div v-if="!c.is_archived" class="flex gap-2 mt-auto pt-3 border-t">
             <router-link :to="`/clients/${c.id}`" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
               <Eye class="w-4 h-4 mr-1" />Подробнее
@@ -145,7 +150,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Search, Plus, Building2, Phone, Mail, Edit, Archive, X, Eye } from 'lucide-vue-next'
+import { Search, Plus, Building2, Phone, Mail, Edit, Archive, ArchiveRestore, X, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { clientsAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -208,6 +213,15 @@ async function handleArchive() {
   try {
     await clientsAPI.archive(archiveConfirm.value.id)
     archiveConfirm.value = null
+    await loadClients()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleUnarchive(c) {
+  try {
+    await clientsAPI.unarchive(c.id)
     await loadClients()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))

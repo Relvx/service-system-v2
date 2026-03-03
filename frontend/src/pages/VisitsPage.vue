@@ -82,6 +82,9 @@
                 <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
                   <Eye class="w-4 h-4 mr-1" />Подробнее
                 </button>
+                <button v-if="auth.hasGroup('admin_group')" @click="handleUnarchive(v)" class="text-green-600 hover:text-green-800 text-sm font-medium flex items-center" title="Восстановить из архива">
+                  <ArchiveRestore class="w-4 h-4" />
+                </button>
               </template>
             </div>
           </div>
@@ -213,7 +216,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, Image as ImageIcon } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Image as ImageIcon } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -321,6 +324,15 @@ async function handleArchive() {
   try {
     await visitsAPI.archive(archiveConfirm.value.id)
     archiveConfirm.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleUnarchive(v) {
+  try {
+    await visitsAPI.unarchive(v.id)
     await loadVisits()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))

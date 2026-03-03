@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, require_groups
 from app.models.client import Client
 from app.models.client_contact import ClientContact
 from app.models.client_legal import ClientLegal
@@ -171,6 +171,25 @@ async def archive_client(
     client.is_archived = True
     await save_log(db, current_user.id, enums.log_actions.client_delete, "client", client_id,
                    details={"name": client.name, "action": "archive"})
+    await db.commit()
+    await db.refresh(client)
+    return client
+
+
+@router.patch("/{client_id}/unarchive", response_model=ClientOut)
+async def unarchive_client(
+    client_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_groups("admin_group")),
+):
+    result = await db.execute(select(Client).where(Client.id == client_id))
+    client = result.scalar_one_or_none()
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    client.is_archived = False
+    await save_log(db, current_user.id, enums.log_actions.client_update, "client", client_id,
+                   details={"name": client.name, "action": "unarchive"})
     await db.commit()
     await db.refresh(client)
     return client
