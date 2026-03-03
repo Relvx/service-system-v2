@@ -55,8 +55,8 @@ def _build_visit_query(
     if site_id:
         stmt = stmt.where(Visit.site_id == site_id)
     if status_:
-        if status_ == "closed":
-            stmt = stmt.where(Visit.status.in_(["done", "closed"]))
+        if status_ == enums.visit_statuses.closed:
+            stmt = stmt.where(Visit.status.in_(["done", enums.visit_statuses.closed]))
         else:
             stmt = stmt.where(Visit.status == status_)
     if priority:
@@ -144,9 +144,9 @@ async def create_visit(
         site = site_res.scalar_one_or_none()
         if site:
             price_map = {
-                "maintenance": site.price_maintenance,
-                "repair": site.price_repair,
-                "emergency": site.price_emergency,
+                enums.visit_types.maintenance: site.price_maintenance,
+                enums.visit_types.repair: site.price_repair,
+                enums.visit_types.emergency: site.price_emergency,
             }
             visit.cost = price_map.get(visit.visit_type)
 
@@ -235,13 +235,13 @@ async def complete_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    complete_vals = {"status": "closed", "work_summary": body.work_summary,
+    complete_vals = {"status": enums.visit_statuses.closed, "work_summary": body.work_summary,
                      "checklist": body.checklist, "defects_present": body.defects_present or False,
                      "defects_summary": body.defects_summary, "recommendations": body.recommendations}
     await save_history(db, VisitHistory, visit, current_user.id,
                        method="update", new_values=complete_vals)
 
-    visit.status = "closed"
+    visit.status = enums.visit_statuses.closed
     visit.work_summary = body.work_summary
     visit.checklist = body.checklist
     visit.defects_present = body.defects_present or False

@@ -89,7 +89,7 @@ async def get_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(
         select(Defect)
         .where(
             Defect.site_id == site_id,
-            Defect.status.notin_(["fixed", "cancelled"]),
+            Defect.status != enums.defect_statuses.fixed,
         )
         .order_by(Defect.created_at.desc())
     )
