@@ -1,5 +1,4 @@
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -49,7 +48,7 @@ async def get_clients(
 
 
 @router.get("/{client_id}", response_model=ClientDetailOut)
-async def get_client(client_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def get_client(client_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
     # Клиент
     result = await db.execute(select(Client).where(Client.id == client_id))
     client = result.scalar_one_or_none()
@@ -128,7 +127,7 @@ async def create_client(
 
 @router.put("/{client_id}", response_model=ClientOut)
 async def update_client(
-    client_id: UUID,
+    client_id: int,
     body: ClientUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -159,7 +158,7 @@ async def update_client(
 
 @router.patch("/{client_id}/archive", response_model=ClientOut)
 async def archive_client(
-    client_id: UUID,
+    client_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -178,7 +177,7 @@ async def archive_client(
 
 @router.patch("/{client_id}/unarchive", response_model=ClientOut)
 async def unarchive_client(
-    client_id: UUID,
+    client_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_groups("admin_group")),
 ):
@@ -197,7 +196,7 @@ async def unarchive_client(
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_client(
-    client_id: UUID,
+    client_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -216,7 +215,7 @@ async def delete_client(
 
 @router.post("/{client_id}/contacts", response_model=ClientContactOut, status_code=status.HTTP_201_CREATED)
 async def add_contact(
-    client_id: UUID,
+    client_id: int,
     body: ClientContactCreate,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
@@ -234,8 +233,8 @@ async def add_contact(
 
 @router.put("/{client_id}/contacts/{contact_id}", response_model=ClientContactOut)
 async def update_contact(
-    client_id: UUID,
-    contact_id: UUID,
+    client_id: int,
+    contact_id: int,
     body: ClientContactUpdate,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
@@ -260,8 +259,8 @@ async def update_contact(
 
 @router.delete("/{client_id}/contacts/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact(
-    client_id: UUID,
-    contact_id: UUID,
+    client_id: int,
+    contact_id: int,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -283,7 +282,7 @@ async def delete_contact(
 
 @router.put("/{client_id}/legal", response_model=ClientLegalOut)
 async def upsert_legal(
-    client_id: UUID,
+    client_id: int,
     body: ClientLegalUpdate,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),

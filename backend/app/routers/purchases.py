@@ -1,5 +1,4 @@
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -39,7 +38,7 @@ def _row_to_out(row) -> PurchaseOut:
 @router.get("", response_model=List[PurchaseOut])
 async def get_purchases(
     status: Optional[str] = None,
-    defect_id: Optional[UUID] = None,
+    defect_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -73,7 +72,7 @@ async def create_purchase(
 
 @router.put("/{purchase_id}", response_model=PurchaseOut)
 async def update_purchase(
-    purchase_id: UUID,
+    purchase_id: int,
     body: PurchaseUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),

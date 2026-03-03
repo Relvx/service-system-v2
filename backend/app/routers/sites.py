@@ -1,5 +1,4 @@
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -20,7 +19,7 @@ router = APIRouter(prefix="/sites", tags=["sites"])
 
 @router.get("", response_model=List[SiteOut])
 async def get_sites(
-    client_id: Optional[UUID] = None,
+    client_id: Optional[int] = None,
     search: Optional[str] = None,
     active_only: Optional[bool] = None,
     show_archived: bool = False,
@@ -62,7 +61,7 @@ async def get_sites(
 
 
 @router.get("/{site_id}", response_model=SiteDetailOut)
-async def get_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def get_site(site_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
     # Base site + client name
     stmt = (
         select(Site, Client.name.label("client_name"))
@@ -97,7 +96,7 @@ async def get_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(
     defects = defects_res.scalars().all()
     obj.active_defects = [
         {
-            "id": str(d.id),
+            "id": d.id,
             "title": d.title,
             "priority": d.priority,
             "status": d.status,
@@ -120,7 +119,7 @@ async def get_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(
     visits_rows = visits_res.all()
     obj.recent_visits = [
         {
-            "id": str(v[0].id),
+            "id": v[0].id,
             "planned_date": str(v[0].planned_date),
             "visit_type": v[0].visit_type,
             "priority": v[0].priority,
@@ -152,7 +151,7 @@ async def create_site(
 
 @router.put("/{site_id}", response_model=SiteOut)
 async def update_site(
-    site_id: UUID,
+    site_id: int,
     body: SiteUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -178,7 +177,7 @@ async def update_site(
 
 @router.patch("/{site_id}/archive", response_model=SiteOut)
 async def archive_site(
-    site_id: UUID,
+    site_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -197,7 +196,7 @@ async def archive_site(
 
 @router.patch("/{site_id}/unarchive", response_model=SiteOut)
 async def unarchive_site(
-    site_id: UUID,
+    site_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_groups("admin_group")),
 ):
@@ -216,7 +215,7 @@ async def unarchive_site(
 
 @router.delete("/{site_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_site(
-    site_id: UUID,
+    site_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):

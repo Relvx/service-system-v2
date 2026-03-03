@@ -1,9 +1,8 @@
 """Модель выезда — основная рабочая единица системы."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, Float, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, Float, ForeignKey, BigInteger
+from sqlalchemy.dialects.postgresql import JSONB
 from app.database import Base
 
 
@@ -17,9 +16,9 @@ class Visit(Base):
     __tablename__ = "visits"
     __table_args__ = {"info": {"display_name": "Выезд", "display_name_plural": "Выезды", "entity_type": "visit"}}
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    site_id = Column(UUID(as_uuid=True), ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)
-    assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    site_id = Column(BigInteger, ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)
+    assigned_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     planned_date = Column(Date, nullable=False)
     planned_time_from = Column(Time, nullable=True)
     planned_time_to = Column(Time, nullable=True)

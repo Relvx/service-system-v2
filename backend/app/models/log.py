@@ -1,9 +1,8 @@
 """Модели аудит-лога — запись всех значимых действий пользователей."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
+from sqlalchemy.dialects.postgresql import JSONB
 from app.database import Base
 
 
@@ -20,12 +19,12 @@ class Log(Base):
     """Audit log entry recording who did what to which entity."""
     __tablename__ = "logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True),
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger,
                      ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     action_sysname = Column(String(50),
                             ForeignKey("log_actions.sysname", ondelete="SET NULL"), nullable=True)
     entity_type = Column(String(50), nullable=False)
-    entity_id = Column(UUID(as_uuid=True), nullable=False)
+    entity_id = Column(BigInteger, nullable=False)
     details = Column(JSONB, nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)

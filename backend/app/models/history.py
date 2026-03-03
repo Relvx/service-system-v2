@@ -6,10 +6,9 @@
   v_method  — тип операции: create / update / delete
 """
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, Float, Numeric, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, Float, Numeric, ForeignKey, BigInteger
+from sqlalchemy.dialects.postgresql import JSONB
 from app.database import Base
 
 
@@ -20,8 +19,8 @@ class ClientHistory(Base):
     """
     __tablename__ = "clients_history"
 
-    id                = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    v_id              = Column(UUID(as_uuid=True), nullable=True, index=True)
+    id                = Column(BigInteger, primary_key=True, autoincrement=True)
+    v_id              = Column(BigInteger,    nullable=True, index=True)
     v_name            = Column(Text,         nullable=True)
     v_inn             = Column(String(50),   nullable=True)
     v_kpp             = Column(String(50),   nullable=True)
@@ -32,7 +31,7 @@ class ClientHistory(Base):
     v_created_at      = Column(DateTime,     nullable=True)
     v_updated_at      = Column(DateTime,     nullable=True)
     changed_at         = Column(DateTime, default=datetime.now, nullable=False)
-    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    changed_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     method             = Column(String(20), nullable=False)
 
 
@@ -40,9 +39,9 @@ class SiteHistory(Base):
     """Версионная таблица объектов обслуживания (sites)."""
     __tablename__ = "sites_history"
 
-    id                   = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    v_id                 = Column(UUID(as_uuid=True), nullable=True, index=True)
-    v_client_id          = Column(UUID(as_uuid=True), nullable=True)
+    id                   = Column(BigInteger, primary_key=True, autoincrement=True)
+    v_id                 = Column(BigInteger,    nullable=True, index=True)
+    v_client_id          = Column(BigInteger,    nullable=True)
     v_title              = Column(Text,        nullable=True)
     v_address            = Column(Text,        nullable=True)
     v_latitude           = Column(Float,       nullable=True)
@@ -57,7 +56,7 @@ class SiteHistory(Base):
     v_created_at         = Column(DateTime,    nullable=True)
     v_updated_at         = Column(DateTime,    nullable=True)
     changed_at         = Column(DateTime, default=datetime.now, nullable=False)
-    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    changed_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     method             = Column(String(20), nullable=False)
 
 
@@ -68,8 +67,8 @@ class UserHistory(Base):
     """
     __tablename__ = "users_history"
 
-    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    v_id           = Column(UUID(as_uuid=True), nullable=True, index=True)
+    id             = Column(BigInteger, primary_key=True, autoincrement=True)
+    v_id           = Column(BigInteger,    nullable=True, index=True)
     v_email        = Column(String(255), nullable=True)
     v_password_hash = Column(String(255), nullable=True)
     v_full_name    = Column(String(255), nullable=True)
@@ -78,7 +77,7 @@ class UserHistory(Base):
     v_created_at   = Column(DateTime,    nullable=True)
     v_updated_at   = Column(DateTime,    nullable=True)
     changed_at         = Column(DateTime, default=datetime.now, nullable=False)
-    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    changed_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     method             = Column(String(20), nullable=False)
 
 
@@ -86,10 +85,10 @@ class VisitHistory(Base):
     """Версионная таблица выездов (visits)."""
     __tablename__ = "visits_history"
 
-    id                  = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    v_id                = Column(UUID(as_uuid=True), nullable=True, index=True)
-    v_site_id           = Column(UUID(as_uuid=True), nullable=True)
-    v_assigned_user_id  = Column(UUID(as_uuid=True), nullable=True)
+    id                  = Column(BigInteger, primary_key=True, autoincrement=True)
+    v_id                = Column(BigInteger,    nullable=True, index=True)
+    v_site_id           = Column(BigInteger,    nullable=True)
+    v_assigned_user_id  = Column(BigInteger,    nullable=True)
     v_planned_date      = Column(Date,      nullable=True)
     v_planned_time_from = Column(Time,      nullable=True)
     v_planned_time_to   = Column(Time,      nullable=True)
@@ -107,7 +106,7 @@ class VisitHistory(Base):
     v_created_at        = Column(DateTime,   nullable=True)
     v_updated_at        = Column(DateTime,   nullable=True)
     changed_at         = Column(DateTime, default=datetime.now, nullable=False)
-    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    changed_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     method             = Column(String(20), nullable=False)
 
 
@@ -115,10 +114,10 @@ class PurchaseHistory(Base):
     """Версионная таблица закупок (purchases)."""
     __tablename__ = "purchases_history"
 
-    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    v_id         = Column(UUID(as_uuid=True), nullable=True, index=True)
-    v_defect_id  = Column(UUID(as_uuid=True), nullable=True)
-    v_site_id    = Column(UUID(as_uuid=True), nullable=True)
+    id           = Column(BigInteger, primary_key=True, autoincrement=True)
+    v_id         = Column(BigInteger,    nullable=True, index=True)
+    v_defect_id  = Column(BigInteger,    nullable=True)
+    v_site_id    = Column(BigInteger,    nullable=True)
     v_item       = Column(Text,        nullable=True)
     v_qty        = Column(Numeric,     nullable=True)
     v_status     = Column(String(20),  nullable=True)
@@ -127,5 +126,5 @@ class PurchaseHistory(Base):
     v_created_at = Column(DateTime,    nullable=True)
     v_updated_at = Column(DateTime,    nullable=True)
     changed_at         = Column(DateTime, default=datetime.now, nullable=False)
-    changed_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    changed_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     method             = Column(String(20), nullable=False)

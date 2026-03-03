@@ -1,9 +1,7 @@
 """User model — role column removed in migration 003, groups managed via permission_groups."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Boolean, DateTime, BigInteger
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -12,7 +10,7 @@ class User(Base):
     """Application user. Permissions are managed via PermissionGroup memberships."""
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)

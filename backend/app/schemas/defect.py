@@ -1,4 +1,3 @@
-from uuid import UUID
 from datetime import datetime, date
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
@@ -7,9 +6,9 @@ from pydantic import BaseModel, ConfigDict
 class DefectOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    visit_id: Optional[UUID] = None
-    site_id: Optional[UUID] = None
+    id: int
+    visit_id: Optional[int] = None
+    site_id: Optional[int] = None
     title: str
     description: Optional[str] = None
     priority: str
@@ -27,8 +26,8 @@ class DefectOut(BaseModel):
 
 
 class DefectCreate(BaseModel):
-    visit_id: Optional[UUID] = None
-    site_id: Optional[UUID] = None
+    visit_id: Optional[int] = None
+    site_id: Optional[int] = None
     title: str
     description: Optional[str] = None
     priority: str = "medium"

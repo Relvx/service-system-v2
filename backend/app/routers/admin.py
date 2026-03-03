@@ -1,7 +1,6 @@
 """Admin router — user management, permission groups, and permission assignments."""
 
 from typing import List
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -69,7 +68,7 @@ async def admin_create_user(
 
 @router.put("/users/{user_id}", response_model=UserOut)
 async def admin_update_user(
-    user_id: UUID,
+    user_id: int,
     body: UserUpdate,
     db: AsyncSession = Depends(get_db),
     _=_admin,
@@ -93,7 +92,7 @@ async def admin_update_user(
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_delete_user(
-    user_id: UUID,
+    user_id: int,
     db: AsyncSession = Depends(get_db),
     _=_admin,
 ):
@@ -109,7 +108,7 @@ async def admin_delete_user(
 
 @router.post("/users/{user_id}/groups/{group_sysname}", status_code=status.HTTP_201_CREATED)
 async def add_user_to_group(
-    user_id: UUID,
+    user_id: int,
     group_sysname: str,
     db: AsyncSession = Depends(get_db),
     _=_admin,
@@ -138,7 +137,7 @@ async def add_user_to_group(
 
 @router.delete("/users/{user_id}/groups/{group_sysname}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_user_from_group(
-    user_id: UUID,
+    user_id: int,
     group_sysname: str,
     db: AsyncSession = Depends(get_db),
     _=_admin,

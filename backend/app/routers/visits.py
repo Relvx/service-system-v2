@@ -1,5 +1,4 @@
 from typing import List, Optional
-from uuid import UUID
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,8 +87,8 @@ def _row_to_visit_out(row) -> VisitOut:
 
 @router.get("", response_model=List[VisitOut])
 async def get_visits(
-    master_id: Optional[UUID] = None,
-    site_id: Optional[UUID] = None,
+    master_id: Optional[int] = None,
+    site_id: Optional[int] = None,
     status: Optional[str] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
@@ -120,7 +119,7 @@ async def get_calendar(
 
 
 @router.get("/{visit_id}", response_model=VisitOut)
-async def get_visit(visit_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def get_visit(visit_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
     stmt = _build_visit_query()
     stmt = stmt.where(Visit.id == visit_id)
     result = await db.execute(stmt)
@@ -175,7 +174,7 @@ async def create_visit(
 
 @router.put("/{visit_id}", response_model=VisitOut)
 async def update_visit(
-    visit_id: UUID,
+    visit_id: int,
     body: VisitUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -225,7 +224,7 @@ async def update_visit(
 
 @router.post("/{visit_id}/complete", response_model=VisitOut)
 async def complete_visit(
-    visit_id: UUID,
+    visit_id: int,
     body: VisitComplete,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -260,7 +259,7 @@ async def complete_visit(
 
 @router.patch("/{visit_id}/archive", response_model=VisitOut)
 async def archive_visit(
-    visit_id: UUID,
+    visit_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -282,7 +281,7 @@ async def archive_visit(
 
 @router.patch("/{visit_id}/unarchive", response_model=VisitOut)
 async def unarchive_visit(
-    visit_id: UUID,
+    visit_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_groups("admin_group")),
 ):
@@ -304,7 +303,7 @@ async def unarchive_visit(
 
 @router.delete("/{visit_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_visit(
-    visit_id: UUID,
+    visit_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -314,6 +313,6 @@ async def delete_visit(
         raise HTTPException(status_code=404, detail="Visit not found")
 
     await save_log(db, current_user.id, enums.log_actions.visit_delete, "visit", visit_id,
-                   details={"site_id": str(visit.site_id), "planned_date": str(visit.planned_date)})
+                   details={"site_id": visit.site_id, "planned_date": str(visit.planned_date)})
     await db.delete(visit)
     await db.commit()

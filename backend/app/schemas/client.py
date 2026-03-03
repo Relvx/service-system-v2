@@ -1,4 +1,3 @@
-from uuid import UUID
 from datetime import datetime, date
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
@@ -7,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 class ClientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
+    id: int
     name: str
     inn: Optional[str] = None
     kpp: Optional[str] = None
@@ -44,8 +43,8 @@ class ClientUpdate(BaseModel):
 class ClientContactOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    client_id: UUID
+    id: int
+    client_id: int
     full_name: str
     position: Optional[str] = None
     phone: Optional[str] = None
@@ -75,8 +74,8 @@ class ClientContactUpdate(BaseModel):
 class ClientLegalOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    client_id: UUID
+    id: int
+    client_id: int
     legal_address: Optional[str] = None
     bank: Optional[str] = None
     bik: Optional[str] = None
@@ -95,7 +94,7 @@ class ClientLegalUpdate(BaseModel):
 class ClientSiteShort(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
+    id: int
     title: str
     address: str
     service_frequency: Optional[str] = None
@@ -105,8 +104,8 @@ class ClientSiteShort(BaseModel):
 class ClientVisitShort(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    site_id: Optional[UUID] = None
+    id: int
+    site_id: Optional[int] = None
     site_title: Optional[str] = None
     planned_date: date
     status: str

@@ -1,4 +1,3 @@
-from uuid import UUID
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
@@ -7,8 +6,8 @@ from pydantic import BaseModel, ConfigDict
 class SiteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    client_id: Optional[UUID] = None
+    id: int
+    client_id: Optional[int] = None
     title: str
     address: str
     latitude: Optional[float] = None
@@ -35,7 +34,7 @@ class SiteDetailOut(SiteOut):
 
 
 class SiteCreate(BaseModel):
-    client_id: Optional[UUID] = None
+    client_id: Optional[int] = None
     title: str
     address: str
     latitude: Optional[float] = None
@@ -49,7 +48,7 @@ class SiteCreate(BaseModel):
 
 
 class SiteUpdate(BaseModel):
-    client_id: Optional[UUID] = None
+    client_id: Optional[int] = None
     title: Optional[str] = None
     address: Optional[str] = None
     latitude: Optional[float] = None

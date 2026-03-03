@@ -1,4 +1,3 @@
-from uuid import UUID
 from datetime import datetime, date, time
 from typing import Optional, Any
 from pydantic import BaseModel, ConfigDict
@@ -7,9 +6,9 @@ from pydantic import BaseModel, ConfigDict
 class VisitOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
-    site_id: Optional[UUID] = None
-    assigned_user_id: Optional[UUID] = None
+    id: int
+    site_id: Optional[int] = None
+    assigned_user_id: Optional[int] = None
     planned_date: date
     planned_time_from: Optional[time] = None
     planned_time_to: Optional[time] = None
@@ -42,8 +41,8 @@ class VisitOut(BaseModel):
 
 
 class VisitCreate(BaseModel):
-    site_id: UUID
-    assigned_user_id: UUID
+    site_id: int
+    assigned_user_id: int
     planned_date: date
     planned_time_from: Optional[time] = None
     planned_time_to: Optional[time] = None
@@ -55,8 +54,8 @@ class VisitCreate(BaseModel):
 
 
 class VisitUpdate(BaseModel):
-    site_id: Optional[UUID] = None
-    assigned_user_id: Optional[UUID] = None
+    site_id: Optional[int] = None
+    assigned_user_id: Optional[int] = None
     planned_date: Optional[date] = None
     planned_time_from: Optional[time] = None
     planned_time_to: Optional[time] = None

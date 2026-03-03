@@ -1,5 +1,4 @@
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -91,7 +90,7 @@ async def create_user(
 
 @router.put("/{user_id}", response_model=UserOut)
 async def update_user(
-    user_id: UUID,
+    user_id: int,
     body: UserUpdate,
     db: AsyncSession = Depends(get_db),
     _=Depends(require_groups("admin_group")),

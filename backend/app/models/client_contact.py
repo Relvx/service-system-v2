@@ -1,9 +1,7 @@
 """Модель контактного лица клиента."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Boolean, DateTime, Text, ForeignKey, BigInteger
 from app.database import Base
 
 
@@ -15,8 +13,8 @@ class ClientContact(Base):
     """
     __tablename__ = "client_contacts"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    client_id = Column(BigInteger, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
     full_name = Column(Text, nullable=False)
     position = Column(String(100), nullable=True)
     phone = Column(String(50), nullable=True)

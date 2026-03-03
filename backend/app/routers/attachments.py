@@ -1,5 +1,4 @@
 from typing import List
-from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,7 +13,7 @@ router = APIRouter(prefix="/attachments", tags=["attachments"])
 
 @router.get("", response_model=List[AttachmentOut])
 async def get_attachments(
-    visit_id: UUID,
+    visit_id: int,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):

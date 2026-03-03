@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from typing import Any, Optional, Dict
-from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -39,7 +38,7 @@ async def save_history(
     db: AsyncSession,
     history_model,
     record: Any,
-    user_id: Optional[UUID],
+    user_id: Optional[int],
     method: str,
     new_values: Optional[Dict[str, Any]] = None,
 ) -> bool:
@@ -65,10 +64,10 @@ async def save_history(
 
 async def save_log(
     db: AsyncSession,
-    user_id: Optional[UUID],
+    user_id: Optional[int],
     action_sysname: str,
     entity_type: str,
-    entity_id: UUID,
+    entity_id: int,
     details: Optional[dict] = None,
 ) -> None:
     """Добавить запись в audit-лог."""

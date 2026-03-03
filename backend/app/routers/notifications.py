@@ -1,5 +1,4 @@
 from typing import List
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -28,7 +27,7 @@ async def get_notifications(
 
 @router.put("/{notif_id}/read")
 async def mark_read(
-    notif_id: UUID,
+    notif_id: int,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -43,7 +42,7 @@ async def mark_read(
 
 @router.put("/{notif_id}/unread")
 async def mark_unread(
-    notif_id: UUID,
+    notif_id: int,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
