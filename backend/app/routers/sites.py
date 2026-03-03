@@ -8,8 +8,10 @@ from app.dependencies import get_db, get_current_user
 from app.models.site import Site
 from app.models.client import Client
 from app.models.visit import Visit
+from app.models.defect import Defect
+from app.models.user import User
 from app.models.history import SiteHistory
-from app.schemas.site import SiteOut, SiteCreate, SiteUpdate
+from app.schemas.site import SiteOut, SiteDetailOut, SiteCreate, SiteUpdate
 from app.utils.audit import save_history, save_log
 from app.enums import enums
 
@@ -59,8 +61,9 @@ async def get_sites(
     return out
 
 
-@router.get("/{site_id}", response_model=SiteOut)
+@router.get("/{site_id}", response_model=SiteDetailOut)
 async def get_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    # Base site + client name
     stmt = (
         select(Site, Client.name.label("client_name"))
         .outerjoin(Client, Site.client_id == Client.id)
@@ -70,9 +73,65 @@ async def get_site(site_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(
     row = result.first()
     if row is None:
         raise HTTPException(status_code=404, detail="Site not found")
+
     site = row[0]
-    obj = SiteOut.model_validate(site)
+    obj = SiteDetailOut.model_validate(site)
     obj.client_name = row[1]
+
+    # Total visits count
+    visit_count_res = await db.execute(
+        select(func.count()).where(Visit.site_id == site_id)
+    )
+    obj.total_visits = visit_count_res.scalar()
+
+    # Active defects (not fixed/cancelled)
+    defects_stmt = (
+        select(Defect)
+        .where(
+            Defect.site_id == site_id,
+            Defect.status.notin_(["fixed", "cancelled"]),
+        )
+        .order_by(Defect.created_at.desc())
+    )
+    defects_res = await db.execute(defects_stmt)
+    defects = defects_res.scalars().all()
+    obj.active_defects = [
+        {
+            "id": str(d.id),
+            "title": d.title,
+            "priority": d.priority,
+            "status": d.status,
+            "action_type": d.action_type,
+            "description": d.description,
+            "created_at": d.created_at.isoformat(),
+        }
+        for d in defects
+    ]
+
+    # Recent visits (last 10)
+    visits_stmt = (
+        select(Visit, User.full_name.label("master_name"))
+        .outerjoin(User, Visit.assigned_user_id == User.id)
+        .where(Visit.site_id == site_id)
+        .order_by(Visit.planned_date.desc())
+        .limit(10)
+    )
+    visits_res = await db.execute(visits_stmt)
+    visits_rows = visits_res.all()
+    obj.recent_visits = [
+        {
+            "id": str(v[0].id),
+            "planned_date": str(v[0].planned_date),
+            "visit_type": v[0].visit_type,
+            "priority": v[0].priority,
+            "status": v[0].status,
+            "master_name": v[1],
+            "work_summary": v[0].work_summary,
+            "cost": v[0].cost,
+        }
+        for v in visits_rows
+    ]
+
     return obj
 
 

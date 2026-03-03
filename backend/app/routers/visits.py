@@ -137,6 +137,19 @@ async def create_visit(
     current_user=Depends(get_current_user),
 ):
     visit = Visit(**body.model_dump())
+
+    # Автоподстановка стоимости из объекта, если не задана явно
+    if visit.cost is None and visit.site_id:
+        site_res = await db.execute(select(Site).where(Site.id == visit.site_id))
+        site = site_res.scalar_one_or_none()
+        if site:
+            price_map = {
+                "maintenance": site.price_maintenance,
+                "repair": site.price_repair,
+                "emergency": site.price_emergency,
+            }
+            visit.cost = price_map.get(visit.visit_type)
+
     db.add(visit)
     await db.flush()
 

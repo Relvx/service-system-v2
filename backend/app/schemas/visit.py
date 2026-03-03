@@ -23,6 +23,7 @@ class VisitOut(BaseModel):
     recommendations: Optional[str] = None
     completed_at: Optional[datetime] = None
     office_notes: Optional[str] = None
+    cost: Optional[float] = None
     is_archived: bool = False
     created_at: datetime
     updated_at: datetime
@@ -50,6 +51,7 @@ class VisitCreate(BaseModel):
     priority: str = "medium"
     work_summary: Optional[str] = None
     office_notes: Optional[str] = None
+    cost: Optional[float] = None
 
 
 class VisitUpdate(BaseModel):
@@ -67,6 +69,7 @@ class VisitUpdate(BaseModel):
     defects_summary: Optional[str] = None
     recommendations: Optional[str] = None
     office_notes: Optional[str] = None
+    cost: Optional[float] = None
 
 
 class VisitComplete(BaseModel):
