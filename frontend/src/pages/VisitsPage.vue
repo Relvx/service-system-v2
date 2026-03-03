@@ -38,63 +38,62 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
-        <div
-          v-for="v in visits" :key="v.id"
-          class="card hover:shadow-md transition-shadow"
-          :class="{ 'opacity-50 bg-gray-50': v.is_archived }"
-        >
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <div class="flex items-center gap-3 mb-3">
-                <h3 class="text-lg font-semibold text-gray-900">{{ v.site_title }}</h3>
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(v.status)">
-                  {{ cfg.visitStatusLabel(v.status) }}
-                </span>
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(v.priority)">
-                  {{ cfg.priorityLabel(v.priority) }}
-                </span>
-                <span v-if="v.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div class="flex items-center text-gray-600"><MapPin class="w-4 h-4 mr-2" /><span class="truncate">{{ v.site_address }}</span></div>
-                <div class="flex items-center text-gray-600">
-                  <Calendar class="w-4 h-4 mr-2" />{{ formatDate(v.planned_date) }}
-                  <span v-if="v.planned_time_from"> в {{ v.planned_time_from.slice(0,5) }}</span>
-                </div>
-                <div class="flex items-center text-gray-600"><User class="w-4 h-4 mr-2" />{{ v.master_name || 'Не назначен' }}</div>
-              </div>
-              <p v-if="v.work_summary" class="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded">{{ v.work_summary }}</p>
-            </div>
-            <div class="ml-4 flex items-center gap-2">
-              <template v-if="!v.is_archived">
-                <button @click="openEdit(v)" class="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center">
-                  <Pencil class="w-4 h-4 mr-1" />Изменить
-                </button>
-                <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
-                  <Eye class="w-4 h-4 mr-1" />Подробнее
-                </button>
-                <button @click="archiveConfirm = v" class="text-amber-600 hover:text-amber-800 text-sm font-medium flex items-center" title="В архив">
-                  <Archive class="w-4 h-4" />
-                </button>
-              </template>
-              <template v-else>
-                <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
-                  <Eye class="w-4 h-4 mr-1" />Подробнее
-                </button>
-                <button v-if="auth.hasGroup('admin_group')" @click="handleUnarchive(v)" class="text-green-600 hover:text-green-800 text-sm font-medium flex items-center" title="Восстановить из архива">
-                  <ArchiveRestore class="w-4 h-4" />
-                </button>
-              </template>
-            </div>
-          </div>
-        </div>
+      <DataTable v-else :columns="columns" :rows="visits" storage-key="visits_table">
+        <template #planned_date="{ row }">
+          <span class="whitespace-nowrap">{{ formatDate(row.planned_date) }}</span>
+          <span v-if="row.planned_time_from" class="text-gray-500 text-xs block">{{ row.planned_time_from.slice(0,5) }}</span>
+        </template>
 
-        <div v-if="visits.length === 0" class="text-center py-12 card">
-          <Calendar class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 mb-2">Выезды не найдены</h3>
-        </div>
-      </div>
+        <template #status="{ row }">
+          <div class="flex flex-col gap-1">
+            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full w-fit" :class="statusClass(row.status)">
+              {{ cfg.visitStatusLabel(row.status) }}
+            </span>
+            <span v-if="row.is_archived" class="inline-flex px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded-full w-fit">Архив</span>
+          </div>
+        </template>
+
+        <template #priority="{ row }">
+          <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(row.priority)">
+            {{ cfg.priorityLabel(row.priority) }}
+          </span>
+        </template>
+
+        <template #visit_type="{ row }">
+          <span class="text-gray-700">{{ cfg.visitTypeLabel(row.visit_type) }}</span>
+        </template>
+
+        <template #actions="{ row }">
+          <div class="flex items-center gap-2">
+            <template v-if="!row.is_archived">
+              <button @click="openEdit(row)" class="text-gray-500 hover:text-primary-600" title="Редактировать">
+                <Pencil class="w-4 h-4" />
+              </button>
+              <button @click="openDetail(row)" class="text-primary-600 hover:text-primary-900" title="Подробнее">
+                <Eye class="w-4 h-4" />
+              </button>
+              <button @click="archiveConfirm = row" class="text-amber-600 hover:text-amber-800" title="В архив">
+                <Archive class="w-4 h-4" />
+              </button>
+            </template>
+            <template v-else>
+              <button @click="openDetail(row)" class="text-primary-600 hover:text-primary-900" title="Подробнее">
+                <Eye class="w-4 h-4" />
+              </button>
+              <button v-if="auth.hasGroup('admin_group')" @click="handleUnarchive(row)" class="text-green-600 hover:text-green-800" title="Восстановить">
+                <ArchiveRestore class="w-4 h-4" />
+              </button>
+            </template>
+          </div>
+        </template>
+
+        <template #empty>
+          <div class="flex flex-col items-center gap-2">
+            <Calendar class="w-12 h-12 text-gray-300" />
+            <span>Выезды не найдены</span>
+          </div>
+        </template>
+      </DataTable>
 
       <!-- Detail Modal -->
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -144,10 +143,11 @@
           <form @submit.prevent="handleSave" class="p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
-              <select v-model="form.site_id" required class="input">
+              <select v-model="form.site_id" class="input" :class="{ 'border-red-400': errors.site_id }" @change="delete errors.site_id">
                 <option value="">Выберите объект</option>
                 <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }} — {{ s.address }}</option>
               </select>
+              <p v-if="errors.site_id" class="text-red-600 text-xs mt-1">{{ errors.site_id }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Мастер</label>
@@ -158,7 +158,8 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
-              <input v-model="form.planned_date" type="date" required class="input" />
+              <input v-model="form.planned_date" type="date" class="input" :class="{ 'border-red-400': errors.planned_date }" @input="delete errors.planned_date" />
+              <p v-if="errors.planned_date" class="text-red-600 text-xs mt-1">{{ errors.planned_date }}</p>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div><label class="block text-sm font-medium text-gray-700 mb-1">Время с</label><input v-model="form.planned_time_from" type="time" class="input" /></div>
@@ -218,6 +219,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Image as ImageIcon } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI } from '../services/api.js'
@@ -237,6 +239,18 @@ const archiveConfirm = ref(null)
 const sites = ref([])
 const masters = ref([])
 const attachments = ref([])
+const errors = ref({})
+
+const columns = [
+  { key: 'planned_date', label: 'Дата',       width: 130 },
+  { key: 'site_title',   label: 'Объект',     width: 200 },
+  { key: 'site_address', label: 'Адрес',      width: 200, defaultVisible: false },
+  { key: 'master_name',  label: 'Мастер',     width: 160 },
+  { key: 'visit_type',   label: 'Тип',        width: 130 },
+  { key: 'status',       label: 'Статус',     width: 140 },
+  { key: 'priority',     label: 'Приоритет',  width: 130, defaultVisible: false },
+  { key: 'actions',      label: 'Действия',   width: 110, sortable: false },
+]
 
 const form = ref({
   site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '',
@@ -266,8 +280,17 @@ async function loadFormData() {
   masters.value = mr.data
 }
 
+function validate() {
+  const e = {}
+  if (!form.value.site_id) e.site_id = 'Выберите объект'
+  if (!form.value.planned_date) e.planned_date = 'Укажите дату'
+  errors.value = e
+  return Object.keys(e).length === 0
+}
+
 function openCreate() {
   editing.value = null
+  errors.value = {}
   form.value = { site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '', planned_time_to: '', visit_type: 'maintenance', priority: 'medium', office_notes: '', status: 'planned' }
   loadFormData()
   modalOpen.value = true
@@ -275,6 +298,7 @@ function openCreate() {
 
 function openEdit(v) {
   editing.value = v
+  errors.value = {}
   form.value = {
     site_id: v.site_id || '', assigned_user_id: v.assigned_user_id || '',
     planned_date: v.planned_date?.slice(0, 10) || '', planned_time_from: v.planned_time_from?.slice(0, 5) || '',
@@ -298,6 +322,7 @@ async function openDetail(v) {
 }
 
 async function handleSave() {
+  if (!validate()) return
   saving.value = true
   try {
     const payload = {
@@ -339,7 +364,7 @@ async function handleUnarchive(v) {
   }
 }
 
-function closeModal() { modalOpen.value = false; editing.value = null }
+function closeModal() { modalOpen.value = false; editing.value = null; errors.value = {} }
 function openUrl(url) { window.open(url, '_blank') }
 
 function statusClass(s) {
@@ -352,7 +377,6 @@ function priorityClass(p) {
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-// Open specific visit from history state (from calendar)
 watch(visits, (vl) => {
   const id = window.history.state?.openVisitId
   if (id && vl?.length) {

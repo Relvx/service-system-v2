@@ -93,11 +93,13 @@
           <form @submit.prevent="handleSave" class="p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
-              <input v-model="form.title" required class="input" placeholder="Котельная №1" />
+              <input v-model="form.title" class="input" :class="{ 'border-red-400': errors.title }" placeholder="Котельная №1" @input="delete errors.title" />
+              <p v-if="errors.title" class="text-red-600 text-xs mt-1">{{ errors.title }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Адрес *</label>
-              <input v-model="form.address" required class="input" placeholder="г. Москва, ул. Ленина, д. 1" />
+              <input v-model="form.address" class="input" :class="{ 'border-red-400': errors.address }" placeholder="г. Москва, ул. Ленина, д. 1" @input="delete errors.address" />
+              <p v-if="errors.address" class="text-red-600 text-xs mt-1">{{ errors.address }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Клиент</label>
@@ -107,8 +109,16 @@
               </select>
             </div>
             <div class="grid grid-cols-2 gap-4">
-              <div><label class="block text-sm font-medium text-gray-700 mb-1">Широта</label><input v-model="form.latitude" type="number" step="any" class="input" placeholder="55.751244" /></div>
-              <div><label class="block text-sm font-medium text-gray-700 mb-1">Долгота</label><input v-model="form.longitude" type="number" step="any" class="input" placeholder="37.618423" /></div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Широта</label>
+                <input v-model="form.latitude" type="number" step="any" class="input" :class="{ 'border-red-400': errors.latitude }" placeholder="55.751244" @input="delete errors.latitude" />
+                <p v-if="errors.latitude" class="text-red-600 text-xs mt-1">{{ errors.latitude }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Долгота</label>
+                <input v-model="form.longitude" type="number" step="any" class="input" :class="{ 'border-red-400': errors.longitude }" placeholder="37.618423" @input="delete errors.longitude" />
+                <p v-if="errors.longitude" class="text-red-600 text-xs mt-1">{{ errors.longitude }}</p>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Контакт на месте</label>
@@ -181,6 +191,19 @@ const editing = ref(null)
 const archiveConfirm = ref(null)
 const saving = ref(false)
 const form = ref({ title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' })
+const errors = ref({})
+
+function validate() {
+  const e = {}
+  if (!form.value.title.trim()) e.title = 'Введите название'
+  if (!form.value.address.trim()) e.address = 'Введите адрес'
+  const lat = parseFloat(form.value.latitude)
+  if (form.value.latitude !== '' && (isNaN(lat) || lat < -90 || lat > 90)) e.latitude = 'Широта должна быть от −90 до 90'
+  const lon = parseFloat(form.value.longitude)
+  if (form.value.longitude !== '' && (isNaN(lon) || lon < -180 || lon > 180)) e.longitude = 'Долгота должна быть от −180 до 180'
+  errors.value = e
+  return Object.keys(e).length === 0
+}
 
 async function loadSites() {
   loading.value = true
@@ -203,12 +226,14 @@ async function loadClients() {
 
 function openCreate() {
   editing.value = null
+  errors.value = {}
   form.value = { title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' }
   modalOpen.value = true
 }
 
 function openEdit(s) {
   editing.value = s
+  errors.value = {}
   form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly', price_maintenance: s.price_maintenance || '', price_repair: s.price_repair || '', price_emergency: s.price_emergency || '' }
   modalOpen.value = true
 }
@@ -218,6 +243,7 @@ function openDetail(s) {
 }
 
 async function handleSave() {
+  if (!validate()) return
   saving.value = true
   try {
     const payload = { ...form.value, client_id: form.value.client_id || null, latitude: form.value.latitude || null, longitude: form.value.longitude || null, price_maintenance: form.value.price_maintenance || null, price_repair: form.value.price_repair || null, price_emergency: form.value.price_emergency || null }
@@ -227,6 +253,7 @@ async function handleSave() {
       await sitesAPI.create(payload)
     }
     modalOpen.value = false
+    errors.value = {}
     await loadSites()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
