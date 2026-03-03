@@ -63,8 +63,11 @@
           <p v-if="c.notes" class="text-sm text-gray-500 mb-3 border-t pt-3">{{ c.notes }}</p>
 
           <div v-if="!c.is_archived" class="flex gap-2 mt-auto pt-3 border-t">
-            <button @click="openEdit(c)" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
-              <Edit class="w-4 h-4 mr-1" />Изменить
+            <router-link :to="`/clients/${c.id}`" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
+              <Eye class="w-4 h-4 mr-1" />Подробнее
+            </router-link>
+            <button @click="openEdit(c)" class="btn btn-secondary text-sm py-2 px-3">
+              <Edit class="w-4 h-4" />
             </button>
             <button @click="archiveConfirm = c" class="btn bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm py-2 px-3" title="В архив">
               <Archive class="w-4 h-4" />
@@ -142,7 +145,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Search, Plus, Building2, Phone, Mail, Edit, Archive, X } from 'lucide-vue-next'
+import { Search, Plus, Building2, Phone, Mail, Edit, Archive, X, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { clientsAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'

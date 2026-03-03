@@ -46,6 +46,12 @@ export const clientsAPI = {
   update: (id, data) => api.put(`/clients/${id}`, data),
   archive: (id) => api.patch(`/clients/${id}/archive`),
   delete: (id) => api.delete(`/clients/${id}`),
+  // Контакты
+  addContact: (clientId, data) => api.post(`/clients/${clientId}/contacts`, data),
+  updateContact: (clientId, contactId, data) => api.put(`/clients/${clientId}/contacts/${contactId}`, data),
+  deleteContact: (clientId, contactId) => api.delete(`/clients/${clientId}/contacts/${contactId}`),
+  // Реквизиты
+  upsertLegal: (clientId, data) => api.put(`/clients/${clientId}/legal`, data),
 }
 
 export const sitesAPI = {
