@@ -27,38 +27,48 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
-        <div v-for="d in defects" :key="d.id" class="card hover:shadow-md transition-shadow cursor-pointer" @click="selectedDefect = d">
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <div class="flex items-center gap-3 mb-2">
-                <AlertTriangle class="w-5 h-5 text-orange-500" />
-                <h3 class="font-semibold text-gray-900">{{ d.title }}</h3>
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="defectStatusClass(d.status)">
-                  {{ cfg.defectStatusLabel(d.status) }}
-                </span>
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(d.priority)">
-                  {{ cfg.priorityLabel(d.priority) }}
-                </span>
-              </div>
-              <div class="text-sm text-gray-600 space-y-1">
-                <div v-if="d.site_title" class="flex items-center"><Building2 class="w-4 h-4 mr-2" />{{ d.site_title }}</div>
-                <div v-if="d.client_name" class="flex items-center"><Users class="w-4 h-4 mr-2" />{{ d.client_name }}</div>
-                <div v-if="d.visit_date" class="flex items-center"><Calendar class="w-4 h-4 mr-2" />{{ formatDate(d.visit_date) }}</div>
-              </div>
-              <p v-if="d.description" class="mt-2 text-sm text-gray-600">{{ d.description }}</p>
-            </div>
-            <div class="ml-4 text-sm text-gray-500">{{ formatDate(d.created_at) }}</div>
+      <DataTable v-else :columns="columns" :rows="defects" storage-key="defects_table" @row-click="selectedDefect = $event">
+        <template #title="{ row }">
+          <button @click="selectedDefect = row" class="text-left hover:text-primary-600 font-medium truncate block w-full">
+            {{ row.title }}
+          </button>
+        </template>
+
+        <template #status="{ row }">
+          <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="defectStatusClass(row.status)">
+            {{ cfg.defectStatusLabel(row.status) }}
+          </span>
+        </template>
+
+        <template #priority="{ row }">
+          <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(row.priority)">
+            {{ cfg.priorityLabel(row.priority) }}
+          </span>
+        </template>
+
+        <template #visit_date="{ row }">
+          {{ formatDate(row.visit_date) }}
+        </template>
+
+        <template #created_at="{ row }">
+          {{ formatDate(row.created_at) }}
+        </template>
+
+        <template #actions="{ row }">
+          <button @click="selectedDefect = row" class="text-primary-600 hover:text-primary-900" title="Подробнее">
+            <Eye class="w-4 h-4" />
+          </button>
+        </template>
+
+        <template #empty>
+          <div class="flex flex-col items-center gap-2">
+            <AlertTriangle class="w-12 h-12 text-gray-300" />
+            <span>Дефекты не найдены</span>
           </div>
-        </div>
+        </template>
+      </DataTable>
 
-        <div v-if="defects.length === 0" class="text-center py-12 card">
-          <AlertTriangle class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-gray-900">Дефекты не найдены</h3>
-        </div>
-      </div>
-
-      <!-- Detail / Approve Modal -->
+      <!-- Detail / Status Modal -->
       <div v-if="selectedDefect" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b">
@@ -77,7 +87,6 @@
             <div><p class="text-gray-500">Тип действия</p><p class="text-gray-900">{{ cfg.defectActionLabel(selectedDefect.action_type) }}</p></div>
             <div v-if="selectedDefect.suggested_parts"><p class="text-gray-500">Необходимые запчасти</p><p class="text-gray-900">{{ selectedDefect.suggested_parts }}</p></div>
 
-            <!-- Status change -->
             <div class="pt-3 border-t">
               <label class="block text-sm font-medium text-gray-700 mb-1">Изменить статус</label>
               <div class="flex gap-2">
@@ -101,8 +110,9 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { AlertTriangle, X, Building2, Users, Calendar } from 'lucide-vue-next'
+import { AlertTriangle, X, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { defectsAPI } from '../services/api.js'
 
@@ -114,6 +124,17 @@ const filterPriority = ref('')
 const selectedDefect = ref(null)
 const newStatus = ref('')
 const saving = ref(false)
+
+const columns = [
+  { key: 'title',       label: 'Дефект',       width: 220 },
+  { key: 'site_title',  label: 'Объект',       width: 180 },
+  { key: 'client_name', label: 'Клиент',       width: 150, defaultVisible: false },
+  { key: 'status',      label: 'Статус',       width: 130 },
+  { key: 'priority',    label: 'Приоритет',    width: 130 },
+  { key: 'visit_date',  label: 'Дата выезда',  width: 130, defaultVisible: false },
+  { key: 'created_at',  label: 'Создан',       width: 130 },
+  { key: 'actions',     label: 'Действия',     width: 90, sortable: false },
+]
 
 watch(selectedDefect, (d) => { if (d) newStatus.value = d.status })
 
@@ -135,7 +156,6 @@ async function updateStatus() {
   try {
     const res = await defectsAPI.update(selectedDefect.value.id, { status: newStatus.value })
     selectedDefect.value = res.data
-    // Update in list
     const idx = defects.value.findIndex((d) => d.id === res.data.id)
     if (idx >= 0) defects.value[idx] = res.data
   } catch (e) {

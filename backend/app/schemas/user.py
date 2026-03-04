@@ -1,4 +1,3 @@
-from uuid import UUID
 from typing import Optional, List, Any
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -6,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
+    id: int
     email: str
     full_name: str
     phone: Optional[str] = None
@@ -43,6 +42,6 @@ class UserUpdate(BaseModel):
 class MasterOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: UUID
+    id: int
     full_name: str
     phone: Optional[str] = None

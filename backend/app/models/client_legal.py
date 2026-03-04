@@ -1,9 +1,7 @@
 """Модель юридических реквизитов клиента."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, BigInteger
 from app.database import Base
 
 
@@ -15,8 +13,8 @@ class ClientLegal(Base):
     """
     __tablename__ = "client_legal"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"),
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    client_id = Column(BigInteger, ForeignKey("clients.id", ondelete="CASCADE"),
                        nullable=False, unique=True)
     legal_address = Column(Text, nullable=True)
     bank = Column(String(200), nullable=True)

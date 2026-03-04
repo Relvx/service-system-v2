@@ -1,9 +1,7 @@
 """Модель дефекта, выявленного во время выезда."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, BigInteger
 from app.database import Base
 
 
@@ -17,9 +15,9 @@ class Defect(Base):
     __tablename__ = "defects"
     __table_args__ = {"info": {"display_name": "Дефект", "display_name_plural": "Дефекты", "entity_type": "defect"}}
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    visit_id = Column(UUID(as_uuid=True), ForeignKey("visits.id", ondelete="CASCADE"), nullable=True)
-    site_id = Column(UUID(as_uuid=True), ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    visit_id = Column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"), nullable=True)
+    site_id = Column(BigInteger, ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)
     title = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
     priority = Column(String(20), nullable=False, default="medium")

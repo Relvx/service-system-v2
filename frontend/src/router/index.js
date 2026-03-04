@@ -35,6 +35,11 @@ const routes = [
     meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
+    path: '/sites/:id',
+    component: () => import('../pages/SiteDetailPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
     path: '/visits',
     component: () => import('../pages/VisitsPage.vue'),
     meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },

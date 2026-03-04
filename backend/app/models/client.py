@@ -1,9 +1,7 @@
 """Модель клиента — юридического или физического лица, заказывающего обслуживание."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Boolean, DateTime, Text, BigInteger
 from app.database import Base
 
 
@@ -16,7 +14,7 @@ class Client(Base):
     __tablename__ = "clients"
     __table_args__ = {"info": {"display_name": "Клиент", "display_name_plural": "Клиенты", "entity_type": "client"}}
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     name = Column(Text, nullable=False)
     inn = Column(String(50), nullable=True)
     kpp = Column(String(50), nullable=True)

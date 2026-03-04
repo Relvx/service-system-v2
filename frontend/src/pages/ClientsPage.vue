@@ -62,6 +62,11 @@
           </div>
           <p v-if="c.notes" class="text-sm text-gray-500 mb-3 border-t pt-3">{{ c.notes }}</p>
 
+          <div v-if="c.is_archived && auth.hasGroup('admin_group')" class="flex gap-2 mt-auto pt-3 border-t">
+            <button @click="handleUnarchive(c)" class="flex-1 btn bg-green-50 text-green-700 hover:bg-green-100 text-sm py-2 flex items-center justify-center">
+              <ArchiveRestore class="w-4 h-4 mr-1" />Восстановить
+            </button>
+          </div>
           <div v-if="!c.is_archived" class="flex gap-2 mt-auto pt-3 border-t">
             <router-link :to="`/clients/${c.id}`" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
               <Eye class="w-4 h-4 mr-1" />Подробнее
@@ -93,16 +98,19 @@
           <form @submit.prevent="handleSave" class="p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
-              <input v-model="form.name" required class="input" placeholder='ООО "Название"' />
+              <input v-model="form.name" class="input" :class="{ 'border-red-400': errors.name }" placeholder='ООО "Название"' @input="delete errors.name" />
+              <p v-if="errors.name" class="text-red-600 text-xs mt-1">{{ errors.name }}</p>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">ИНН</label>
-                <input v-model="form.inn" class="input" placeholder="1234567890" />
+                <input v-model="form.inn" class="input" :class="{ 'border-red-400': errors.inn }" placeholder="1234567890" @input="delete errors.inn" />
+                <p v-if="errors.inn" class="text-red-600 text-xs mt-1">{{ errors.inn }}</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">КПП</label>
-                <input v-model="form.kpp" class="input" placeholder="123456789" />
+                <input v-model="form.kpp" class="input" :class="{ 'border-red-400': errors.kpp }" placeholder="123456789" @input="delete errors.kpp" />
+                <p v-if="errors.kpp" class="text-red-600 text-xs mt-1">{{ errors.kpp }}</p>
               </div>
             </div>
             <div>
@@ -145,7 +153,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Search, Plus, Building2, Phone, Mail, Edit, Archive, X, Eye } from 'lucide-vue-next'
+import { Search, Plus, Building2, Phone, Mail, Edit, Archive, ArchiveRestore, X, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { clientsAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -160,6 +168,16 @@ const editing = ref(null)
 const archiveConfirm = ref(null)
 const saving = ref(false)
 const form = ref({ name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' })
+const errors = ref({})
+
+function validate() {
+  const e = {}
+  if (!form.value.name.trim()) e.name = 'Введите название'
+  if (form.value.inn && !/^\d{10}(\d{2})?$/.test(form.value.inn)) e.inn = 'ИНН должен содержать 10 или 12 цифр'
+  if (form.value.kpp && !/^\d{9}$/.test(form.value.kpp)) e.kpp = 'КПП должен содержать 9 цифр'
+  errors.value = e
+  return Object.keys(e).length === 0
+}
 
 async function loadClients() {
   loading.value = true
@@ -177,17 +195,20 @@ async function loadClients() {
 
 function openCreate() {
   editing.value = null
+  errors.value = {}
   form.value = { name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' }
   modalOpen.value = true
 }
 
 function openEdit(c) {
   editing.value = c
+  errors.value = {}
   form.value = { name: c.name, inn: c.inn || '', kpp: c.kpp || '', contact_person: c.contact_person || '', contacts: c.contacts || '', notes: c.notes || '' }
   modalOpen.value = true
 }
 
 async function handleSave() {
+  if (!validate()) return
   saving.value = true
   try {
     if (editing.value) {
@@ -196,6 +217,7 @@ async function handleSave() {
       await clientsAPI.create(form.value)
     }
     modalOpen.value = false
+    errors.value = {}
     await loadClients()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
@@ -208,6 +230,15 @@ async function handleArchive() {
   try {
     await clientsAPI.archive(archiveConfirm.value.id)
     archiveConfirm.value = null
+    await loadClients()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleUnarchive(c) {
+  try {
+    await clientsAPI.unarchive(c.id)
     await loadClients()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))

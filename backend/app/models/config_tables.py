@@ -1,6 +1,6 @@
 """SQLAlchemy models for all configuration / lookup tables."""
 
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -140,6 +140,6 @@ class PermissionGroupPermission(Base):
 class UserPermissionGroup(Base):
     """Many-to-many link between User and PermissionGroup."""
     __tablename__ = "user_permission_groups"
-    user_id = Column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     group_id = Column(Integer, ForeignKey("permission_groups.id", ondelete="CASCADE"),
                       primary_key=True)

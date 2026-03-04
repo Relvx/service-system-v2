@@ -1,5 +1,4 @@
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -45,7 +44,7 @@ def _row_to_out(row) -> DefectOut:
 
 @router.get("", response_model=List[DefectOut])
 async def get_defects(
-    site_id: Optional[UUID] = None,
+    site_id: Optional[int] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
@@ -83,7 +82,7 @@ async def create_defect(
 
 @router.put("/{defect_id}", response_model=DefectOut)
 async def update_defect(
-    defect_id: UUID,
+    defect_id: int,
     body: DefectUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),

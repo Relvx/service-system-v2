@@ -1,7 +1,6 @@
 """Роутер аудит-лога — просмотр истории действий (admin + office)."""
 
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, cast, Text, func

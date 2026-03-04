@@ -59,6 +59,11 @@
           </div>
           <div class="text-sm text-gray-500 mb-3">Выездов: {{ s.total_visits || 0 }}</div>
 
+          <div v-if="s.is_archived && auth.hasGroup('admin_group')" class="flex gap-2 mt-auto pt-3 border-t">
+            <button @click="handleUnarchive(s)" class="flex-1 btn bg-green-50 text-green-700 hover:bg-green-100 text-sm py-2 flex items-center justify-center">
+              <ArchiveRestore class="w-4 h-4 mr-1" />Восстановить
+            </button>
+          </div>
           <div v-if="!s.is_archived" class="flex gap-2 mt-auto pt-3 border-t">
             <button @click="openDetail(s)" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
               <Eye class="w-4 h-4 mr-1" />Подробнее
@@ -78,27 +83,6 @@
         <h3 class="text-lg font-medium text-gray-900">Объекты не найдены</h3>
       </div>
 
-      <!-- Detail Modal -->
-      <div v-if="detailSite" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">{{ detailSite.title }}</h2>
-            <button @click="detailSite = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
-          </div>
-          <div class="p-6 space-y-3 text-sm">
-            <div><p class="text-gray-500">Адрес</p><p class="text-gray-900">{{ detailSite.address }}</p></div>
-            <div v-if="detailSite.client_name"><p class="text-gray-500">Клиент</p><p class="text-gray-900">{{ detailSite.client_name }}</p></div>
-            <div v-if="detailSite.access_notes"><p class="text-gray-500">Доступ</p><p class="text-gray-900">{{ detailSite.access_notes }}</p></div>
-            <div v-if="detailSite.onsite_contact"><p class="text-gray-500">Контакт на месте</p><p class="text-gray-900">{{ detailSite.onsite_contact }}</p></div>
-            <div v-if="detailSite.latitude"><p class="text-gray-500">Координаты</p><p class="text-gray-900">{{ detailSite.latitude }}, {{ detailSite.longitude }}</p></div>
-          </div>
-          <div class="p-6 border-t flex justify-end gap-3">
-            <button @click="openEdit(detailSite); detailSite = null" class="btn btn-secondary">Редактировать</button>
-            <button @click="detailSite = null" class="btn btn-primary">Закрыть</button>
-          </div>
-        </div>
-      </div>
-
       <!-- Create/Edit Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
@@ -109,11 +93,13 @@
           <form @submit.prevent="handleSave" class="p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
-              <input v-model="form.title" required class="input" placeholder="Котельная №1" />
+              <input v-model="form.title" class="input" :class="{ 'border-red-400': errors.title }" placeholder="Котельная №1" @input="delete errors.title" />
+              <p v-if="errors.title" class="text-red-600 text-xs mt-1">{{ errors.title }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Адрес *</label>
-              <input v-model="form.address" required class="input" placeholder="г. Москва, ул. Ленина, д. 1" />
+              <input v-model="form.address" class="input" :class="{ 'border-red-400': errors.address }" placeholder="г. Москва, ул. Ленина, д. 1" @input="delete errors.address" />
+              <p v-if="errors.address" class="text-red-600 text-xs mt-1">{{ errors.address }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Клиент</label>
@@ -123,8 +109,16 @@
               </select>
             </div>
             <div class="grid grid-cols-2 gap-4">
-              <div><label class="block text-sm font-medium text-gray-700 mb-1">Широта</label><input v-model="form.latitude" type="number" step="any" class="input" placeholder="55.751244" /></div>
-              <div><label class="block text-sm font-medium text-gray-700 mb-1">Долгота</label><input v-model="form.longitude" type="number" step="any" class="input" placeholder="37.618423" /></div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Широта</label>
+                <input v-model="form.latitude" type="number" step="any" class="input" :class="{ 'border-red-400': errors.latitude }" placeholder="55.751244" @input="delete errors.latitude" />
+                <p v-if="errors.latitude" class="text-red-600 text-xs mt-1">{{ errors.latitude }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Долгота</label>
+                <input v-model="form.longitude" type="number" step="any" class="input" :class="{ 'border-red-400': errors.longitude }" placeholder="37.618423" @input="delete errors.longitude" />
+                <p v-if="errors.longitude" class="text-red-600 text-xs mt-1">{{ errors.longitude }}</p>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Контакт на месте</label>
@@ -137,8 +131,17 @@
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Частота обслуживания</label>
               <select v-model="form.service_frequency" class="input">
+                <option value="">Не указано</option>
                 <option v-for="f in cfg.serviceFrequencies" :key="f.sysname" :value="f.sysname">{{ f.display_name }}</option>
               </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Стоимость выездов (руб.)</label>
+              <div class="grid grid-cols-3 gap-3">
+                <div><label class="block text-xs text-gray-500 mb-1">ТО</label><input v-model="form.price_maintenance" type="number" step="any" min="0" class="input" placeholder="0" /></div>
+                <div><label class="block text-xs text-gray-500 mb-1">Ремонт</label><input v-model="form.price_repair" type="number" step="any" min="0" class="input" placeholder="0" /></div>
+                <div><label class="block text-xs text-gray-500 mb-1">Аварийный</label><input v-model="form.price_emergency" type="number" step="any" min="0" class="input" placeholder="0" /></div>
+              </div>
             </div>
             <div class="flex justify-end gap-3 pt-4">
               <button type="button" @click="modalOpen = false" class="btn btn-secondary">Отмена</button>
@@ -168,7 +171,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Search, Plus, MapPin, Building2, Phone, X, Eye, Edit, Archive } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Search, Plus, MapPin, Building2, Phone, X, Eye, Edit, Archive, ArchiveRestore } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -176,6 +180,7 @@ import { sitesAPI, clientsAPI } from '../services/api.js'
 
 const cfg = useConfigStore()
 const auth = useAuthStore()
+const router = useRouter()
 const sites = ref([])
 const clients = ref([])
 const loading = ref(true)
@@ -183,10 +188,22 @@ const search = ref('')
 const showArchived = ref(false)
 const modalOpen = ref(false)
 const editing = ref(null)
-const detailSite = ref(null)
 const archiveConfirm = ref(null)
 const saving = ref(false)
-const form = ref({ title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly' })
+const form = ref({ title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' })
+const errors = ref({})
+
+function validate() {
+  const e = {}
+  if (!form.value.title.trim()) e.title = 'Введите название'
+  if (!form.value.address.trim()) e.address = 'Введите адрес'
+  const lat = parseFloat(form.value.latitude)
+  if (form.value.latitude !== '' && (isNaN(lat) || lat < -90 || lat > 90)) e.latitude = 'Широта должна быть от −90 до 90'
+  const lon = parseFloat(form.value.longitude)
+  if (form.value.longitude !== '' && (isNaN(lon) || lon < -180 || lon > 180)) e.longitude = 'Долгота должна быть от −180 до 180'
+  errors.value = e
+  return Object.keys(e).length === 0
+}
 
 async function loadSites() {
   loading.value = true
@@ -209,35 +226,34 @@ async function loadClients() {
 
 function openCreate() {
   editing.value = null
-  form.value = { title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly' }
+  errors.value = {}
+  form.value = { title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' }
   modalOpen.value = true
 }
 
 function openEdit(s) {
   editing.value = s
-  form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly' }
+  errors.value = {}
+  form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly', price_maintenance: s.price_maintenance || '', price_repair: s.price_repair || '', price_emergency: s.price_emergency || '' }
   modalOpen.value = true
 }
 
-async function openDetail(s) {
-  try {
-    const res = await sitesAPI.getById(s.id)
-    detailSite.value = res.data
-  } catch {
-    detailSite.value = s
-  }
+function openDetail(s) {
+  router.push(`/sites/${s.id}`)
 }
 
 async function handleSave() {
+  if (!validate()) return
   saving.value = true
   try {
-    const payload = { ...form.value, client_id: form.value.client_id || null, latitude: form.value.latitude || null, longitude: form.value.longitude || null }
+    const payload = { ...form.value, client_id: form.value.client_id || null, latitude: form.value.latitude || null, longitude: form.value.longitude || null, price_maintenance: form.value.price_maintenance || null, price_repair: form.value.price_repair || null, price_emergency: form.value.price_emergency || null }
     if (editing.value) {
       await sitesAPI.update(editing.value.id, payload)
     } else {
       await sitesAPI.create(payload)
     }
     modalOpen.value = false
+    errors.value = {}
     await loadSites()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
@@ -250,6 +266,15 @@ async function handleArchive() {
   try {
     await sitesAPI.archive(archiveConfirm.value.id)
     archiveConfirm.value = null
+    await loadSites()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleUnarchive(s) {
+  try {
+    await sitesAPI.unarchive(s.id)
     await loadSites()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))

@@ -1,11 +1,10 @@
 from typing import List, Optional
-from uuid import UUID
 from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, require_groups
 from app.models.visit import Visit
 from app.models.site import Site
 from app.models.client import Client
@@ -55,8 +54,8 @@ def _build_visit_query(
     if site_id:
         stmt = stmt.where(Visit.site_id == site_id)
     if status_:
-        if status_ == "closed":
-            stmt = stmt.where(Visit.status.in_(["done", "closed"]))
+        if status_ == enums.visit_statuses.closed:
+            stmt = stmt.where(Visit.status.in_(["done", enums.visit_statuses.closed]))
         else:
             stmt = stmt.where(Visit.status == status_)
     if priority:
@@ -88,8 +87,8 @@ def _row_to_visit_out(row) -> VisitOut:
 
 @router.get("", response_model=List[VisitOut])
 async def get_visits(
-    master_id: Optional[UUID] = None,
-    site_id: Optional[UUID] = None,
+    master_id: Optional[int] = None,
+    site_id: Optional[int] = None,
     status: Optional[str] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
@@ -120,7 +119,7 @@ async def get_calendar(
 
 
 @router.get("/{visit_id}", response_model=VisitOut)
-async def get_visit(visit_id: UUID, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+async def get_visit(visit_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
     stmt = _build_visit_query()
     stmt = stmt.where(Visit.id == visit_id)
     result = await db.execute(stmt)
@@ -137,6 +136,19 @@ async def create_visit(
     current_user=Depends(get_current_user),
 ):
     visit = Visit(**body.model_dump())
+
+    # Автоподстановка стоимости из объекта, если не задана явно
+    if visit.cost is None and visit.site_id:
+        site_res = await db.execute(select(Site).where(Site.id == visit.site_id))
+        site = site_res.scalar_one_or_none()
+        if site:
+            price_map = {
+                enums.visit_types.maintenance: site.price_maintenance,
+                enums.visit_types.repair: site.price_repair,
+                enums.visit_types.emergency: site.price_emergency,
+            }
+            visit.cost = price_map.get(visit.visit_type)
+
     db.add(visit)
     await db.flush()
 
@@ -162,7 +174,7 @@ async def create_visit(
 
 @router.put("/{visit_id}", response_model=VisitOut)
 async def update_visit(
-    visit_id: UUID,
+    visit_id: int,
     body: VisitUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -212,7 +224,7 @@ async def update_visit(
 
 @router.post("/{visit_id}/complete", response_model=VisitOut)
 async def complete_visit(
-    visit_id: UUID,
+    visit_id: int,
     body: VisitComplete,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -222,13 +234,13 @@ async def complete_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    complete_vals = {"status": "closed", "work_summary": body.work_summary,
+    complete_vals = {"status": enums.visit_statuses.closed, "work_summary": body.work_summary,
                      "checklist": body.checklist, "defects_present": body.defects_present or False,
                      "defects_summary": body.defects_summary, "recommendations": body.recommendations}
     await save_history(db, VisitHistory, visit, current_user.id,
                        method="update", new_values=complete_vals)
 
-    visit.status = "closed"
+    visit.status = enums.visit_statuses.closed
     visit.work_summary = body.work_summary
     visit.checklist = body.checklist
     visit.defects_present = body.defects_present or False
@@ -247,7 +259,7 @@ async def complete_visit(
 
 @router.patch("/{visit_id}/archive", response_model=VisitOut)
 async def archive_visit(
-    visit_id: UUID,
+    visit_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -267,9 +279,31 @@ async def archive_visit(
     return _row_to_visit_out(result.first())
 
 
+@router.patch("/{visit_id}/unarchive", response_model=VisitOut)
+async def unarchive_visit(
+    visit_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_groups("admin_group")),
+):
+    result = await db.execute(select(Visit).where(Visit.id == visit_id))
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    visit.is_archived = False
+    await save_log(db, current_user.id, enums.log_actions.visit_update, "visit", visit_id,
+                   details={"action": "unarchive", "planned_date": str(visit.planned_date)})
+    await db.commit()
+
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit_id)
+    result = await db.execute(stmt)
+    return _row_to_visit_out(result.first())
+
+
 @router.delete("/{visit_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_visit(
-    visit_id: UUID,
+    visit_id: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -279,6 +313,6 @@ async def delete_visit(
         raise HTTPException(status_code=404, detail="Visit not found")
 
     await save_log(db, current_user.id, enums.log_actions.visit_delete, "visit", visit_id,
-                   details={"site_id": str(visit.site_id), "planned_date": str(visit.planned_date)})
+                   details={"site_id": visit.site_id, "planned_date": str(visit.planned_date)})
     await db.delete(visit)
     await db.commit()

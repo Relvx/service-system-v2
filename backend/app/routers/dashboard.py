@@ -8,6 +8,7 @@ from app.models.visit import Visit
 from app.models.defect import Defect
 from app.models.purchase import Purchase
 from app.schemas.dashboard import DashboardStats, DefectPriorityCount
+from app.enums import enums
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -22,7 +23,7 @@ async def get_stats(
 
     # visits today
     r1 = await db.execute(
-        select(func.count()).where(Visit.planned_date == today, Visit.status != "cancelled")
+        select(func.count()).where(Visit.planned_date == today, Visit.status != enums.visit_statuses.cancelled)
     )
     visits_today = r1.scalar() or 0
 
@@ -31,7 +32,7 @@ async def get_stats(
         select(func.count()).where(
             Visit.planned_date >= today,
             Visit.planned_date < week_end,
-            Visit.status != "cancelled",
+            Visit.status != enums.visit_statuses.cancelled,
         )
     )
     visits_week = r2.scalar() or 0
@@ -39,14 +40,14 @@ async def get_stats(
     # open defects by priority
     r3 = await db.execute(
         select(Defect.priority, func.count().label("count"))
-        .where(Defect.status.not_in(["fixed", "cancelled"]))
+        .where(Defect.status != enums.defect_statuses.fixed)
         .group_by(Defect.priority)
     )
     open_defects = [DefectPriorityCount(priority=row[0], count=row[1]) for row in r3.all()]
 
     # active purchases
     r4 = await db.execute(
-        select(func.count()).where(Purchase.status.not_in(["closed", "cancelled"]))
+        select(func.count()).where(Purchase.status != enums.purchase_statuses.closed)
     )
     active_purchases = r4.scalar() or 0
 

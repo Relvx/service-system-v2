@@ -1,4 +1,3 @@
-from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification
@@ -6,11 +5,11 @@ from app.models.notification import Notification
 
 async def create_notification(
     db: AsyncSession,
-    user_id: UUID,
+    user_id: int,
     type_: str,
     title: str,
     message: str,
-    related_visit_id: UUID | None = None,
+    related_visit_id: int | None = None,
 ) -> None:
     notif = Notification(
         user_id=user_id,
