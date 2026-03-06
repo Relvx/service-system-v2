@@ -69,7 +69,7 @@ class TestPurchaseCRUD:
         assert upd.json()["status"] == "approved"
 
     async def test_update_not_found(self, http_client: AsyncClient, admin_token: str):
-        fake_id = "00000000-0000-0000-0000-000000000000"
+        fake_id = 999999
         res = await http_client.put(f"/api/purchases/{fake_id}",
                                      headers=auth_headers(admin_token),
                                      json={"status": "approved"})

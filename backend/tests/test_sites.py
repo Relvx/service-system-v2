@@ -65,7 +65,7 @@ class TestSiteCRUD:
         await http_client.delete(f"/api/sites/{site_id}", headers=headers)
 
     async def test_get_not_found(self, http_client: AsyncClient, admin_token: str):
-        fake_id = "00000000-0000-0000-0000-000000000000"
+        fake_id = 999999
         res = await http_client.get(f"/api/sites/{fake_id}", headers=auth_headers(admin_token))
         assert res.status_code == 404
 
@@ -84,7 +84,7 @@ class TestSiteCRUD:
 
     async def test_filter_by_client(self, http_client: AsyncClient, admin_token: str):
         """Фильтр по несуществующему client_id возвращает пустой список."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
+        fake_id = 999999
         res = await http_client.get(f"/api/sites?client_id={fake_id}",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200

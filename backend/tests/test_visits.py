@@ -90,7 +90,7 @@ class TestVisitCRUD:
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
 
     async def test_get_not_found(self, http_client: AsyncClient, admin_token: str):
-        fake_id = "00000000-0000-0000-0000-000000000000"
+        fake_id = 999999
         res = await http_client.get(f"/api/visits/{fake_id}", headers=auth_headers(admin_token))
         assert res.status_code == 404
 

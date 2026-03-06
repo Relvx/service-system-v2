@@ -57,7 +57,7 @@ class TestClientDetail:
 
     async def test_get_detail_not_found(self, http_client: AsyncClient, admin_token: str):
         """GET несуществующего клиента → 404."""
-        fake_id = "00000000-0000-0000-0000-000000000099"
+        fake_id = 999999
         res = await http_client.get(f"/api/clients/{fake_id}", headers=auth_headers(admin_token))
         assert res.status_code == 404
 
@@ -145,7 +145,7 @@ class TestClientContacts:
 
     async def test_add_contact_client_not_found(self, http_client: AsyncClient, admin_token: str):
         """POST /contacts для несуществующего клиента → 404."""
-        fake_id = "00000000-0000-0000-0000-000000000098"
+        fake_id = 999999
         res = await http_client.post(
             f"/api/clients/{fake_id}/contacts",
             headers=auth_headers(admin_token),
@@ -213,7 +213,7 @@ class TestClientLegal:
 
     async def test_legal_client_not_found(self, http_client: AsyncClient, admin_token: str):
         """PUT /legal для несуществующего клиента → 404."""
-        fake_id = "00000000-0000-0000-0000-000000000097"
+        fake_id = 999999
         res = await http_client.put(
             f"/api/clients/{fake_id}/legal",
             headers=auth_headers(admin_token),

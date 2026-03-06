@@ -70,13 +70,26 @@ async def master_token(http_client: AsyncClient) -> str:
 
 
 @pytest_asyncio.fixture(scope="session")
-async def site_id(http_client: AsyncClient, admin_token: str) -> str:
-    """ID первого сайта из БД для использования при создании выездов."""
-    res = await http_client.get("/api/sites", headers=auth_headers(admin_token))
-    assert res.status_code == 200, f"Get sites failed: {res.text}"
-    sites = res.json()
-    assert len(sites) > 0, "No sites in DB — seed data missing"
-    return str(sites[0]["id"])
+async def site_id(http_client: AsyncClient, admin_token: str):
+    """Создаёт тестовый клиент и объект, возвращает site_id (int). Удаляет после сессии."""
+    headers = auth_headers(admin_token)
+
+    client_res = await http_client.post("/api/clients", headers=headers,
+                                        json={"name": "__conftest__ тестовый клиент"})
+    assert client_res.status_code == 201, f"Create client failed: {client_res.text}"
+    client_id = client_res.json()["id"]
+
+    site_res = await http_client.post("/api/sites", headers=headers,
+                                      json={"title": "__conftest__ тестовый объект",
+                                            "address": "г. Тест, ул. Конфтест, д. 1",
+                                            "client_id": client_id})
+    assert site_res.status_code == 201, f"Create site failed: {site_res.text}"
+    sid = site_res.json()["id"]
+
+    yield sid
+
+    await http_client.delete(f"/api/sites/{sid}", headers=headers)
+    await http_client.delete(f"/api/clients/{client_id}", headers=headers)
 
 
 @pytest_asyncio.fixture(scope="session")

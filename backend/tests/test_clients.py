@@ -77,7 +77,7 @@ class TestClientCRUD:
 
     async def test_get_not_found(self, http_client: AsyncClient, admin_token: str):
         """GET несуществующего ID → 404."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
+        fake_id = 999999
         res = await http_client.get(f"/api/clients/{fake_id}", headers=auth_headers(admin_token))
         assert res.status_code == 404
 
@@ -97,7 +97,7 @@ class TestClientCRUD:
 
     async def test_delete_not_found(self, http_client: AsyncClient, admin_token: str):
         """DELETE несуществующего ID → 404."""
-        fake_id = "00000000-0000-0000-0000-000000000001"
+        fake_id = 999999
         res = await http_client.delete(f"/api/clients/{fake_id}", headers=auth_headers(admin_token))
         assert res.status_code == 404
 
@@ -150,7 +150,7 @@ class TestClientArchive:
 
     async def test_archive_not_found(self, http_client: AsyncClient, admin_token: str):
         """PATCH /archive несуществующего ID → 404."""
-        fake_id = "00000000-0000-0000-0000-000000000002"
+        fake_id = 999999
         res = await http_client.patch(f"/api/clients/{fake_id}/archive",
                                        headers=auth_headers(admin_token))
         assert res.status_code == 404

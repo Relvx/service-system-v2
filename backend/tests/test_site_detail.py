@@ -84,7 +84,7 @@ class TestSiteDetail:
 
     async def test_get_detail_not_found(self, http_client: AsyncClient, admin_token: str):
         """GET несуществующего объекта → 404."""
-        fake_id = "00000000-0000-0000-0000-000000000099"
+        fake_id = 999999
         res = await http_client.get(f"/api/sites/{fake_id}",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 404
