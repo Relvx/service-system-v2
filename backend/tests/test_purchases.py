@@ -74,3 +74,84 @@ class TestPurchaseCRUD:
                                      headers=auth_headers(admin_token),
                                      json={"status": "approved"})
         assert res.status_code == 404
+
+
+class TestPurchaseBlock5:
+    """Блок 5: создание закупки с привязкой к дефекту и объекту."""
+
+    async def test_create_with_site_id(self, http_client: AsyncClient, admin_token: str,
+                                       site_id: int):
+        """Создание закупки с site_id → site_title подтягивается из JOIN."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD,
+            "site_id": site_id,
+        })
+        assert res.status_code == 201
+        data = res.json()
+        assert data["site_id"] == site_id
+        assert data["site_title"] is not None
+
+    async def test_create_with_defect_id(self, http_client: AsyncClient, admin_token: str):
+        """Создание закупки с defect_id → defect_title подтягивается из JOIN."""
+        headers = auth_headers(admin_token)
+        # создаём дефект
+        d_res = await http_client.post("/api/defects", headers=headers, json={
+            "title": "__test__ Дефект для закупки",
+            "priority": "medium",
+            "action_type": "repair",
+        })
+        defect_id = d_res.json()["id"]
+
+        res = await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD,
+            "defect_id": defect_id,
+        })
+        assert res.status_code == 201
+        data = res.json()
+        assert data["defect_id"] == defect_id
+        assert data["defect_title"] == "__test__ Дефект для закупки"
+
+    async def test_create_linked_to_defect_and_site(self, http_client: AsyncClient,
+                                                      admin_token: str, site_id: int):
+        """Создание закупки из карточки дефекта: defect_id и site_id заполнены оба."""
+        headers = auth_headers(admin_token)
+        d_res = await http_client.post("/api/defects", headers=headers, json={
+            "title": "__test__ Дефект + объект",
+            "priority": "high",
+            "action_type": "replace",
+            "site_id": site_id,
+        })
+        defect_id = d_res.json()["id"]
+
+        res = await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD,
+            "defect_id": defect_id,
+            "site_id": site_id,
+        })
+        assert res.status_code == 201
+        data = res.json()
+        assert data["defect_id"] == defect_id
+        assert data["site_id"] == site_id
+        assert data["defect_title"] is not None
+        assert data["site_title"] is not None
+
+    async def test_filter_by_defect_id(self, http_client: AsyncClient, admin_token: str):
+        """GET /purchases?defect_id=... возвращает только закупки нужного дефекта."""
+        headers = auth_headers(admin_token)
+        d_res = await http_client.post("/api/defects", headers=headers, json={
+            "title": "__test__ Дефект для фильтрации закупок",
+            "priority": "low",
+            "action_type": "repair",
+        })
+        defect_id = d_res.json()["id"]
+
+        await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD, "defect_id": defect_id,
+        })
+        res = await http_client.get(f"/api/purchases?defect_id={defect_id}", headers=headers)
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) >= 1
+        for p in data:
+            assert p["defect_id"] == defect_id
