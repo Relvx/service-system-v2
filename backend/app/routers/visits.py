@@ -257,6 +257,34 @@ async def complete_visit(
     return _row_to_visit_out(result.first())
 
 
+@router.patch("/{visit_id}/cancel", response_model=VisitOut)
+async def cancel_visit(
+    visit_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_groups("office_group", "admin_group")),
+):
+    result = await db.execute(select(Visit).where(Visit.id == visit_id))
+    visit = result.scalar_one_or_none()
+    if visit is None:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    if visit.status == enums.visit_statuses.closed:
+        raise HTTPException(status_code=400, detail="Cannot cancel a completed visit")
+    if visit.status == enums.visit_statuses.cancelled:
+        raise HTTPException(status_code=400, detail="Visit is already cancelled")
+
+    await save_history(db, VisitHistory, visit, current_user.id,
+                       method="update", new_values={"status": enums.visit_statuses.cancelled})
+    visit.status = enums.visit_statuses.cancelled
+    await save_log(db, current_user.id, enums.log_actions.visit_change_status, "visit", visit_id,
+                   details={"status": "cancelled"})
+    await db.commit()
+
+    stmt = _build_visit_query()
+    stmt = stmt.where(Visit.id == visit_id)
+    result = await db.execute(stmt)
+    return _row_to_visit_out(result.first())
+
+
 @router.patch("/{visit_id}/archive", response_model=VisitOut)
 async def archive_visit(
     visit_id: int,

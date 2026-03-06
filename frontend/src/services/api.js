@@ -72,6 +72,7 @@ export const visitsAPI = {
   create: (data) => api.post('/visits', data),
   update: (id, data) => api.put(`/visits/${id}`, data),
   complete: (id, data) => api.post(`/visits/${id}/complete`, data),
+  cancel: (id) => api.patch(`/visits/${id}/cancel`),
   archive: (id) => api.patch(`/visits/${id}/archive`),
   unarchive: (id) => api.patch(`/visits/${id}/unarchive`),
   delete: (id) => api.delete(`/visits/${id}`),

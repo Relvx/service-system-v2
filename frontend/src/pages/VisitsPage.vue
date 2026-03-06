@@ -13,7 +13,7 @@
 
       <!-- Filters -->
       <div class="card mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
           <select v-model="filters.status" class="input">
             <option value="">Все статусы</option>
             <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
@@ -22,8 +22,12 @@
             <option value="">Все приоритеты</option>
             <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
           </select>
-          <input v-model="filters.date_from" type="date" class="input" />
-          <input v-model="filters.date_to" type="date" class="input" />
+          <select v-model="filters.master_id" class="input">
+            <option value="">Все мастера</option>
+            <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
+          </select>
+          <input v-model="filters.date_from" type="date" class="input" placeholder="Дата с" />
+          <input v-model="filters.date_to" type="date" class="input" placeholder="Дата по" />
           <button @click="loadVisits" class="btn btn-primary flex items-center justify-center">
             <Filter class="w-5 h-5 mr-2" />Применить
           </button>
@@ -71,6 +75,14 @@
               </button>
               <button @click="openDetail(row)" class="text-primary-600 hover:text-primary-900" title="Подробнее">
                 <Eye class="w-4 h-4" />
+              </button>
+              <button
+                v-if="canCancel(row) && auth.hasGroup('office_group', 'admin_group')"
+                @click="cancelConfirm = row"
+                class="text-red-500 hover:text-red-700"
+                title="Отменить выезд"
+              >
+                <Ban class="w-4 h-4" />
               </button>
               <button @click="archiveConfirm = row" class="text-amber-600 hover:text-amber-800" title="В архив">
                 <Archive class="w-4 h-4" />
@@ -211,13 +223,26 @@
           </div>
         </div>
       </div>
+
+      <!-- Cancel Confirm -->
+      <div v-if="cancelConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">Отменить выезд?</h2>
+          <p class="text-gray-600 mb-1">Выезд на объект <strong>{{ cancelConfirm.site_title }}</strong> будет переведён в статус «Отменён».</p>
+          <p class="text-sm text-gray-500 mb-6">Это действие нельзя отменить.</p>
+          <div class="flex justify-end gap-3">
+            <button @click="cancelConfirm = null" class="btn btn-secondary">Назад</button>
+            <button @click="handleCancel" class="btn bg-red-600 text-white hover:bg-red-700">Отменить выезд</button>
+          </div>
+        </div>
+      </div>
     </div>
   </Layout>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Image as ImageIcon } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
@@ -229,13 +254,14 @@ const auth = useAuthStore()
 
 const visits = ref([])
 const loading = ref(true)
-const filters = ref({ status: '', priority: '', date_from: '', date_to: '' })
+const filters = ref({ status: '', priority: '', date_from: '', date_to: '', master_id: '' })
 const showArchived = ref(false)
 const modalOpen = ref(false)
 const detailVisit = ref(null)
 const editing = ref(null)
 const saving = ref(false)
 const archiveConfirm = ref(null)
+const cancelConfirm = ref(null)
 const sites = ref([])
 const masters = ref([])
 const attachments = ref([])
@@ -266,6 +292,7 @@ async function loadVisits() {
     if (filters.value.priority) params.priority = filters.value.priority
     if (filters.value.date_from) params.date_from = filters.value.date_from
     if (filters.value.date_to) params.date_to = filters.value.date_to
+    if (filters.value.master_id) params.master_id = filters.value.master_id
     if (showArchived.value) params.show_archived = true
     const res = await visitsAPI.getAll(params)
     visits.value = res.data
@@ -278,6 +305,20 @@ async function loadFormData() {
   const [sr, mr] = await Promise.all([sitesAPI.getAll({ active_only: true }), usersAPI.getMasters()])
   sites.value = sr.data
   masters.value = mr.data
+}
+
+function canCancel(visit) {
+  return visit.status === 'planned' || visit.status === 'in_progress'
+}
+
+async function handleCancel() {
+  try {
+    await visitsAPI.cancel(cancelConfirm.value.id)
+    cancelConfirm.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
 }
 
 function validate() {
@@ -385,5 +426,8 @@ watch(visits, (vl) => {
   }
 }, { once: true })
 
-onMounted(loadVisits)
+onMounted(() => {
+  loadVisits()
+  usersAPI.getMasters().then(r => { masters.value = r.data })
+})
 </script>

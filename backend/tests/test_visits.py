@@ -1,12 +1,13 @@
 """
 Тесты эндпоинтов выездов.
 
-GET    /api/visits              — список выездов
+GET    /api/visits              — список выездов (с фильтрами master_id)
 GET    /api/visits/calendar     — выезды в диапазоне дат
 GET    /api/visits/{id}         — выезд по ID
 POST   /api/visits              — создание выезда
 PUT    /api/visits/{id}         — обновление выезда
 POST   /api/visits/{id}/complete — завершение выезда
+PATCH  /api/visits/{id}/cancel  — отмена выезда
 DELETE /api/visits/{id}         — удаление выезда
 """
 
@@ -207,5 +208,103 @@ class TestVisitArchive:
         list_res = await http_client.get("/api/visits?show_archived=true", headers=headers)
         ids = [v["id"] for v in list_res.json()]
         assert visit_id in ids
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+
+class TestVisitBlock7:
+    """Блок 7: отмена выезда и фильтр по мастеру."""
+
+    async def test_cancel_planned_visit(self, http_client: AsyncClient, admin_token: str,
+                                        site_id: int, admin_user_id: str):
+        """PATCH /cancel переводит запланированный выезд в статус 'cancelled'."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": site_id, "assigned_user_id": admin_user_id,
+            "planned_date": TODAY, "visit_type": "maintenance", "priority": "medium",
+        })
+        visit_id = res.json()["id"]
+
+        cancel = await http_client.patch(f"/api/visits/{visit_id}/cancel", headers=headers)
+        assert cancel.status_code == 200
+        assert cancel.json()["status"] == "cancelled"
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+    async def test_cancel_in_progress_visit(self, http_client: AsyncClient, admin_token: str,
+                                             site_id: int, admin_user_id: str):
+        """Выезд в статусе 'in_progress' тоже можно отменить."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": site_id, "assigned_user_id": admin_user_id,
+            "planned_date": TODAY, "visit_type": "maintenance", "priority": "medium",
+        })
+        visit_id = res.json()["id"]
+        await http_client.put(f"/api/visits/{visit_id}", headers=headers,
+                               json={"status": "in_progress"})
+
+        cancel = await http_client.patch(f"/api/visits/{visit_id}/cancel", headers=headers)
+        assert cancel.status_code == 200
+        assert cancel.json()["status"] == "cancelled"
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+    async def test_cancel_closed_visit_returns_400(self, http_client: AsyncClient,
+                                                    admin_token: str, site_id: int,
+                                                    admin_user_id: str):
+        """Попытка отменить завершённый выезд → 400."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": site_id, "assigned_user_id": admin_user_id,
+            "planned_date": TODAY, "visit_type": "maintenance", "priority": "medium",
+        })
+        visit_id = res.json()["id"]
+        await http_client.post(f"/api/visits/{visit_id}/complete", headers=headers,
+                                json={"work_summary": "Выполнено", "defects_present": False})
+
+        cancel = await http_client.patch(f"/api/visits/{visit_id}/cancel", headers=headers)
+        assert cancel.status_code == 400
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+    async def test_cancel_already_cancelled_returns_400(self, http_client: AsyncClient,
+                                                         admin_token: str, site_id: int,
+                                                         admin_user_id: str):
+        """Повторная отмена уже отменённого выезда → 400."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": site_id, "assigned_user_id": admin_user_id,
+            "planned_date": TODAY, "visit_type": "maintenance", "priority": "medium",
+        })
+        visit_id = res.json()["id"]
+        await http_client.patch(f"/api/visits/{visit_id}/cancel", headers=headers)
+
+        cancel = await http_client.patch(f"/api/visits/{visit_id}/cancel", headers=headers)
+        assert cancel.status_code == 400
+
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+    async def test_cancel_not_found(self, http_client: AsyncClient, admin_token: str):
+        """PATCH /cancel несуществующего выезда → 404."""
+        res = await http_client.patch("/api/visits/999999/cancel",
+                                      headers=auth_headers(admin_token))
+        assert res.status_code == 404
+
+    async def test_filter_by_master_id(self, http_client: AsyncClient, admin_token: str,
+                                        site_id: int, admin_user_id: str):
+        """GET /visits?master_id=... возвращает только выезды нужного мастера."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": site_id, "assigned_user_id": admin_user_id,
+            "planned_date": TODAY, "visit_type": "maintenance", "priority": "medium",
+        })
+        visit_id = res.json()["id"]
+
+        lst = await http_client.get(f"/api/visits?master_id={admin_user_id}", headers=headers)
+        assert lst.status_code == 200
+        ids = [v["id"] for v in lst.json()]
+        assert visit_id in ids
+        for v in lst.json():
+            assert v["assigned_user_id"] == int(admin_user_id)
 
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
