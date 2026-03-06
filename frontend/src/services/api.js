@@ -87,6 +87,8 @@ export const purchasesAPI = {
   getAll: (params) => api.get('/purchases', { params }),
   create: (data) => api.post('/purchases', data),
   update: (id, data) => api.put(`/purchases/${id}`, data),
+  archive: (id) => api.patch(`/purchases/${id}/archive`),
+  unarchive: (id) => api.patch(`/purchases/${id}/unarchive`),
 }
 
 export const attachmentsAPI = {

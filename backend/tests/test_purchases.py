@@ -1,9 +1,11 @@
 """
 Тесты эндпоинтов закупок.
 
-GET  /api/purchases        — список закупок
-POST /api/purchases        — создание закупки
-PUT  /api/purchases/{id}   — обновление / смена статуса закупки
+GET    /api/purchases           — список закупок (с фильтрами status, site_id, show_archived)
+POST   /api/purchases           — создание закупки
+PUT    /api/purchases/{id}      — обновление / смена статуса закупки
+PATCH  /api/purchases/{id}/archive   — архивирование
+PATCH  /api/purchases/{id}/unarchive — восстановление из архива
 """
 
 from httpx import AsyncClient
@@ -155,3 +157,87 @@ class TestPurchaseBlock5:
         assert len(data) >= 1
         for p in data:
             assert p["defect_id"] == defect_id
+
+
+class TestPurchaseBlock6:
+    """Блок 6: архивирование закупок, фильтр по объекту, is_archived в ответе."""
+
+    async def test_archive_purchase(self, http_client: AsyncClient, admin_token: str):
+        """PATCH /archive переводит закупку в архив (is_archived=true)."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json=PURCHASE_PAYLOAD)
+        pid = res.json()["id"]
+
+        arc = await http_client.patch(f"/api/purchases/{pid}/archive", headers=headers)
+        assert arc.status_code == 200
+        assert arc.json()["is_archived"] is True
+
+    async def test_archived_hidden_by_default(self, http_client: AsyncClient, admin_token: str):
+        """Архивированная закупка не попадает в стандартный список."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD, "item": "__test__ Архивная закупка"
+        })
+        pid = res.json()["id"]
+        await http_client.patch(f"/api/purchases/{pid}/archive", headers=headers)
+
+        lst = await http_client.get("/api/purchases", headers=headers)
+        ids = [p["id"] for p in lst.json()]
+        assert pid not in ids
+
+    async def test_show_archived_param(self, http_client: AsyncClient, admin_token: str):
+        """show_archived=true включает архивные закупки в список."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD, "item": "__test__ Показать архивную"
+        })
+        pid = res.json()["id"]
+        await http_client.patch(f"/api/purchases/{pid}/archive", headers=headers)
+
+        lst = await http_client.get("/api/purchases?show_archived=true", headers=headers)
+        ids = [p["id"] for p in lst.json()]
+        assert pid in ids
+
+    async def test_unarchive_purchase(self, http_client: AsyncClient, admin_token: str):
+        """PATCH /unarchive восстанавливает закупку из архива."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json=PURCHASE_PAYLOAD)
+        pid = res.json()["id"]
+
+        await http_client.patch(f"/api/purchases/{pid}/archive", headers=headers)
+        una = await http_client.patch(f"/api/purchases/{pid}/unarchive", headers=headers)
+        assert una.status_code == 200
+        assert una.json()["is_archived"] is False
+
+        # снова видна в обычном списке
+        lst = await http_client.get("/api/purchases", headers=headers)
+        ids = [p["id"] for p in lst.json()]
+        assert pid in ids
+
+    async def test_archive_not_found(self, http_client: AsyncClient, admin_token: str):
+        """PATCH /archive несуществующей закупки → 404."""
+        res = await http_client.patch("/api/purchases/999999/archive",
+                                      headers=auth_headers(admin_token))
+        assert res.status_code == 404
+
+    async def test_filter_by_site_id(self, http_client: AsyncClient, admin_token: str,
+                                     site_id: int):
+        """GET /purchases?site_id=... возвращает только закупки нужного объекта."""
+        headers = auth_headers(admin_token)
+        await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD, "site_id": site_id,
+        })
+        res = await http_client.get(f"/api/purchases?site_id={site_id}", headers=headers)
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) >= 1
+        for p in data:
+            assert p["site_id"] == site_id
+
+    async def test_is_archived_field_present(self, http_client: AsyncClient, admin_token: str):
+        """Поле is_archived присутствует в ответе при создании закупки."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json=PURCHASE_PAYLOAD)
+        assert res.status_code == 201
+        assert "is_archived" in res.json()
+        assert res.json()["is_archived"] is False

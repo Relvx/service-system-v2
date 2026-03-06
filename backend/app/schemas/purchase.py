@@ -15,6 +15,7 @@ class PurchaseOut(BaseModel):
     status: str
     due_date: Optional[date] = None
     notes: Optional[str] = None
+    is_archived: bool = False
     created_at: datetime
     updated_at: datetime
     # joined fields
