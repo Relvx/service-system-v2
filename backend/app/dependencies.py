@@ -1,13 +1,10 @@
 from typing import AsyncGenerator
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import AsyncSessionLocal
-
-bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -16,17 +13,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Decode JWT, load User with eagerly-loaded permission groups."""
     from app.models.user import User
     from app.utils.auth import decode_token
 
-    if credentials is None:
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    token = credentials.credentials
+    token = authorization[len("Bearer "):]
     payload = decode_token(token)
     if payload is None:
         raise HTTPException(
