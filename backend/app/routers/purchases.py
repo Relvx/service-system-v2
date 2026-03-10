@@ -10,6 +10,7 @@ from app.models.site import Site
 from app.models.history import PurchaseHistory
 from app.schemas.purchase import PurchaseOut, PurchaseCreate, PurchaseUpdate
 from app.utils.audit import save_history, save_log
+from app.utils.notifications import notify_users_by_group
 from app.enums import enums
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
@@ -95,13 +96,27 @@ async def update_purchase(
     for field, value in changed.items():
         setattr(p, field, value)
 
+    new_status = changed.get("status")
     action = (
         enums.log_actions.purchase_change_status
-        if "status" in changed
+        if new_status
         else enums.log_actions.purchase_update
     )
     await save_log(db, current_user.id, action, "purchase", purchase_id,
                    details={"changed": list(changed.keys())})
+
+    if new_status:
+        status_display = enums.purchase_statuses.display_name(new_status)
+        await notify_users_by_group(
+            db,
+            group_sysnames=["office_group", "admin_group"],
+            exclude_user_id=current_user.id,
+            type_="purchase_status_changed",
+            title="Изменён статус закупки",
+            message=f"Закупка «{p.item}» переведена в статус «{status_display}»",
+            related_purchase_id=purchase_id,
+        )
+
     await db.commit()
 
     stmt = _build_query().where(Purchase.id == purchase_id)

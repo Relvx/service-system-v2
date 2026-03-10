@@ -12,5 +12,7 @@ class NotificationOut(BaseModel):
     title: str
     message: str
     related_visit_id: Optional[int] = None
+    related_defect_id: Optional[int] = None
+    related_purchase_id: Optional[int] = None
     is_read: bool
     created_at: datetime

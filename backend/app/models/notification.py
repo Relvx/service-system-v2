@@ -8,8 +8,8 @@ from app.database import Base
 class Notification(Base):
     """Уведомление для конкретного пользователя.
 
-    Создаётся автоматически при назначении или изменении выезда.
-    Хранит статус прочтения (is_read) и ссылку на связанный выезд.
+    Создаётся автоматически при назначении/изменении выезда,
+    а также при смене статуса дефекта или закупки.
     """
     __tablename__ = "notifications"
 
@@ -19,5 +19,7 @@ class Notification(Base):
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
     related_visit_id = Column(BigInteger, ForeignKey("visits.id", ondelete="SET NULL"), nullable=True)
+    related_defect_id = Column(BigInteger, ForeignKey("defects.id", ondelete="SET NULL"), nullable=True)
+    related_purchase_id = Column(BigInteger, ForeignKey("purchases.id", ondelete="SET NULL"), nullable=True)
     is_read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)

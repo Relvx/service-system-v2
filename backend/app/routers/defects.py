@@ -10,6 +10,7 @@ from app.models.client import Client
 from app.models.visit import Visit
 from app.schemas.defect import DefectOut, DefectCreate, DefectUpdate
 from app.utils.audit import save_log
+from app.utils.notifications import notify_users_by_group
 from app.enums import enums
 
 router = APIRouter(prefix="/defects", tags=["defects"])
@@ -107,6 +108,19 @@ async def update_defect(
 
     await save_log(db, current_user.id, action, "defect", defect_id,
                    details={"changed": list(changed.keys())})
+
+    if new_status:
+        status_display = enums.defect_statuses.display_name(new_status)
+        await notify_users_by_group(
+            db,
+            group_sysnames=["office_group", "admin_group"],
+            exclude_user_id=current_user.id,
+            type_="defect_status_changed",
+            title="Изменён статус дефекта",
+            message=f"Дефект «{defect.title}» переведён в статус «{status_display}»",
+            related_defect_id=defect_id,
+        )
+
     await db.commit()
 
     stmt = _build_defect_query().where(Defect.id == defect_id)
