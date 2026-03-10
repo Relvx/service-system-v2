@@ -110,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, Map, Calendar, Users, Building2,
@@ -166,8 +166,8 @@ const filteredNav = computed(() =>
 
 async function fetchUnread() {
   try {
-    const res = await notificationsAPI.getAll()
-    unreadCount.value = res.data.filter((n) => !n.is_read).length
+    const res = await notificationsAPI.getUnreadCount()
+    unreadCount.value = res.data.count
   } catch {}
 }
 
@@ -176,6 +176,16 @@ function handleLogout() {
   router.push('/login')
 }
 
-onMounted(fetchUnread)
+let pollInterval = null
+
+onMounted(() => {
+  fetchUnread()
+  pollInterval = setInterval(fetchUnread, 30000)
+})
+
+onUnmounted(() => {
+  clearInterval(pollInterval)
+})
+
 watch(() => route.path, fetchUnread)
 </script>

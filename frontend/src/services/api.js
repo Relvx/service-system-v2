@@ -99,8 +99,10 @@ export const attachmentsAPI = {
 
 export const notificationsAPI = {
   getAll: () => api.get('/notifications'),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAsUnread: (id) => api.put(`/notifications/${id}/unread`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
 }
 
 export const dashboardAPI = {

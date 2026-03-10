@@ -85,8 +85,7 @@ async function toggleRead(n) {
 }
 
 async function markAllRead() {
-  const unread = notifications.value.filter((n) => !n.is_read)
-  await Promise.all(unread.map((n) => notificationsAPI.markAsRead(n.id)))
+  await notificationsAPI.markAllAsRead()
   notifications.value.forEach((n) => { n.is_read = true })
 }
 
