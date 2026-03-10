@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.database import AsyncSessionLocal
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -16,12 +16,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     """Decode JWT, load User with eagerly-loaded permission groups."""
     from app.models.user import User
     from app.utils.auth import decode_token
+
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     token = credentials.credentials
     payload = decode_token(token)
