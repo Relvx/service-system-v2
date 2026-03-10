@@ -12,7 +12,7 @@ const routes = [
   {
     path: '/map',
     component: () => import('../pages/MapPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'master_group'] },
   },
   {
     path: '/calendar',

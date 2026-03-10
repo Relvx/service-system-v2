@@ -148,7 +148,7 @@ const userGroupLabel = computed(() => {
 
 const allNav = [
   { name: 'Дашборд',    href: '/dashboard', icon: LayoutDashboard, groups: ['office_group', 'admin_group'] },
-  { name: 'Карта',      href: '/map',        icon: Map,             groups: ['office_group', 'admin_group'] },
+  { name: 'Карта',      href: '/map',        icon: Map,             groups: ['office_group', 'admin_group', 'master_group'] },
   { name: 'Календарь',  href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group'] },
   { name: 'Мои выезды', href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
   { name: 'Клиенты',    href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
