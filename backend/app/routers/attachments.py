@@ -16,6 +16,7 @@ async def get_attachments(
     visit_id: Optional[int] = None,
     client_id: Optional[int] = None,
     site_id: Optional[int] = None,
+    defect_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -26,6 +27,8 @@ async def get_attachments(
         stmt = stmt.where(Attachment.client_id == client_id)
     elif site_id is not None:
         stmt = stmt.where(Attachment.site_id == site_id)
+    elif defect_id is not None:
+        stmt = stmt.where(Attachment.defect_id == defect_id)
     stmt = stmt.order_by(Attachment.created_at)
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -41,6 +44,7 @@ async def upload_attachment(
         visit_id=body.visit_id,
         client_id=body.client_id,
         site_id=body.site_id,
+        defect_id=body.defect_id,
         kind=body.kind,
         file_url=body.file_url,
         file_name=body.file_name,

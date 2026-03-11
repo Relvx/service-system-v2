@@ -105,10 +105,12 @@ const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 async function loadAttachments() {
   loading.value = true
   try {
-    const res =
-      props.entityType === 'client'
-        ? await attachmentsAPI.getByClient(props.entityId)
-        : await attachmentsAPI.getBySite(props.entityId)
+    const fetchMap = {
+      client: attachmentsAPI.getByClient,
+      site:   attachmentsAPI.getBySite,
+      defect: attachmentsAPI.getByDefect,
+    }
+    const res = await fetchMap[props.entityType](props.entityId)
     attachments.value = res.data
   } finally {
     loading.value = false
@@ -134,8 +136,9 @@ async function handleFile(e) {
     const data = await res.json()
     if (!data.secure_url) throw new Error('Cloudinary error')
 
+    const keyMap = { client: 'client_id', site: 'site_id', defect: 'defect_id' }
     await attachmentsAPI.upload({
-      [props.entityType === 'client' ? 'client_id' : 'site_id']: Number(props.entityId),
+      [keyMap[props.entityType]]: Number(props.entityId),
       kind: isImg ? 'photo' : 'document',
       file_url: data.secure_url,
       file_name: file.name,

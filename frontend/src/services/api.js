@@ -96,6 +96,7 @@ export const attachmentsAPI = {
   getAll: (visitId) => api.get('/attachments', { params: { visit_id: visitId } }),
   getByClient: (clientId) => api.get('/attachments', { params: { client_id: clientId } }),
   getBySite: (siteId) => api.get('/attachments', { params: { site_id: siteId } }),
+  getByDefect: (defectId) => api.get('/attachments', { params: { defect_id: defectId } }),
   upload: (data) => api.post('/attachments', data),
   delete: (id) => api.delete(`/attachments/${id}`),
 }

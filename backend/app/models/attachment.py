@@ -17,6 +17,7 @@ class Attachment(Base):
     visit_id = Column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"), nullable=True)
     client_id = Column(BigInteger, ForeignKey("clients.id", ondelete="CASCADE"), nullable=True)
     site_id = Column(BigInteger, ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)
+    defect_id = Column(BigInteger, ForeignKey("defects.id", ondelete="CASCADE"), nullable=True)
     kind = Column(String(30), nullable=False, default="act_photo")
     file_url = Column(Text, nullable=False)
     file_name = Column(String(255), nullable=True)

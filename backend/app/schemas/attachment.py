@@ -10,6 +10,7 @@ class AttachmentOut(BaseModel):
     visit_id: Optional[int] = None
     client_id: Optional[int] = None
     site_id: Optional[int] = None
+    defect_id: Optional[int] = None
     kind: str
     file_url: str
     file_name: Optional[str] = None
@@ -21,6 +22,7 @@ class AttachmentCreate(BaseModel):
     visit_id: Optional[int] = None
     client_id: Optional[int] = None
     site_id: Optional[int] = None
+    defect_id: Optional[int] = None
     kind: str = "document"
     file_url: str
     file_name: Optional[str] = None

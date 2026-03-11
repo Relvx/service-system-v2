@@ -161,6 +161,44 @@
               </div>
             </div>
 
+            <!-- ─── Photos ───────────────────────────────────────────── -->
+            <div class="pt-3 border-t">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+                  <ImageIcon class="w-4 h-4 text-gray-500" />Фотографии
+                  <span v-if="defectPhotos.length" class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">{{ defectPhotos.length }}</span>
+                </h3>
+                <label class="cursor-pointer btn btn-secondary text-xs flex items-center gap-1">
+                  <Upload class="w-3 h-3" />
+                  {{ uploadingPhoto ? 'Загрузка...' : 'Добавить фото' }}
+                  <input type="file" accept="image/*,.pdf" class="hidden" :disabled="uploadingPhoto" @change="handlePhotoUpload" />
+                </label>
+              </div>
+              <p v-if="uploadPhotoError" class="text-red-500 text-xs mb-2">{{ uploadPhotoError }}</p>
+              <div v-if="defectPhotos.length" class="flex flex-wrap gap-2">
+                <div v-for="att in defectPhotos" :key="att.id" class="relative group">
+                  <a :href="att.file_url" target="_blank">
+                    <img
+                      v-if="/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(att.file_url)"
+                      :src="att.file_url"
+                      class="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition-opacity"
+                    />
+                    <div
+                      v-else
+                      class="w-20 h-20 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-500"
+                    >
+                      {{ att.file_name || 'Файл' }}
+                    </div>
+                  </a>
+                  <button
+                    @click="deletePhoto(att)"
+                    class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  >×</button>
+                </div>
+              </div>
+              <p v-else class="text-sm text-gray-400">Фотографий нет</p>
+            </div>
+
             <!-- ─── Purchases ─────────────────────────────────────────── -->
             <div class="pt-3 border-t">
               <div class="flex items-center justify-between mb-3">
@@ -231,12 +269,12 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { AlertTriangle, X, Eye, Plus } from 'lucide-vue-next'
+import { AlertTriangle, X, Eye, Plus, Image as ImageIcon, Upload } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
-import { defectsAPI, purchasesAPI, sitesAPI } from '../services/api.js'
+import { defectsAPI, purchasesAPI, sitesAPI, attachmentsAPI } from '../services/api.js'
 
 const cfg = useConfigStore()
 const auth = useAuthStore()
@@ -252,6 +290,13 @@ const filterPriority = ref('')
 const selectedDefect = ref(null)
 const newStatus = ref('')
 const saving = ref(false)
+
+// Photos in detail
+const defectPhotos = ref([])
+const uploadingPhoto = ref(false)
+const uploadPhotoError = ref('')
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
 // Purchases in detail
 const defectPurchases = ref([])
@@ -298,13 +343,62 @@ async function openDetail(defect) {
   showCreatePurchase.value = false
   purchaseForm.value = { item: '', qty: 1, due_date: '', notes: '' }
   purchaseErrors.value = {}
-  await loadPurchases(defect.id)
+  defectPhotos.value = []
+  uploadPhotoError.value = ''
+  await Promise.all([loadPurchases(defect.id), loadPhotos(defect.id)])
 }
 
 function closeDetail() {
   selectedDefect.value = null
   showCreatePurchase.value = false
   defectPurchases.value = []
+  defectPhotos.value = []
+}
+
+async function loadPhotos(defectId) {
+  try {
+    const res = await attachmentsAPI.getByDefect(defectId)
+    defectPhotos.value = res.data
+  } catch {}
+}
+
+async function handlePhotoUpload(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  uploadingPhoto.value = true
+  uploadPhotoError.value = ''
+  try {
+    const isImg = file.type.startsWith('image/')
+    const resourceType = isImg ? 'image' : 'raw'
+    const form = new FormData()
+    form.append('file', file)
+    form.append('upload_preset', UPLOAD_PRESET)
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
+      { method: 'POST', body: form }
+    )
+    const data = await res.json()
+    if (!data.secure_url) throw new Error()
+    await attachmentsAPI.upload({
+      defect_id: selectedDefect.value.id,
+      kind: isImg ? 'photo' : 'document',
+      file_url: data.secure_url,
+      file_name: file.name,
+    })
+    await loadPhotos(selectedDefect.value.id)
+  } catch {
+    uploadPhotoError.value = 'Ошибка загрузки'
+  } finally {
+    uploadingPhoto.value = false
+    e.target.value = ''
+  }
+}
+
+async function deletePhoto(att) {
+  try {
+    await attachmentsAPI.delete(att.id)
+    defectPhotos.value = defectPhotos.value.filter((a) => a.id !== att.id)
+  } catch {}
 }
 
 async function loadPurchases(defectId) {

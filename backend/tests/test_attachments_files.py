@@ -167,3 +167,55 @@ class TestAttachmentsSite:
         """Неаутентифицированный запрос — 401."""
         res = await http_client.get("/api/attachments?site_id=1")
         assert res.status_code == 401
+
+
+class TestAttachmentsDefect:
+    async def test_create_for_defect(
+        self, http_client: AsyncClient, admin_token: str, site_id: int
+    ):
+        """Создаём вложение для дефекта."""
+        headers = auth_headers(admin_token)
+
+        defect_res = await http_client.post("/api/defects", headers=headers, json={
+            "site_id": site_id, "title": "Тест дефект для фото",
+            "priority": "medium", "action_type": "repair",
+        })
+        assert defect_res.status_code == 201
+        defect_id = defect_res.json()["id"]
+
+        res = await http_client.post("/api/attachments", headers=headers, json={
+            "defect_id": defect_id,
+            "kind": "photo",
+            "file_url": "https://res.cloudinary.com/test/image/upload/defect.jpg",
+            "file_name": "defect.jpg",
+        })
+        assert res.status_code == 201
+        data = res.json()
+        assert data["defect_id"] == defect_id
+        assert data["kind"] == "photo"
+
+    async def test_get_by_defect(
+        self, http_client: AsyncClient, admin_token: str, site_id: int
+    ):
+        """GET /api/attachments?defect_id= возвращает фото дефекта."""
+        headers = auth_headers(admin_token)
+
+        defect_res = await http_client.post("/api/defects", headers=headers, json={
+            "site_id": site_id, "title": "Тест дефект для get",
+            "priority": "low", "action_type": "observation",
+        })
+        assert defect_res.status_code == 201
+        defect_id = defect_res.json()["id"]
+
+        await http_client.post("/api/attachments", headers=headers, json={
+            "defect_id": defect_id, "kind": "photo",
+            "file_url": "https://res.cloudinary.com/test/image/upload/d2.jpg",
+            "file_name": "d2.jpg",
+        })
+
+        res = await http_client.get(f"/api/attachments?defect_id={defect_id}", headers=headers)
+        assert res.status_code == 200
+        data = res.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        assert all(a["defect_id"] == defect_id for a in data)
