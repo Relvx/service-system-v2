@@ -135,3 +135,57 @@ class TestDefectBlock5:
         assert res.status_code == 201
         # site_id создан conftest'ом и привязан к тестовому клиенту
         assert res.json()["client_name"] is not None
+
+
+class TestDefectFromVisit:
+    async def test_create_defect_with_visit_id(
+        self, http_client: AsyncClient, admin_token: str, site_id: int, admin_user_id: str
+    ):
+        """Офис создаёт дефект с привязкой к конкретному выезду."""
+        import datetime
+        today = datetime.date.today().isoformat()
+        headers = auth_headers(admin_token)
+
+        # Создаём выезд
+        visit_res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": site_id,
+            "assigned_user_id": int(admin_user_id),
+            "planned_date": today,
+            "visit_type": "maintenance",
+            "priority": "medium",
+            "status": "planned",
+        })
+        assert visit_res.status_code == 201
+        visit_id = visit_res.json()["id"]
+
+        # Создаём дефект из выезда
+        defect_res = await http_client.post("/api/defects", headers=headers, json={
+            "visit_id": visit_id,
+            "site_id": site_id,
+            "title": "Дефект из выезда",
+            "priority": "high",
+            "action_type": "repair",
+        })
+        assert defect_res.status_code == 201
+        data = defect_res.json()
+        assert data["visit_id"] == visit_id
+        assert data["site_id"] == site_id
+        assert data["title"] == "Дефект из выезда"
+
+        # Cleanup
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+    async def test_defect_without_visit_id(
+        self, http_client: AsyncClient, admin_token: str, site_id: int
+    ):
+        """Дефект можно создать и без привязки к выезду (только site_id)."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/defects", headers=headers, json={
+            "site_id": site_id,
+            "title": "Дефект без выезда",
+            "priority": "medium",
+            "action_type": "observation",
+        })
+        assert res.status_code == 201
+        assert res.json()["visit_id"] is None
+        assert res.json()["site_id"] == site_id

@@ -138,9 +138,19 @@
               </div>
             </div>
           </div>
-          <div class="flex justify-end gap-3 p-6 border-t">
-            <button v-if="!detailVisit.is_archived" @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
-            <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+          <div class="flex justify-between items-center p-6 border-t">
+            <button
+              v-if="detailVisit.status === 'done' || detailVisit.status === 'closed'"
+              @click="openDefectCreate(detailVisit)"
+              class="btn btn-secondary flex items-center text-yellow-700 border-yellow-300 hover:bg-yellow-50"
+            >
+              <AlertTriangle class="w-4 h-4 mr-2" />Добавить дефект
+            </button>
+            <div v-else />
+            <div class="flex gap-3">
+              <button v-if="!detailVisit.is_archived" @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
+              <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+            </div>
           </div>
         </div>
       </div>
@@ -224,6 +234,54 @@
         </div>
       </div>
 
+      <!-- Defect Create Modal -->
+      <div v-if="defectModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <h2 class="text-xl font-semibold text-gray-900">Добавить дефект</h2>
+            <button @click="defectModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="handleDefectSave" class="p-6 space-y-4">
+            <div class="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+              Объект: <span class="font-medium text-gray-900">{{ defectForm._site_title }}</span><br />
+              Выезд от <span class="font-medium text-gray-900">{{ formatDate(defectForm._planned_date) }}</span>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
+              <input v-model="defectForm.title" required class="input" placeholder="Краткое описание проблемы" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+              <textarea v-model="defectForm.description" class="input" rows="3" placeholder="Подробное описание..." />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+                <select v-model="defectForm.priority" class="input">
+                  <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Тип действия</label>
+                <select v-model="defectForm.action_type" class="input">
+                  <option v-for="a in cfg.defectActionTypes" :key="a.sysname" :value="a.sysname">{{ a.display_name }}</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Необходимые запчасти</label>
+              <input v-model="defectForm.suggested_parts" class="input" placeholder="Перечень запчастей..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" @click="defectModalOpen = false" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Создать дефект' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <!-- Cancel Confirm -->
       <div v-if="cancelConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
@@ -243,12 +301,12 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
-import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI } from '../services/api.js'
+import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
@@ -264,6 +322,8 @@ const editing = ref(null)
 const saving = ref(false)
 const archiveConfirm = ref(null)
 const cancelConfirm = ref(null)
+const defectModalOpen = ref(false)
+const defectForm = ref({ title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '', visit_id: null, site_id: null, _site_title: '', _planned_date: '' })
 const sites = ref([])
 const masters = ref([])
 const attachments = ref([])
@@ -404,6 +464,35 @@ async function handleUnarchive(v) {
     await loadVisits()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+function openDefectCreate(v) {
+  defectForm.value = {
+    title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '',
+    visit_id: v.id, site_id: v.site_id,
+    _site_title: v.site_title, _planned_date: v.planned_date,
+  }
+  defectModalOpen.value = true
+}
+
+async function handleDefectSave() {
+  saving.value = true
+  try {
+    await defectsAPI.create({
+      visit_id: defectForm.value.visit_id,
+      site_id: defectForm.value.site_id,
+      title: defectForm.value.title,
+      description: defectForm.value.description || null,
+      priority: defectForm.value.priority,
+      action_type: defectForm.value.action_type,
+      suggested_parts: defectForm.value.suggested_parts || null,
+    })
+    defectModalOpen.value = false
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
   }
 }
 
