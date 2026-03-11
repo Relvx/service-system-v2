@@ -15,8 +15,10 @@ class Attachment(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     visit_id = Column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"), nullable=True)
+    client_id = Column(BigInteger, ForeignKey("clients.id", ondelete="CASCADE"), nullable=True)
+    site_id = Column(BigInteger, ForeignKey("sites.id", ondelete="CASCADE"), nullable=True)
     kind = Column(String(30), nullable=False, default="act_photo")
     file_url = Column(Text, nullable=False)
+    file_name = Column(String(255), nullable=True)
     created_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

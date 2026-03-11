@@ -128,6 +128,11 @@
         </div>
       </div>
 
+      <!-- Файлы -->
+      <div v-if="activeTab === 'files'">
+        <AttachmentsTab entity-type="client" :entity-id="client.id" />
+      </div>
+
       <!-- История выездов -->
       <div v-if="activeTab === 'visits'">
         <div v-if="client.recent_visits.length === 0" class="text-center py-12 card">
@@ -245,6 +250,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { clientsAPI } from '../services/api.js'
 
@@ -275,6 +281,7 @@ const tabs = computed(() => [
   { key: 'contacts', label: 'Контакты', count: client.value?.contact_persons?.length ?? 0 },
   { key: 'sites', label: 'Объекты', count: client.value?.sites?.length ?? 0 },
   { key: 'visits', label: 'История выездов', count: client.value?.recent_visits?.length ?? 0 },
+  { key: 'files', label: 'Файлы и фото' },
 ])
 
 async function loadClient() {

@@ -8,13 +8,19 @@ class AttachmentOut(BaseModel):
 
     id: int
     visit_id: Optional[int] = None
+    client_id: Optional[int] = None
+    site_id: Optional[int] = None
     kind: str
     file_url: str
+    file_name: Optional[str] = None
     created_by_user_id: Optional[int] = None
     created_at: datetime
 
 
 class AttachmentCreate(BaseModel):
-    visit_id: int
-    kind: str = "act_photo"
+    visit_id: Optional[int] = None
+    client_id: Optional[int] = None
+    site_id: Optional[int] = None
+    kind: str = "document"
     file_url: str
+    file_name: Optional[str] = None

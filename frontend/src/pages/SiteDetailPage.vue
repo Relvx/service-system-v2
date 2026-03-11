@@ -96,6 +96,11 @@
         </div>
       </div>
 
+      <!-- Файлы -->
+      <div v-if="activeTab === 'files'">
+        <AttachmentsTab entity-type="site" :entity-id="site.id" />
+      </div>
+
       <!-- История выездов -->
       <div v-if="activeTab === 'visits'">
         <div v-if="site.recent_visits.length === 0" class="text-center py-12 text-gray-500">
@@ -200,6 +205,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Edit, X, ShieldCheck, Calendar } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { sitesAPI } from '../services/api.js'
 
@@ -216,6 +222,7 @@ const tabs = computed(() => [
   { key: 'main', label: 'Основное' },
   { key: 'defects', label: 'Дефекты', count: site.value?.active_defects?.length ?? 0 },
   { key: 'visits', label: 'История выездов', count: site.value?.recent_visits?.length ?? 0 },
+  { key: 'files', label: 'Файлы и фото' },
 ])
 
 async function loadSite() {

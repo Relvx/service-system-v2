@@ -94,7 +94,10 @@ export const purchasesAPI = {
 
 export const attachmentsAPI = {
   getAll: (visitId) => api.get('/attachments', { params: { visit_id: visitId } }),
+  getByClient: (clientId) => api.get('/attachments', { params: { client_id: clientId } }),
+  getBySite: (siteId) => api.get('/attachments', { params: { site_id: siteId } }),
   upload: (data) => api.post('/attachments', data),
+  delete: (id) => api.delete(`/attachments/${id}`),
 }
 
 export const notificationsAPI = {

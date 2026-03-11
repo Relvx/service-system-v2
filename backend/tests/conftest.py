@@ -93,6 +93,18 @@ async def site_id(http_client: AsyncClient, admin_token: str):
 
 
 @pytest_asyncio.fixture(scope="session")
+async def client_id(http_client: AsyncClient, admin_token: str):
+    """Создаёт тестового клиента, возвращает client_id (int). Удаляет после сессии."""
+    headers = auth_headers(admin_token)
+    res = await http_client.post("/api/clients", headers=headers,
+                                 json={"name": "__conftest__ клиент для файлов"})
+    assert res.status_code == 201, f"Create client failed: {res.text}"
+    cid = res.json()["id"]
+    yield cid
+    await http_client.delete(f"/api/clients/{cid}", headers=headers)
+
+
+@pytest_asyncio.fixture(scope="session")
 async def admin_user_id(http_client: AsyncClient, admin_token: str) -> str:
     """ID пользователя admin для назначения на выезды."""
     res = await http_client.get("/api/auth/me", headers=auth_headers(admin_token))
