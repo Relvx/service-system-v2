@@ -50,6 +50,16 @@
           Нет объектов с координатами
         </div>
 
+        <!-- Legend -->
+        <div class="absolute bottom-4 left-4 bg-white rounded-lg shadow border border-gray-200 px-3 py-2 flex items-center gap-4 text-xs text-gray-600 z-10">
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>Активный выезд
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 rounded-full bg-gray-500"></span>Нет выездов
+          </div>
+        </div>
+
         <!-- Site popup -->
         <div
           v-if="popupSite"
@@ -154,6 +164,17 @@ function formatDate(d) {
   return d ? new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('ru-RU') : ''
 }
 
+function markerIcon(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
+    <path d="M16 0C7.163 0 0 7.163 0 16c0 5.514 2.789 10.388 7.04 13.343L16 42l8.96-12.657C29.211 26.388 32 21.514 32 16 32 7.163 24.837 0 16 0z" fill="${color}"/>
+    <circle cx="16" cy="16" r="7" fill="white"/>
+  </svg>`
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+}
+
+const ICON_DEFAULT = markerIcon('#6b7280')
+const ICON_ACTIVE  = markerIcon('#22c55e')
+
 async function initMap() {
   const { load } = await import('@2gis/mapgl')
   mapglLib = await load()
@@ -167,8 +188,14 @@ async function initMap() {
 
   sites.value.forEach((s) => {
     if (!s.latitude || !s.longitude) return
+    const hasActive = !!activeVisitBySite.value[s.id]
     const marker = new mapglLib.Marker(mapInstance, {
       coordinates: [s.longitude, s.latitude],
+      icon: {
+        url: hasActive ? ICON_ACTIVE : ICON_DEFAULT,
+        size: [32, 42],
+        anchor: [16, 42],
+      },
     })
     marker.on('click', () => selectSite(s))
     markers[s.id] = marker
