@@ -112,12 +112,12 @@
 
       <!-- Files Modal -->
       <div v-if="filesTask" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
+          <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
             <h2 class="text-xl font-semibold text-gray-900">Файлы — {{ filesTask.title }}</h2>
             <button @click="filesTask = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div class="p-6">
+          <div class="p-6 overflow-y-auto flex-1">
             <AttachmentsTab entity-type="task" :entity-id="filesTask.id" />
           </div>
         </div>

@@ -109,16 +109,17 @@
 
       <!-- Detail Modal -->
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+          <!-- Header: фиксированный -->
+          <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
             <div>
               <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
               <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
             </div>
             <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <!-- Tabs -->
-          <div class="flex border-b">
+          <!-- Tabs: фиксированные -->
+          <div class="flex border-b flex-shrink-0">
             <button
               @click="detailTab = 'info'"
               class="flex-1 py-2.5 text-sm font-medium transition-colors"
@@ -130,42 +131,46 @@
               :class="detailTab === 'files' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'"
             >Файлы и фото</button>
           </div>
-          <!-- Info tab -->
-          <div v-if="detailTab === 'info'" class="p-6 space-y-4">
-            <div class="flex gap-2 flex-wrap">
-              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
-              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
-              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
-            </div>
-            <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
-            <div class="grid grid-cols-2 gap-4">
-              <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
-              <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
-            </div>
-            <div><p class="text-sm text-gray-500">Мастер</p><p class="text-gray-900">{{ detailVisit.master_name || 'Не назначен' }}</p></div>
-            <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
-              <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
-              <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
-            </div>
-            <template v-if="detailVisit.work_summary">
-              <div class="border-t pt-3">
-                <p class="text-sm text-gray-500 mb-1">Итог работ</p>
-                <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+          <!-- Контент: скроллируется -->
+          <div class="overflow-y-auto flex-1">
+            <!-- Info tab -->
+            <div v-if="detailTab === 'info'" class="p-6 space-y-4">
+              <div class="flex gap-2 flex-wrap">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
               </div>
-              <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded p-2 text-xs">
-                ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+              <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
+              <div class="grid grid-cols-2 gap-4">
+                <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
+                <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
               </div>
-              <div v-if="detailVisit.recommendations">
-                <p class="text-sm text-gray-500">Рекомендации</p>
-                <p class="text-gray-900">{{ detailVisit.recommendations }}</p>
+              <div><p class="text-sm text-gray-500">Мастер</p><p class="text-gray-900">{{ detailVisit.master_name || 'Не назначен' }}</p></div>
+              <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
+                <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
+                <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
               </div>
-            </template>
+              <template v-if="detailVisit.work_summary">
+                <div class="border-t pt-3">
+                  <p class="text-sm text-gray-500 mb-1">Итог работ</p>
+                  <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+                </div>
+                <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded p-2 text-xs">
+                  ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+                </div>
+                <div v-if="detailVisit.recommendations">
+                  <p class="text-sm text-gray-500">Рекомендации</p>
+                  <p class="text-gray-900">{{ detailVisit.recommendations }}</p>
+                </div>
+              </template>
+            </div>
+            <!-- Files tab -->
+            <div v-else class="p-6">
+              <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
+            </div>
           </div>
-          <!-- Files tab -->
-          <div v-else class="p-6">
-            <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
-          </div>
-          <div class="flex justify-between items-center p-6 border-t">
+          <!-- Footer: фиксированный -->
+          <div class="flex justify-between items-center p-6 border-t flex-shrink-0">
             <button
               v-if="detailVisit.status === 'done' || detailVisit.status === 'closed'"
               @click="openDefectCreate(detailVisit)"
@@ -314,7 +319,7 @@
                   <input
                     type="checkbox"
                     class="sr-only"
-                    :checked="selectedPhotos.has(photo.id)"
+                    :checked="selectedPhotos.includes(photo.id)"
                     @change="selectedPhotos.includes(photo.id) ? selectedPhotos.splice(selectedPhotos.indexOf(photo.id), 1) : selectedPhotos.push(photo.id)"
                   />
                   <img :src="photo.file_url" class="w-full h-24 object-cover rounded-lg border-2 transition-colors"
