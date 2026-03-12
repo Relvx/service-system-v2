@@ -101,12 +101,39 @@
               <input v-model="form.address" class="input" :class="{ 'border-red-400': errors.address }" placeholder="г. Москва, ул. Ленина, д. 1" @input="delete errors.address" />
               <p v-if="errors.address" class="text-red-600 text-xs mt-1">{{ errors.address }}</p>
             </div>
-            <div>
+            <div class="relative">
               <label class="block text-sm font-medium text-gray-700 mb-1">Клиент</label>
-              <select v-model="form.client_id" class="input">
-                <option value="">Не выбран</option>
-                <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
+              <input
+                v-model="clientSearch"
+                type="text"
+                class="input"
+                placeholder="Начните вводить название клиента..."
+                @focus="clientDropdownOpen = true"
+                @input="form.client_id = ''; clientDropdownOpen = true"
+                @blur="setTimeout(() => clientDropdownOpen = false, 150)"
+                autocomplete="off"
+              />
+              <div
+                v-if="clientDropdownOpen && filteredClients.length"
+                class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                <button
+                  type="button"
+                  class="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-gray-50 border-b border-gray-100"
+                  @mousedown.prevent="form.client_id = ''; clientSearch = ''; clientDropdownOpen = false"
+                >— Не выбран —</button>
+                <button
+                  v-for="c in filteredClients"
+                  :key="c.id"
+                  type="button"
+                  class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 hover:text-primary-700"
+                  :class="{ 'bg-primary-50 text-primary-700': form.client_id === c.id }"
+                  @mousedown.prevent="form.client_id = c.id; clientSearch = c.name; clientDropdownOpen = false"
+                >{{ c.name }}</button>
+              </div>
+              <p v-if="form.client_id" class="text-xs text-green-600 mt-1 flex items-center gap-1">
+                <span>✓</span> Выбран клиент
+              </p>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
@@ -170,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Plus, MapPin, Building2, Phone, X, Eye, Edit, Archive, ArchiveRestore } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -192,6 +219,14 @@ const archiveConfirm = ref(null)
 const saving = ref(false)
 const form = ref({ title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' })
 const errors = ref({})
+const clientSearch = ref('')
+const clientDropdownOpen = ref(false)
+
+const filteredClients = computed(() => {
+  const q = clientSearch.value.toLowerCase()
+  if (!q) return clients.value
+  return clients.value.filter(c => c.name.toLowerCase().includes(q))
+})
 
 function validate() {
   const e = {}
@@ -228,6 +263,8 @@ function openCreate() {
   editing.value = null
   errors.value = {}
   form.value = { title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' }
+  clientSearch.value = ''
+  clientDropdownOpen.value = false
   modalOpen.value = true
 }
 
@@ -235,6 +272,8 @@ function openEdit(s) {
   editing.value = s
   errors.value = {}
   form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly', price_maintenance: s.price_maintenance || '', price_repair: s.price_repair || '', price_emergency: s.price_emergency || '' }
+  clientSearch.value = s.client_name || ''
+  clientDropdownOpen.value = false
   modalOpen.value = true
 }
 

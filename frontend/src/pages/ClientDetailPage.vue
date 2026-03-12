@@ -102,6 +102,11 @@
 
       <!-- Объекты -->
       <div v-if="activeTab === 'sites'">
+        <div class="flex justify-end mb-4">
+          <button @click="openSiteCreate" class="btn btn-primary flex items-center">
+            <Plus class="w-4 h-4 mr-2" />Добавить объект
+          </button>
+        </div>
         <div v-if="client.sites.length === 0" class="text-center py-12 card">
           <Building2 class="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p class="text-gray-500">Объекты не найдены</p>
@@ -231,6 +236,52 @@
       </div>
     </div>
 
+    <!-- Site Create Modal -->
+    <div v-if="siteModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-6 border-b">
+          <h2 class="text-xl font-semibold text-gray-900">Добавить объект</h2>
+          <button @click="siteModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+        </div>
+        <form @submit.prevent="handleSiteCreate" class="p-6 space-y-4">
+          <div class="text-sm text-gray-500 bg-gray-50 rounded p-3">
+            Клиент: <span class="font-medium text-gray-900">{{ client.name }}</span>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
+            <input v-model="siteForm.title" class="input" :class="{ 'border-red-400': siteErrors.title }" placeholder="Котельная №1" @input="delete siteErrors.title" />
+            <p v-if="siteErrors.title" class="text-red-600 text-xs mt-1">{{ siteErrors.title }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Адрес *</label>
+            <input v-model="siteForm.address" class="input" :class="{ 'border-red-400': siteErrors.address }" placeholder="г. Москва, ул. Ленина, д. 1" @input="delete siteErrors.address" />
+            <p v-if="siteErrors.address" class="text-red-600 text-xs mt-1">{{ siteErrors.address }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Частота обслуживания</label>
+            <select v-model="siteForm.service_frequency" class="input">
+              <option value="">Не указано</option>
+              <option v-for="f in cfg.serviceFrequencies" :key="f.sysname" :value="f.sysname">{{ f.display_name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Контакт на месте</label>
+            <input v-model="siteForm.onsite_contact" class="input" placeholder="Иванов И.И., тел. 8-999-000-00-00" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Доступ</label>
+            <textarea v-model="siteForm.access_notes" class="input" rows="2" placeholder="Ключ у охранника..." />
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" @click="siteModalOpen = false" class="btn btn-secondary">Отмена</button>
+            <button type="submit" :disabled="siteSaving" class="btn btn-primary disabled:opacity-50">
+              {{ siteSaving ? 'Сохранение...' : 'Создать объект' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Contact Delete Confirm -->
     <div v-if="contactDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
@@ -252,7 +303,7 @@ import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, Use
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
-import { clientsAPI } from '../services/api.js'
+import { clientsAPI, sitesAPI } from '../services/api.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
@@ -269,6 +320,12 @@ const editForm = ref({})
 // Legal
 const legalModalOpen = ref(false)
 const legalForm = ref({ legal_address: '', bank: '', bik: '', account: '' })
+
+// Site create
+const siteModalOpen = ref(false)
+const siteSaving = ref(false)
+const siteForm = ref({ title: '', address: '', service_frequency: 'monthly', onsite_contact: '', access_notes: '' })
+const siteErrors = ref({})
 
 // Contacts
 const contactModalOpen = ref(false)
@@ -339,6 +396,37 @@ async function handleLegalSave() {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
   } finally {
     saving.value = false
+  }
+}
+
+function openSiteCreate() {
+  siteForm.value = { title: '', address: '', service_frequency: 'monthly', onsite_contact: '', access_notes: '' }
+  siteErrors.value = {}
+  siteModalOpen.value = true
+}
+
+async function handleSiteCreate() {
+  const e = {}
+  if (!siteForm.value.title.trim()) e.title = 'Введите название'
+  if (!siteForm.value.address.trim()) e.address = 'Введите адрес'
+  siteErrors.value = e
+  if (Object.keys(e).length) return
+  siteSaving.value = true
+  try {
+    await sitesAPI.create({
+      title: siteForm.value.title.trim(),
+      address: siteForm.value.address.trim(),
+      client_id: client.value.id,
+      service_frequency: siteForm.value.service_frequency || null,
+      onsite_contact: siteForm.value.onsite_contact || null,
+      access_notes: siteForm.value.access_notes || null,
+    })
+    siteModalOpen.value = false
+    await loadClient()
+  } catch (err) {
+    alert('Ошибка: ' + (err.response?.data?.detail || err.message))
+  } finally {
+    siteSaving.value = false
   }
 }
 

@@ -299,6 +299,36 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Необходимые запчасти</label>
               <input v-model="defectForm.suggested_parts" class="input" placeholder="Перечень запчастей..." />
             </div>
+            <!-- Photo transfer from visit -->
+            <div v-if="visitPhotos.length > 0">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Фото из выезда
+                <span class="text-gray-400 font-normal">(выберите, какие перенести в дефект)</span>
+              </label>
+              <div class="grid grid-cols-3 gap-2">
+                <label
+                  v-for="photo in visitPhotos"
+                  :key="photo.id"
+                  class="relative cursor-pointer group"
+                >
+                  <input
+                    type="checkbox"
+                    class="sr-only"
+                    :checked="selectedPhotos.has(photo.id)"
+                    @change="selectedPhotos.includes(photo.id) ? selectedPhotos.splice(selectedPhotos.indexOf(photo.id), 1) : selectedPhotos.push(photo.id)"
+                  />
+                  <img :src="photo.file_url" class="w-full h-24 object-cover rounded-lg border-2 transition-colors"
+                    :class="selectedPhotos.includes(photo.id) ? 'border-primary-500' : 'border-gray-200'" />
+                  <div v-if="selectedPhotos.includes(photo.id)"
+                    class="absolute inset-0 bg-primary-500 bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <div class="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
+                      <span class="text-white text-xs font-bold">✓</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+              <p v-if="selectedPhotos.length > 0" class="text-xs text-primary-600 mt-1">Выбрано: {{ selectedPhotos.length }}</p>
+            </div>
             <div class="flex justify-end gap-3 pt-2">
               <button type="button" @click="defectModalOpen = false" class="btn btn-secondary">Отмена</button>
               <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
@@ -357,6 +387,8 @@ const sites = ref([])
 const masters = ref([])
 const attachments = ref([])
 const errors = ref({})
+const visitPhotos = ref([])
+const selectedPhotos = ref([])
 
 const columns = [
   { key: 'planned_date', label: 'Дата',       width: 130 },
@@ -495,11 +527,18 @@ async function handleUnarchive(v) {
   }
 }
 
-function openDefectCreate(v) {
+async function openDefectCreate(v) {
   defectForm.value = {
     title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '',
     visit_id: v.id, site_id: v.site_id,
     _site_title: v.site_title, _planned_date: v.planned_date,
+  }
+  selectedPhotos.value = []
+  try {
+    const res = await attachmentsAPI.getByVisit(v.id)
+    visitPhotos.value = res.data.filter(a => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(a.file_url))
+  } catch {
+    visitPhotos.value = []
   }
   defectModalOpen.value = true
 }
@@ -507,7 +546,7 @@ function openDefectCreate(v) {
 async function handleDefectSave() {
   saving.value = true
   try {
-    await defectsAPI.create({
+    const defectRes = await defectsAPI.create({
       visit_id: defectForm.value.visit_id,
       site_id: defectForm.value.site_id,
       title: defectForm.value.title,
@@ -516,6 +555,19 @@ async function handleDefectSave() {
       action_type: defectForm.value.action_type,
       suggested_parts: defectForm.value.suggested_parts || null,
     })
+    const defectId = defectRes.data.id
+    // Copy selected photos to the new defect
+    if (selectedPhotos.value.length > 0) {
+      const photos = visitPhotos.value.filter(p => selectedPhotos.value.includes(p.id))
+      await Promise.all(photos.map(p =>
+        attachmentsAPI.upload({
+          defect_id: defectId,
+          kind: 'defect_photo',
+          file_url: p.file_url,
+          file_name: p.file_name,
+        })
+      ))
+    }
     defectModalOpen.value = false
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
