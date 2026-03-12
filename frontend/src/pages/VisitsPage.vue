@@ -308,7 +308,7 @@
             <div v-if="visitPhotos.length > 0">
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Фото из выезда
-                <span class="text-gray-400 font-normal">(выберите, какие перенести в дефект)</span>
+                <span class="text-gray-400 font-normal">(все выбраны — нажмите на фото чтобы снять выбор)</span>
               </label>
               <div class="grid grid-cols-3 gap-2">
                 <label
@@ -541,7 +541,12 @@ async function openDefectCreate(v) {
   selectedPhotos.value = []
   try {
     const res = await attachmentsAPI.getByVisit(v.id)
-    visitPhotos.value = res.data.filter(a => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(a.file_url))
+    visitPhotos.value = res.data.filter(a =>
+      /\.(jpg|jpeg|png|gif|webp|heic|bmp|tiff)(\?|$)/i.test(a.file_url) ||
+      a.file_url.includes('/image/upload/')
+    )
+    // Автовыбор всех фото
+    selectedPhotos.value = visitPhotos.value.map(p => p.id)
   } catch {
     visitPhotos.value = []
   }
