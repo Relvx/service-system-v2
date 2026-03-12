@@ -42,7 +42,7 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <DataTable v-else :columns="columns" :rows="visits" storage-key="visits_table">
+      <DataTable v-else :columns="columns" :rows="visits" storage-key="visits_table" :row-class="() => 'cursor-pointer'" @row-click="openDetail">
         <template #planned_date="{ row }">
           <span class="whitespace-nowrap">{{ formatDate(row.planned_date) }}</span>
           <span v-if="row.planned_time_from" class="text-gray-500 text-xs block">{{ row.planned_time_from.slice(0,5) }}</span>
@@ -68,13 +68,10 @@
         </template>
 
         <template #actions="{ row }">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2" @click.stop>
             <template v-if="!row.is_archived">
               <button @click="openEdit(row)" class="text-gray-500 hover:text-primary-600" title="Редактировать">
                 <Pencil class="w-4 h-4" />
-              </button>
-              <button @click="openDetail(row)" class="text-primary-600 hover:text-primary-900" title="Подробнее">
-                <Eye class="w-4 h-4" />
               </button>
               <button
                 v-if="canCancel(row) && auth.hasGroup('office_group', 'admin_group')"
@@ -89,9 +86,6 @@
               </button>
             </template>
             <template v-else>
-              <button @click="openDetail(row)" class="text-primary-600 hover:text-primary-900" title="Подробнее">
-                <Eye class="w-4 h-4" />
-              </button>
               <button v-if="auth.hasGroup('admin_group')" @click="handleUnarchive(row)" class="text-green-600 hover:text-green-800" title="Восстановить">
                 <ArchiveRestore class="w-4 h-4" />
               </button>

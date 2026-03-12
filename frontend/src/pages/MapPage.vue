@@ -91,6 +91,14 @@
             </template>
             <div v-else class="text-xs text-gray-400 italic border-t pt-2 mt-2">Нет активных выездов</div>
           </div>
+          <div class="px-4 pb-4">
+            <button
+              @click="router.push(`/sites/${popupSite.id}`)"
+              class="w-full btn btn-primary text-xs py-1.5"
+            >
+              Открыть объект →
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -99,11 +107,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { Search, Building2, X } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import { sitesAPI, visitsAPI } from '../services/api.js'
+
+const router = useRouter()
 
 const auth = useAuthStore()
 const cfg = useConfigStore()
