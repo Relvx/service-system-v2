@@ -80,16 +80,56 @@
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+              <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
+            </div>
             <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <div class="p-6 space-y-3 text-sm">
+            <!-- Статус и тип -->
+            <div class="flex gap-3 flex-wrap">
+              <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">
+                {{ cfg.visitStatusLabel(detailVisit.status) }}
+              </span>
+              <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                {{ cfg.visitTypeLabel(detailVisit.visit_type) }}
+              </span>
+              <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">
+                {{ cfg.priorityLabel(detailVisit.priority) }}
+              </span>
+            </div>
+            <!-- Основная инфо -->
             <div><p class="text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
-            <div><p class="text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
+            <div>
+              <p class="text-gray-500">Дата и время</p>
+              <p class="text-gray-900">
+                {{ formatDate(detailVisit.planned_date) }}
+                <span v-if="detailVisit.planned_time_from"> · {{ detailVisit.planned_time_from.slice(0,5) }}</span>
+                <span v-if="detailVisit.planned_time_to"> — {{ detailVisit.planned_time_to.slice(0,5) }}</span>
+              </p>
+            </div>
             <div v-if="detailVisit.access_notes"><p class="text-gray-500">Доступ</p><p class="text-gray-900">{{ detailVisit.access_notes }}</p></div>
             <div v-if="detailVisit.onsite_contact"><p class="text-gray-500">Контакт на месте</p><p class="text-gray-900">{{ detailVisit.onsite_contact }}</p></div>
-            <div v-if="detailVisit.office_notes"><p class="text-gray-500">Заметки офиса</p><p class="text-gray-900">{{ detailVisit.office_notes }}</p></div>
             <div v-if="detailVisit.client_contacts"><p class="text-gray-500">Контакты клиента</p><p class="text-gray-900">{{ detailVisit.client_contacts }}</p></div>
+            <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
+              <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
+              <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
+            </div>
+            <!-- Итоги (для завершённых) -->
+            <template v-if="detailVisit.work_summary">
+              <div class="border-t pt-3">
+                <p class="text-gray-500 mb-1">Итог работ</p>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+              </div>
+              <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded p-2 text-xs">
+                ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+              </div>
+              <div v-if="detailVisit.recommendations">
+                <p class="text-gray-500">Рекомендации</p>
+                <p class="text-gray-900">{{ detailVisit.recommendations }}</p>
+              </div>
+            </template>
           </div>
           <div class="p-6 border-t flex justify-end">
             <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
@@ -229,6 +269,10 @@ async function handleComplete() {
 function statusClass(s) {
   const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', closed: 'bg-gray-400 text-white', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
   return m[s] || 'bg-gray-100 text-gray-700'
+}
+function priorityClass(p) {
+  const m = { low: 'bg-gray-100 text-gray-600', medium: 'bg-yellow-100 text-yellow-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' }
+  return m[p] || 'bg-gray-100 text-gray-700'
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 

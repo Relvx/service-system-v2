@@ -78,6 +78,8 @@
             v-for="row in sortedRows"
             :key="row.id"
             class="hover:bg-gray-50 transition-colors"
+            :class="rowClass ? rowClass(row) : ''"
+            @click="$emit('row-click', row)"
           >
             <td
               v-for="col in visibleColumns"
@@ -111,7 +113,10 @@ const props = defineProps({
   columns: { type: Array, required: true },
   rows: { type: Array, default: () => [] },
   storageKey: { type: String, default: null },
+  rowClass: { type: Function, default: null },
 })
+
+defineEmits(['row-click'])
 
 const columnState = ref([])
 

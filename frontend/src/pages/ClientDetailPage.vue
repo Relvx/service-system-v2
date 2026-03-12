@@ -109,7 +109,7 @@
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <router-link
             v-for="s in client.sites" :key="s.id"
-            :to="`/sites`"
+            :to="`/sites/${s.id}`"
             class="card hover:shadow-md transition-shadow block"
           >
             <div class="flex items-center mb-2">

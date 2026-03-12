@@ -191,11 +191,9 @@ async function initMap() {
     const hasActive = !!activeVisitBySite.value[s.id]
     const marker = new mapglLib.Marker(mapInstance, {
       coordinates: [s.longitude, s.latitude],
-      icon: {
-        url: hasActive ? ICON_ACTIVE : ICON_DEFAULT,
-        size: [32, 42],
-        anchor: [16, 42],
-      },
+      icon: hasActive ? ICON_ACTIVE : ICON_DEFAULT,
+      size: [32, 42],
+      anchor: [16, 42],
     })
     marker.on('click', () => selectSite(s))
     markers[s.id] = marker

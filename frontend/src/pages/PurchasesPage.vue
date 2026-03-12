@@ -34,7 +34,14 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <DataTable v-else :columns="columns" :rows="purchases" storage-key="purchases_table">
+      <DataTable
+        v-else
+        :columns="columns"
+        :rows="purchases"
+        storage-key="purchases_table"
+        :row-class="purchaseRowClass"
+        @row-click="openDetail"
+      >
         <template #status="{ row }">
           <div class="flex items-center gap-2">
             <select
@@ -82,6 +89,91 @@
           </div>
         </template>
       </DataTable>
+
+      <!-- Detail / Edit Modal -->
+      <div v-if="detailPurchase" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">{{ detailPurchase.item }}</h2>
+              <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-1" :class="statusBadgeClass(detailPurchase.status)">
+                {{ cfg.purchaseStatusLabel(detailPurchase.status) }}
+              </span>
+            </div>
+            <button @click="detailPurchase = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="handleEditSave" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Наименование *</label>
+              <input
+                v-model="editForm.item"
+                class="input"
+                :class="{ 'border-red-400': editErrors.item }"
+                :disabled="detailPurchase.is_archived"
+                @input="delete editErrors.item"
+              />
+              <p v-if="editErrors.item" class="text-red-600 text-xs mt-1">{{ editErrors.item }}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Кол-во *</label>
+                <input
+                  v-model="editForm.qty"
+                  type="number" step="0.01" min="0.01"
+                  class="input"
+                  :class="{ 'border-red-400': editErrors.qty }"
+                  :disabled="detailPurchase.is_archived"
+                  @input="delete editErrors.qty"
+                />
+                <p v-if="editErrors.qty" class="text-red-600 text-xs mt-1">{{ editErrors.qty }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Срок</label>
+                <input v-model="editForm.due_date" type="date" class="input" :disabled="detailPurchase.is_archived" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+              <select v-model="editForm.status" class="input" :disabled="detailPurchase.is_archived">
+                <option v-for="s in cfg.purchaseStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Объект</label>
+              <select v-model="editForm.site_id" class="input" :disabled="detailPurchase.is_archived" @change="editForm.defect_id = null">
+                <option :value="null">— не выбран —</option>
+                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Дефект</label>
+              <select v-model="editForm.defect_id" class="input" :disabled="detailPurchase.is_archived">
+                <option :value="null">— не связан —</option>
+                <option
+                  v-for="d in editFilteredDefects"
+                  :key="d.id"
+                  :value="d.id"
+                >{{ d.title }}{{ d.site_title ? ` (${d.site_title})` : '' }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
+              <textarea v-model="editForm.notes" class="input" rows="2" :disabled="detailPurchase.is_archived" />
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+              <button type="button" @click="detailPurchase = null" class="btn btn-secondary">Отмена</button>
+              <button
+                v-if="!detailPurchase.is_archived"
+                type="submit"
+                :disabled="editSaving"
+                class="btn btn-primary disabled:opacity-50"
+              >
+                {{ editSaving ? 'Сохранение...' : 'Сохранить' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <!-- Create Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -181,6 +273,11 @@ const saving = ref(false)
 const form = ref({ item: '', qty: 1, due_date: '', notes: '', site_id: null, defect_id: null })
 const errors = ref({})
 
+const detailPurchase = ref(null)
+const editForm = ref({})
+const editErrors = ref({})
+const editSaving = ref(false)
+
 const columns = [
   { key: 'item',         label: 'Наименование', width: 220 },
   { key: 'qty',          label: 'Кол-во',       width: 80 },
@@ -197,6 +294,83 @@ const filteredDefects = computed(() => {
   if (!form.value.site_id) return defects.value
   return defects.value.filter(d => d.site_id === form.value.site_id)
 })
+
+const editFilteredDefects = computed(() => {
+  if (!editForm.value.site_id) return defects.value
+  return defects.value.filter(d => d.site_id === editForm.value.site_id)
+})
+
+function purchaseRowClass(row) {
+  if (row.is_archived) return 'opacity-50'
+  const m = {
+    draft:     'bg-gray-50',
+    approved:  'bg-blue-50',
+    ordered:   'bg-yellow-50',
+    received:  'bg-cyan-50',
+    installed: 'bg-orange-50',
+    closed:    'bg-green-50',
+  }
+  return m[row.status] || ''
+}
+
+function statusBadgeClass(s) {
+  const m = {
+    draft:     'bg-gray-100 text-gray-700',
+    approved:  'bg-blue-100 text-blue-700',
+    ordered:   'bg-yellow-100 text-yellow-800',
+    received:  'bg-cyan-100 text-cyan-800',
+    installed: 'bg-orange-100 text-orange-700',
+    closed:    'bg-green-100 text-green-700',
+  }
+  return m[s] || 'bg-gray-100 text-gray-700'
+}
+
+function openDetail(row) {
+  detailPurchase.value = row
+  editForm.value = {
+    item:      row.item,
+    qty:       row.qty,
+    due_date:  row.due_date || '',
+    notes:     row.notes || '',
+    site_id:   row.site_id || null,
+    defect_id: row.defect_id || null,
+    status:    row.status,
+  }
+  editErrors.value = {}
+}
+
+function validateEdit() {
+  const e = {}
+  if (!editForm.value.item.trim()) e.item = 'Укажите наименование'
+  const qty = parseFloat(editForm.value.qty)
+  if (!qty || qty <= 0) e.qty = 'Количество должно быть больше 0'
+  editErrors.value = e
+  return Object.keys(e).length === 0
+}
+
+async function handleEditSave() {
+  if (!validateEdit()) return
+  editSaving.value = true
+  try {
+    const payload = {
+      item:      editForm.value.item.trim(),
+      qty:       parseFloat(editForm.value.qty) || 1,
+      due_date:  editForm.value.due_date || null,
+      notes:     editForm.value.notes || null,
+      site_id:   editForm.value.site_id || null,
+      defect_id: editForm.value.defect_id || null,
+      status:    editForm.value.status,
+    }
+    const res = await purchasesAPI.update(detailPurchase.value.id, payload)
+    const idx = purchases.value.findIndex(x => x.id === detailPurchase.value.id)
+    if (idx >= 0) purchases.value[idx] = { ...res.data, _newStatus: res.data.status }
+    detailPurchase.value = null
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    editSaving.value = false
+  }
+}
 
 async function loadPurchases() {
   loading.value = true
