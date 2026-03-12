@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import (
     auth, config, users, clients, sites, visits, defects,
-    purchases, attachments, notifications, dashboard, tasks,
+    purchases, attachments, notifications, dashboard, tasks, reminders,
 )
 from app.routers import admin, logs
 
@@ -51,6 +51,7 @@ app.include_router(attachments.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
+app.include_router(reminders.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 
 

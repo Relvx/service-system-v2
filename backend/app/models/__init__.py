@@ -14,11 +14,12 @@ from app.models.purchase import Purchase
 from app.models.attachment import Attachment
 from app.models.notification import Notification
 from app.models.task import Task
+from app.models.reminder import Reminder
 
 __all__ = [
     "Role", "VisitStatus", "VisitType", "Priority",
     "DefectStatus", "DefectActionType", "AttachmentKind",
     "PurchaseStatus", "ServiceFrequency", "NotificationType",
     "User", "Client", "ClientContact", "ClientLegal", "Site", "Visit",
-    "Defect", "Purchase", "Attachment", "Notification", "Task",
+    "Defect", "Purchase", "Attachment", "Notification", "Task", "Reminder",
 ]

@@ -110,6 +110,12 @@ export const tasksAPI = {
   delete: (id) => api.delete(`/tasks/${id}`),
 }
 
+export const remindersAPI = {
+  getAll: () => api.get('/reminders'),
+  create: (data) => api.post('/reminders', data),
+  delete: (id) => api.delete(`/reminders/${id}`),
+}
+
 export const notificationsAPI = {
   getAll: () => api.get('/notifications'),
   getUnreadCount: () => api.get('/notifications/unread-count'),
