@@ -116,6 +116,13 @@ export const remindersAPI = {
   delete: (id) => api.delete(`/reminders/${id}`),
 }
 
+export const calendarNotesAPI = {
+  getAll: (year) => api.get('/calendar-notes', { params: year ? { year } : {} }),
+  create: (data) => api.post('/calendar-notes', data),
+  update: (id, data) => api.put(`/calendar-notes/${id}`, data),
+  delete: (id) => api.delete(`/calendar-notes/${id}`),
+}
+
 export const notificationsAPI = {
   getAll: () => api.get('/notifications'),
   getUnreadCount: () => api.get('/notifications/unread-count'),

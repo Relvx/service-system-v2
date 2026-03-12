@@ -15,6 +15,7 @@ from app.models.attachment import Attachment
 from app.models.notification import Notification
 from app.models.task import Task
 from app.models.reminder import Reminder
+from app.models.calendar_note import CalendarNote
 
 __all__ = [
     "Role", "VisitStatus", "VisitType", "Priority",
@@ -22,4 +23,5 @@ __all__ = [
     "PurchaseStatus", "ServiceFrequency", "NotificationType",
     "User", "Client", "ClientContact", "ClientLegal", "Site", "Visit",
     "Defect", "Purchase", "Attachment", "Notification", "Task", "Reminder",
+    "CalendarNote",
 ]
