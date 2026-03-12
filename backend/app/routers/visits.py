@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -234,6 +234,12 @@ async def complete_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
+    # Only the assigned master OR office/admin can complete a visit
+    user_groups = {g.sysname for g in current_user.groups}
+    is_office_admin = bool(user_groups & {"office_group", "admin_group"})
+    if not is_office_admin and visit.assigned_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only complete your own assigned visit")
+
     complete_vals = {"status": enums.visit_statuses.closed, "work_summary": body.work_summary,
                      "checklist": body.checklist, "defects_present": body.defects_present or False,
                      "defects_summary": body.defects_summary, "recommendations": body.recommendations}
@@ -246,7 +252,7 @@ async def complete_visit(
     visit.defects_present = body.defects_present or False
     visit.defects_summary = body.defects_summary
     visit.recommendations = body.recommendations
-    visit.completed_at = datetime.utcnow()
+    visit.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
     await save_log(db, current_user.id, enums.log_actions.visit_complete, "visit", visit_id)
 
@@ -346,7 +352,7 @@ async def unarchive_visit(
 async def delete_visit(
     visit_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_groups("admin_group")),
 ):
     result = await db.execute(select(Visit).where(Visit.id == visit_id))
     visit = result.scalar_one_or_none()

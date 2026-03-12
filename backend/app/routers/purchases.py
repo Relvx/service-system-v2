@@ -153,7 +153,8 @@ async def unarchive_purchase(
     if p is None:
         raise HTTPException(status_code=404, detail="Purchase not found")
     p.is_archived = False
-    await save_log(db, current_user.id, enums.log_actions.purchase_archive, "purchase", purchase_id)
+    await save_log(db, current_user.id, enums.log_actions.purchase_archive, "purchase", purchase_id,
+                   details={"action": "unarchive"})
     await db.commit()
     stmt = _build_query().where(Purchase.id == purchase_id)
     result = await db.execute(stmt)
