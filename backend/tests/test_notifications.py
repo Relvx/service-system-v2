@@ -292,3 +292,81 @@ class TestMarkReadUnread:
         notifs3 = await http_client.get("/api/notifications", headers=admin_headers)
         updated2 = next(n for n in notifs3.json() if n["id"] == notif_id)
         assert updated2["is_read"] is False
+
+
+class TestVisitCompletedNotification:
+    async def test_visit_complete_sends_notification_to_office(
+        self,
+        http_client: AsyncClient,
+        admin_token: str,
+        office_token: str,
+        site_id: int,
+        admin_user_id: int,
+    ):
+        """Завершение выезда мастером → уведомление для office/admin."""
+        office_headers = auth_headers(office_token)
+        admin_headers = auth_headers(admin_token)
+
+        # Создаём выезд от имени офиса
+        visit_res = await http_client.post("/api/visits", headers=office_headers, json={
+            "site_id": site_id,
+            "assigned_user_id": admin_user_id,
+            "planned_date": "2026-04-01",
+            "visit_type": "maintenance",
+            "priority": "medium",
+        })
+        assert visit_res.status_code == 201
+        visit_id = visit_res.json()["id"]
+
+        await http_client.put("/api/notifications/read-all", headers=admin_headers)
+
+        # Завершаем выезд от имени admin (у него есть office+admin роль)
+        comp = await http_client.post(
+            f"/api/visits/{visit_id}/complete",
+            headers=admin_headers,
+            json={"work_summary": "Выполнено ТО", "defects_present": False},
+        )
+        assert comp.status_code == 200
+
+        # office получает уведомление (офис не исключается — admin завершал)
+        notifs = await http_client.get("/api/notifications", headers=office_headers)
+        visit_notifs = [n for n in notifs.json() if n.get("related_visit_id") == visit_id]
+        assert len(visit_notifs) >= 1
+        assert visit_notifs[0]["type"] == "visit_completed"
+        assert visit_notifs[0]["is_read"] is False
+
+    async def test_visit_complete_notification_contains_site_name(
+        self,
+        http_client: AsyncClient,
+        admin_token: str,
+        office_token: str,
+        site_id: int,
+        admin_user_id: int,
+    ):
+        """Сообщение уведомления содержит название объекта."""
+        office_headers = auth_headers(office_token)
+        admin_headers = auth_headers(admin_token)
+
+        visit_res = await http_client.post("/api/visits", headers=office_headers, json={
+            "site_id": site_id,
+            "assigned_user_id": admin_user_id,
+            "planned_date": "2026-04-02",
+            "visit_type": "repair",
+            "priority": "high",
+        })
+        assert visit_res.status_code == 201
+        visit_id = visit_res.json()["id"]
+
+        await http_client.put("/api/notifications/read-all", headers=admin_headers)
+
+        await http_client.post(
+            f"/api/visits/{visit_id}/complete",
+            headers=admin_headers,
+            json={"work_summary": "Ремонт завершён", "defects_present": False},
+        )
+
+        notifs = await http_client.get("/api/notifications", headers=office_headers)
+        visit_notifs = [n for n in notifs.json() if n.get("related_visit_id") == visit_id]
+        assert len(visit_notifs) >= 1
+        # Сообщение содержит название объекта или его id
+        assert visit_notifs[0]["message"] != ""

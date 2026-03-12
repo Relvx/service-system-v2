@@ -12,7 +12,7 @@ from app.models.user import User
 from app.models.attachment import Attachment
 from app.models.history import VisitHistory
 from app.schemas.visit import VisitOut, VisitCreate, VisitUpdate, VisitComplete
-from app.utils.notifications import create_notification
+from app.utils.notifications import create_notification, notify_users_by_group
 from app.utils.audit import save_history, save_log
 from app.enums import enums
 
@@ -249,6 +249,19 @@ async def complete_visit(
     visit.completed_at = datetime.utcnow()
 
     await save_log(db, current_user.id, enums.log_actions.visit_complete, "visit", visit_id)
+
+    site_res = await db.execute(select(Site).where(Site.id == visit.site_id))
+    site_obj = site_res.scalar_one_or_none()
+    site_title = site_obj.title if site_obj else f"объект #{visit.site_id}"
+    await notify_users_by_group(
+        db,
+        group_sysnames=["office_group", "admin_group"],
+        exclude_user_id=current_user.id,
+        type_="visit_completed",
+        title="Выезд завершён мастером",
+        message=f"Мастер {current_user.full_name} завершил выезд на «{site_title}»",
+        related_visit_id=visit_id,
+    )
     await db.commit()
 
     stmt = _build_visit_query()

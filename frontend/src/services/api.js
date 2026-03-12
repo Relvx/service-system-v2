@@ -94,6 +94,7 @@ export const purchasesAPI = {
 
 export const attachmentsAPI = {
   getAll: (visitId) => api.get('/attachments', { params: { visit_id: visitId } }),
+  getByVisit: (visitId) => api.get('/attachments', { params: { visit_id: visitId } }),
   getByClient: (clientId) => api.get('/attachments', { params: { client_id: clientId } }),
   getBySite: (siteId) => api.get('/attachments', { params: { site_id: siteId } }),
   getByDefect: (defectId) => api.get('/attachments', { params: { defect_id: defectId } }),

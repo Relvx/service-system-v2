@@ -111,12 +111,30 @@
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+              <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
+            </div>
             <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div class="p-6 space-y-4">
-            <div class="flex gap-2">
+          <!-- Tabs -->
+          <div class="flex border-b">
+            <button
+              @click="detailTab = 'info'"
+              class="flex-1 py-2.5 text-sm font-medium transition-colors"
+              :class="detailTab === 'info' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'"
+            >Информация</button>
+            <button
+              @click="detailTab = 'files'"
+              class="flex-1 py-2.5 text-sm font-medium transition-colors"
+              :class="detailTab === 'files' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'"
+            >Файлы и фото</button>
+          </div>
+          <!-- Info tab -->
+          <div v-if="detailTab === 'info'" class="p-6 space-y-4">
+            <div class="flex gap-2 flex-wrap">
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
             </div>
             <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
@@ -125,18 +143,27 @@
               <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
             </div>
             <div><p class="text-sm text-gray-500">Мастер</p><p class="text-gray-900">{{ detailVisit.master_name || 'Не назначен' }}</p></div>
-            <div><p class="text-sm text-gray-500">Тип</p><p class="text-gray-900">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</p></div>
-            <div v-if="detailVisit.client_name"><p class="text-sm text-gray-500">Клиент</p><p class="text-gray-900">{{ detailVisit.client_name }}</p></div>
-            <div v-if="detailVisit.work_summary"><p class="text-sm text-gray-500">Итог работ</p><p class="text-gray-900">{{ detailVisit.work_summary }}</p></div>
-            <div v-if="detailVisit.office_notes"><p class="text-sm text-gray-500">Заметки офиса</p><p class="text-gray-900">{{ detailVisit.office_notes }}</p></div>
-            <div v-if="detailVisit.recommendations"><p class="text-sm text-gray-500">Рекомендации</p><p class="text-gray-900">{{ detailVisit.recommendations }}</p></div>
-            <div v-if="attachments.length > 0">
-              <p class="text-sm text-gray-500 mb-2 flex items-center gap-1"><ImageIcon class="w-4 h-4" /> Фотографии ({{ attachments.length }})</p>
-              <div class="flex flex-wrap gap-2">
-                <img v-for="a in attachments" :key="a.id" :src="a.file_url" @click="() => openUrl(a.file_url)"
-                  class="w-20 h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80" />
-              </div>
+            <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
+              <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
+              <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
             </div>
+            <template v-if="detailVisit.work_summary">
+              <div class="border-t pt-3">
+                <p class="text-sm text-gray-500 mb-1">Итог работ</p>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+              </div>
+              <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded p-2 text-xs">
+                ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+              </div>
+              <div v-if="detailVisit.recommendations">
+                <p class="text-sm text-gray-500">Рекомендации</p>
+                <p class="text-gray-900">{{ detailVisit.recommendations }}</p>
+              </div>
+            </template>
+          </div>
+          <!-- Files tab -->
+          <div v-else class="p-6">
+            <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
           </div>
           <div class="flex justify-between items-center p-6 border-t">
             <button
@@ -304,6 +331,7 @@ import { useRoute } from 'vue-router'
 import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
+import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
@@ -318,6 +346,7 @@ const filters = ref({ status: '', priority: '', date_from: '', date_to: '', mast
 const showArchived = ref(false)
 const modalOpen = ref(false)
 const detailVisit = ref(null)
+const detailTab = ref('info')
 const editing = ref(null)
 const saving = ref(false)
 const archiveConfirm = ref(null)
@@ -414,13 +443,12 @@ function openEdit(v) {
 }
 
 async function openDetail(v) {
+  detailTab.value = 'info'
   try {
-    const [vr, ar] = await Promise.all([visitsAPI.getById(v.id), attachmentsAPI.getAll(v.id)])
+    const vr = await visitsAPI.getById(v.id)
     detailVisit.value = vr.data
-    attachments.value = ar.data
   } catch {
     detailVisit.value = v
-    attachments.value = []
   }
 }
 
