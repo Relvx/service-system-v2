@@ -103,6 +103,11 @@
 
       <!-- История выездов -->
       <div v-if="activeTab === 'visits'">
+        <div class="flex justify-end mb-4">
+          <button @click="openCreateVisit" class="btn btn-primary flex items-center gap-2">
+            <Plus class="w-4 h-4" />Создать выезд
+          </button>
+        </div>
         <div v-if="site.recent_visits.length === 0" class="text-center py-12 text-gray-500">
           <Calendar class="w-12 h-12 mx-auto mb-3 text-gray-300" />
           Выездов пока нет
@@ -137,6 +142,65 @@
     </div>
 
     <div v-else class="text-center py-12 text-gray-500">Объект не найден</div>
+
+    <!-- Create Visit Modal -->
+    <div v-if="visitModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+          <h2 class="text-xl font-semibold text-gray-900">Создать выезд</h2>
+          <button @click="visitModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+        </div>
+        <form @submit.prevent="handleCreateVisit" class="p-6 space-y-4 overflow-y-auto flex-1">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Мастер *</label>
+            <select v-model="visitForm.assigned_user_id" class="input" required>
+              <option value="">— Выберите мастера —</option>
+              <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
+            <input v-model="visitForm.planned_date" type="date" class="input" required />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Время с</label>
+              <input v-model="visitForm.planned_time_from" type="time" class="input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Время до</label>
+              <input v-model="visitForm.planned_time_to" type="time" class="input" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Тип выезда</label>
+            <select v-model="visitForm.visit_type" class="input">
+              <option v-for="t in cfg.visitTypes" :key="t.sysname" :value="t.sysname">{{ t.display_name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+            <select v-model="visitForm.priority" class="input">
+              <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Стоимость (₽)</label>
+            <input v-model="visitForm.cost" type="number" step="any" min="0" class="input" :placeholder="costPlaceholder" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Заметки офиса</label>
+            <textarea v-model="visitForm.office_notes" class="input" rows="2" />
+          </div>
+        </form>
+        <div class="flex justify-end gap-3 p-6 border-t flex-shrink-0">
+          <button type="button" @click="visitModalOpen = false" class="btn btn-secondary">Отмена</button>
+          <button @click="handleCreateVisit" :disabled="visitSaving" class="btn btn-primary disabled:opacity-50">
+            {{ visitSaving ? 'Создание...' : 'Создать' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Edit Modal -->
     <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -203,11 +267,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Edit, X, ShieldCheck, Calendar } from 'lucide-vue-next'
+import { ArrowLeft, Edit, X, ShieldCheck, Calendar, Plus } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
-import { sitesAPI } from '../services/api.js'
+import { sitesAPI, visitsAPI, usersAPI } from '../services/api.js'
 
 const cfg = useConfigStore()
 const route = useRoute()
@@ -217,6 +281,19 @@ const modalOpen = ref(false)
 const saving = ref(false)
 const activeTab = ref('main')
 const form = ref({})
+
+// Create visit
+const visitModalOpen = ref(false)
+const visitSaving = ref(false)
+const masters = ref([])
+const visitForm = ref({})
+
+const costPlaceholder = computed(() => {
+  if (!site.value) return ''
+  const map = { maintenance: site.value.price_maintenance, repair: site.value.price_repair, emergency: site.value.price_emergency }
+  const val = map[visitForm.value.visit_type]
+  return val ? String(val) : ''
+})
 
 const tabs = computed(() => [
   { key: 'main', label: 'Основное' },
@@ -232,6 +309,49 @@ async function loadSite() {
     site.value = res.data
   } finally {
     loading.value = false
+  }
+}
+
+async function openCreateVisit() {
+  if (!masters.value.length) {
+    const res = await usersAPI.getMasters()
+    masters.value = res.data
+  }
+  visitForm.value = {
+    assigned_user_id: '',
+    planned_date: '',
+    planned_time_from: '',
+    planned_time_to: '',
+    visit_type: 'maintenance',
+    priority: 'medium',
+    cost: '',
+    office_notes: '',
+  }
+  visitModalOpen.value = true
+}
+
+async function handleCreateVisit() {
+  if (!visitForm.value.assigned_user_id || !visitForm.value.planned_date) return
+  visitSaving.value = true
+  try {
+    await visitsAPI.create({
+      site_id: Number(route.params.id),
+      assigned_user_id: visitForm.value.assigned_user_id,
+      planned_date: visitForm.value.planned_date,
+      planned_time_from: visitForm.value.planned_time_from || null,
+      planned_time_to: visitForm.value.planned_time_to || null,
+      visit_type: visitForm.value.visit_type,
+      priority: visitForm.value.priority,
+      cost: visitForm.value.cost || null,
+      office_notes: visitForm.value.office_notes || null,
+    })
+    visitModalOpen.value = false
+    await loadSite()
+    activeTab.value = 'visits'
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    visitSaving.value = false
   }
 }
 
