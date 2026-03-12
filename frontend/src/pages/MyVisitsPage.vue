@@ -163,6 +163,11 @@
               <AttachmentsTab entity-type="site" :entity-id="detailVisit.site_id" :readonly="true" />
             </div>
 
+            <!-- Вкладка: Файлы выезда -->
+            <div v-if="detailTab === 'visit_files'">
+              <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" :readonly="true" />
+            </div>
+
           </div>
 
           <!-- Footer -->
@@ -242,6 +247,7 @@ const detailTabs = [
   { key: 'visit', label: 'Выезд' },
   { key: 'site', label: 'Объект' },
   { key: 'files', label: 'Фото объекта' },
+  { key: 'visit_files', label: 'Файлы выезда' },
 ]
 
 const tabs = computed(() => [
