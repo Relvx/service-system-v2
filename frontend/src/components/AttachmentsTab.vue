@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Upload button -->
-    <div class="flex justify-end mb-4">
+    <div v-if="!props.readonly" class="flex justify-end mb-4">
       <label class="cursor-pointer btn btn-primary flex items-center">
         <Upload class="w-4 h-4 mr-2" />
         {{ uploading ? 'Загрузка...' : 'Загрузить файл' }}
@@ -60,6 +60,7 @@
 
         <!-- Delete button -->
         <button
+          v-if="!props.readonly"
           @click="confirmDelete(att)"
           class="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
           title="Удалить"
@@ -91,6 +92,7 @@ import { attachmentsAPI } from '../services/api.js'
 const props = defineProps({
   entityType: { type: String, required: true }, // 'client' | 'site' | 'defect' | 'visit' | 'task'
   entityId: { type: [Number, String], required: true },
+  readonly: { type: Boolean, default: false },
 })
 
 const attachments = ref([])

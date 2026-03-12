@@ -78,60 +78,95 @@
 
       <!-- Detail Modal -->
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
+          <!-- Header -->
+          <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
             <div>
               <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
               <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
             </div>
             <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div class="p-6 space-y-3 text-sm">
-            <!-- Статус и тип -->
-            <div class="flex gap-3 flex-wrap">
-              <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">
-                {{ cfg.visitStatusLabel(detailVisit.status) }}
-              </span>
-              <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                {{ cfg.visitTypeLabel(detailVisit.visit_type) }}
-              </span>
-              <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">
-                {{ cfg.priorityLabel(detailVisit.priority) }}
-              </span>
-            </div>
-            <!-- Основная инфо -->
-            <div><p class="text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
-            <div>
-              <p class="text-gray-500">Дата и время</p>
-              <p class="text-gray-900">
-                {{ formatDate(detailVisit.planned_date) }}
-                <span v-if="detailVisit.planned_time_from"> · {{ detailVisit.planned_time_from.slice(0,5) }}</span>
-                <span v-if="detailVisit.planned_time_to"> — {{ detailVisit.planned_time_to.slice(0,5) }}</span>
-              </p>
-            </div>
-            <div v-if="detailVisit.access_notes"><p class="text-gray-500">Доступ</p><p class="text-gray-900">{{ detailVisit.access_notes }}</p></div>
-            <div v-if="detailVisit.onsite_contact"><p class="text-gray-500">Контакт на месте</p><p class="text-gray-900">{{ detailVisit.onsite_contact }}</p></div>
-            <div v-if="detailVisit.client_contacts"><p class="text-gray-500">Контакты клиента</p><p class="text-gray-900">{{ detailVisit.client_contacts }}</p></div>
-            <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
-              <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
-              <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
-            </div>
-            <!-- Итоги (для завершённых) -->
-            <template v-if="detailVisit.work_summary">
-              <div class="border-t pt-3">
-                <p class="text-gray-500 mb-1">Итог работ</p>
-                <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
-              </div>
-              <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded p-2 text-xs">
-                ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
-              </div>
-              <div v-if="detailVisit.recommendations">
-                <p class="text-gray-500">Рекомендации</p>
-                <p class="text-gray-900">{{ detailVisit.recommendations }}</p>
-              </div>
-            </template>
+
+          <!-- Tabs -->
+          <div class="flex border-b flex-shrink-0 px-6">
+            <button v-for="t in detailTabs" :key="t.key" @click="detailTab = t.key"
+              class="py-3 mr-6 text-sm font-medium border-b-2 transition-colors"
+              :class="detailTab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+              {{ t.label }}
+            </button>
           </div>
-          <div class="p-6 border-t flex justify-end">
+
+          <!-- Content -->
+          <div class="overflow-y-auto flex-1 p-6">
+
+            <!-- Вкладка: Выезд -->
+            <div v-if="detailTab === 'visit'" class="space-y-4 text-sm">
+              <div class="flex gap-2 flex-wrap">
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
+              </div>
+              <div>
+                <p class="text-gray-500 mb-0.5">Дата и время</p>
+                <p class="text-gray-900 font-medium">
+                  {{ formatDate(detailVisit.planned_date) }}
+                  <span v-if="detailVisit.planned_time_from"> · {{ detailVisit.planned_time_from.slice(0,5) }}</span>
+                  <span v-if="detailVisit.planned_time_to"> — {{ detailVisit.planned_time_to.slice(0,5) }}</span>
+                </p>
+              </div>
+              <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded-lg p-3">
+                <p class="text-xs font-medium text-primary-700 mb-1">💬 Заметка офиса</p>
+                <p class="text-primary-900 whitespace-pre-wrap">{{ detailVisit.office_notes }}</p>
+              </div>
+              <template v-if="detailVisit.work_summary">
+                <div class="border-t pt-4">
+                  <p class="text-gray-500 mb-1">Итог работ</p>
+                  <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+                </div>
+                <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded-lg p-3 text-xs">
+                  ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+                </div>
+                <div v-if="detailVisit.recommendations">
+                  <p class="text-gray-500">Рекомендации</p>
+                  <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.recommendations }}</p>
+                </div>
+              </template>
+            </div>
+
+            <!-- Вкладка: Объект -->
+            <div v-if="detailTab === 'site'" class="space-y-4 text-sm">
+              <div>
+                <p class="text-gray-500 mb-0.5">Адрес</p>
+                <p class="text-gray-900 font-medium">{{ detailVisit.site_address }}</p>
+              </div>
+              <div v-if="detailVisit.onsite_contact">
+                <p class="text-gray-500 mb-0.5">Контакт на месте</p>
+                <p class="text-gray-900 font-medium">{{ detailVisit.onsite_contact }}</p>
+              </div>
+              <div v-if="detailVisit.access_notes">
+                <p class="text-gray-500 mb-0.5">Доступ на объект</p>
+                <p class="text-gray-900 whitespace-pre-wrap bg-yellow-50 rounded-lg p-3">{{ detailVisit.access_notes }}</p>
+              </div>
+              <div v-if="detailVisit.client_contacts">
+                <p class="text-gray-500 mb-0.5">Контакты клиента</p>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.client_contacts }}</p>
+              </div>
+              <div v-if="detailVisit.latitude && detailVisit.longitude">
+                <p class="text-gray-500 mb-0.5">Координаты</p>
+                <p class="text-gray-900 font-mono text-xs">{{ detailVisit.latitude }}, {{ detailVisit.longitude }}</p>
+              </div>
+            </div>
+
+            <!-- Вкладка: Фото объекта -->
+            <div v-if="detailTab === 'files'">
+              <AttachmentsTab entity-type="site" :entity-id="detailVisit.site_id" :readonly="true" />
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div class="p-6 border-t flex justify-end flex-shrink-0">
             <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
           </div>
         </div>
@@ -182,6 +217,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Calendar, MapPin, Play, CheckCircle, X, Eye, Building2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import PhotoUpload from '../components/PhotoUpload.vue'
+import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import { visitsAPI, attachmentsAPI } from '../services/api.js'
@@ -200,6 +236,13 @@ const activeTab = ref('active')
 const photos = ref([])
 
 const completeForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
+
+const detailTab = ref('visit')
+const detailTabs = [
+  { key: 'visit', label: 'Выезд' },
+  { key: 'site', label: 'Объект' },
+  { key: 'files', label: 'Фото объекта' },
+]
 
 const tabs = computed(() => [
   { id: 'active', label: 'Активные', count: visits.value.filter((v) => ['planned', 'in_progress'].includes(v.status)).length },
@@ -236,6 +279,7 @@ async function startVisit(v) {
 }
 
 async function openDetail(v) {
+  detailTab.value = 'visit'
   try {
     const res = await visitsAPI.getById(v.id)
     detailVisit.value = res.data
