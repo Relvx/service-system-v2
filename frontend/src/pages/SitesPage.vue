@@ -98,8 +98,16 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Адрес *</label>
-              <input v-model="form.address" class="input" :class="{ 'border-red-400': errors.address }" placeholder="г. Москва, ул. Ленина, д. 1" @input="delete errors.address" />
+              <div class="flex gap-2">
+                <input v-model="form.address" class="input flex-1" :class="{ 'border-red-400': errors.address }" placeholder="г. Москва, ул. Ленина, д. 1" @input="delete errors.address" />
+                <button type="button" :disabled="geocoding || !form.address.trim()" @click="handleGeocode"
+                  class="btn btn-secondary text-sm px-3 disabled:opacity-50 whitespace-nowrap flex items-center gap-1">
+                  <MapPin class="w-3.5 h-3.5" />
+                  {{ geocoding ? '...' : 'Координаты' }}
+                </button>
+              </div>
               <p v-if="errors.address" class="text-red-600 text-xs mt-1">{{ errors.address }}</p>
+              <p v-if="geocodeError" class="text-red-600 text-xs mt-1">{{ geocodeError }}</p>
             </div>
             <div class="relative">
               <label class="block text-sm font-medium text-gray-700 mb-1">Клиент</label>
@@ -221,6 +229,8 @@ const form = ref({ title: '', address: '', client_id: '', latitude: '', longitud
 const errors = ref({})
 const clientSearch = ref('')
 const clientDropdownOpen = ref(false)
+const geocoding = ref(false)
+const geocodeError = ref('')
 
 const filteredClients = computed(() => {
   const q = clientSearch.value.toLowerCase()
@@ -262,6 +272,7 @@ async function loadClients() {
 function openCreate() {
   editing.value = null
   errors.value = {}
+  geocodeError.value = ''
   form.value = { title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' }
   clientSearch.value = ''
   clientDropdownOpen.value = false
@@ -271,6 +282,7 @@ function openCreate() {
 function openEdit(s) {
   editing.value = s
   errors.value = {}
+  geocodeError.value = ''
   form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly', price_maintenance: s.price_maintenance || '', price_repair: s.price_repair || '', price_emergency: s.price_emergency || '' }
   clientSearch.value = s.client_name || ''
   clientDropdownOpen.value = false
@@ -279,6 +291,21 @@ function openEdit(s) {
 
 function openDetail(s) {
   router.push(`/sites/${s.id}`)
+}
+
+async function handleGeocode() {
+  if (!form.value.address.trim()) return
+  geocoding.value = true
+  geocodeError.value = ''
+  try {
+    const res = await sitesAPI.geocodeAddress(form.value.address)
+    form.value.latitude = res.data.latitude
+    form.value.longitude = res.data.longitude
+  } catch {
+    geocodeError.value = 'Не удалось определить координаты. Проверьте адрес.'
+  } finally {
+    geocoding.value = false
+  }
 }
 
 async function handleSave() {

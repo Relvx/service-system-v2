@@ -18,6 +18,18 @@ from app.enums import enums
 router = APIRouter(prefix="/sites", tags=["sites"])
 
 
+@router.get("/geocode")
+async def geocode_address_endpoint(
+    address: str,
+    _=Depends(get_current_user),
+):
+    """Вернуть координаты для адреса без сохранения (для формы)."""
+    coords = await geocode_address(address)
+    if coords is None:
+        raise HTTPException(status_code=502, detail="Geocoding failed or API key not configured")
+    return {"latitude": coords[0], "longitude": coords[1]}
+
+
 @router.get("", response_model=List[SiteOut])
 async def get_sites(
     client_id: Optional[int] = None,
@@ -176,9 +188,12 @@ async def update_site(
     for field, value in changed.items():
         setattr(site, field, value)
 
-    # Автогеокодинг: если адрес изменился и координаты не заданы явно
+    # Автогеокодинг: если адрес изменился и явные ненулевые координаты не переданы
     address_changed = "address" in changed
-    coords_explicit = "latitude" in changed or "longitude" in changed
+    coords_explicit = (
+        ("latitude" in changed and changed["latitude"] is not None) or
+        ("longitude" in changed and changed["longitude"] is not None)
+    )
     if address_changed and not coords_explicit:
         coords = await geocode_address(site.address)
         if coords:

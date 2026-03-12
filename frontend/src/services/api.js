@@ -63,6 +63,8 @@ export const sitesAPI = {
   archive: (id) => api.patch(`/sites/${id}/archive`),
   unarchive: (id) => api.patch(`/sites/${id}/unarchive`),
   delete: (id) => api.delete(`/sites/${id}`),
+  geocodeAddress: (address) => api.get('/sites/geocode', { params: { address } }),
+  geocodeSite: (id) => api.post(`/sites/${id}/geocode`),
 }
 
 export const visitsAPI = {
