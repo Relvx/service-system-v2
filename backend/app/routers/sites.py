@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.history import SiteHistory
 from app.schemas.site import SiteOut, SiteDetailOut, SiteCreate, SiteUpdate
 from app.utils.audit import save_history, save_log
+from app.utils.geocoding import geocode_address
 from app.enums import enums
 
 router = APIRouter(prefix="/sites", tags=["sites"])
@@ -141,6 +142,13 @@ async def create_site(
     current_user=Depends(get_current_user),
 ):
     site = Site(**body.model_dump())
+
+    # Автогеокодинг: заполняем координаты из адреса, если не заданы явно
+    if site.latitude is None or site.longitude is None:
+        coords = await geocode_address(site.address)
+        if coords:
+            site.latitude, site.longitude = coords
+
     db.add(site)
     await db.flush()
     await save_log(db, current_user.id, enums.log_actions.site_create, "site", site.id)
@@ -168,8 +176,40 @@ async def update_site(
     for field, value in changed.items():
         setattr(site, field, value)
 
+    # Автогеокодинг: если адрес изменился и координаты не заданы явно
+    address_changed = "address" in changed
+    coords_explicit = "latitude" in changed or "longitude" in changed
+    if address_changed and not coords_explicit:
+        coords = await geocode_address(site.address)
+        if coords:
+            site.latitude, site.longitude = coords
+
     await save_log(db, current_user.id, enums.log_actions.site_update, "site", site_id,
                    details={"changed": list(changed.keys())})
+    await db.commit()
+    await db.refresh(site)
+    return SiteOut.model_validate(site)
+
+
+@router.post("/{site_id}/geocode", response_model=SiteOut)
+async def geocode_site(
+    site_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Принудительно обновить координаты объекта по его адресу через 2GIS."""
+    result = await db.execute(select(Site).where(Site.id == site_id))
+    site = result.scalar_one_or_none()
+    if site is None:
+        raise HTTPException(status_code=404, detail="Site not found")
+
+    coords = await geocode_address(site.address)
+    if coords is None:
+        raise HTTPException(status_code=502, detail="Geocoding failed or API key not configured")
+
+    site.latitude, site.longitude = coords
+    await save_log(db, current_user.id, enums.log_actions.site_update, "site", site_id,
+                   details={"action": "geocode", "address": site.address})
     await db.commit()
     await db.refresh(site)
     return SiteOut.model_validate(site)

@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRES_MINUTES: int = 10080  # 7 days
 
+    DGIS_API_KEY: str = ""
+
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
