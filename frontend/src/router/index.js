@@ -65,6 +65,11 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/tasks',
+    component: () => import('../pages/TasksPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
     path: '/logs',
     component: () => import('../pages/LogsPage.vue'),
     meta: { requiresAuth: true, allowedGroups: ['admin_group', 'office_group'] },

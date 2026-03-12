@@ -89,7 +89,7 @@ import { Upload, Paperclip, FileText, X } from 'lucide-vue-next'
 import { attachmentsAPI } from '../services/api.js'
 
 const props = defineProps({
-  entityType: { type: String, required: true }, // 'client' | 'site' | 'defect' | 'visit'
+  entityType: { type: String, required: true }, // 'client' | 'site' | 'defect' | 'visit' | 'task'
   entityId: { type: [Number, String], required: true },
 })
 
@@ -110,6 +110,7 @@ async function loadAttachments() {
       site:   attachmentsAPI.getBySite,
       defect: attachmentsAPI.getByDefect,
       visit:  attachmentsAPI.getByVisit,
+      task:   attachmentsAPI.getByTask,
     }
     const res = await fetchMap[props.entityType](props.entityId)
     attachments.value = res.data
@@ -137,7 +138,7 @@ async function handleFile(e) {
     const data = await res.json()
     if (!data.secure_url) throw new Error('Cloudinary error')
 
-    const keyMap = { client: 'client_id', site: 'site_id', defect: 'defect_id', visit: 'visit_id' }
+    const keyMap = { client: 'client_id', site: 'site_id', defect: 'defect_id', visit: 'visit_id', task: 'task_id' }
     await attachmentsAPI.upload({
       [keyMap[props.entityType]]: Number(props.entityId),
       kind: isImg ? 'photo' : 'document',

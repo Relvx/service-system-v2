@@ -98,8 +98,16 @@ export const attachmentsAPI = {
   getByClient: (clientId) => api.get('/attachments', { params: { client_id: clientId } }),
   getBySite: (siteId) => api.get('/attachments', { params: { site_id: siteId } }),
   getByDefect: (defectId) => api.get('/attachments', { params: { defect_id: defectId } }),
+  getByTask: (taskId) => api.get('/attachments', { params: { task_id: taskId } }),
   upload: (data) => api.post('/attachments', data),
   delete: (id) => api.delete(`/attachments/${id}`),
+}
+
+export const tasksAPI = {
+  getAll: (params = {}) => api.get('/tasks', { params }),
+  create: (data) => api.post('/tasks', data),
+  update: (id, data) => api.put(`/tasks/${id}`, data),
+  delete: (id) => api.delete(`/tasks/${id}`),
 }
 
 export const notificationsAPI = {
