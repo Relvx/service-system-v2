@@ -115,7 +115,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, Map, Calendar, Users, Building2,
   ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell, Settings, ScrollText,
-  CheckSquare, BellRing, ChevronLeft, ChevronRight,
+  CheckSquare, BellRing, ChevronLeft, ChevronRight, FileText,
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth.js'
 import { notificationsAPI } from '../services/api.js'
@@ -152,6 +152,7 @@ const allNav = [
   { name: 'Календарь',  href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group'] },
   { name: 'Мои выезды', href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
   { name: 'Клиенты',    href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
+  { name: 'Договоры',   href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group'] },
   { name: 'Объекты',    href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group'] },
   { name: 'Выезды',     href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group'] },
   { name: 'Дефекты',    href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },

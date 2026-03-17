@@ -133,6 +133,51 @@
         </div>
       </div>
 
+      <!-- Договоры -->
+      <div v-if="activeTab === 'contracts'">
+        <div class="flex justify-end mb-4">
+          <button @click="openContractCreate" class="btn btn-primary flex items-center">
+            <Plus class="w-4 h-4 mr-2" />Новый договор
+          </button>
+        </div>
+        <div v-if="contractsLoading" class="flex justify-center py-10">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+        <div v-else-if="contracts.length === 0" class="text-center py-12 card">
+          <FileText class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p class="text-gray-500">Договоры не найдены</p>
+        </div>
+        <div v-else class="space-y-3">
+          <router-link
+            v-for="c in contracts" :key="c.id"
+            :to="`/contracts/${c.id}`"
+            class="card hover:shadow-md transition-shadow block"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <FileText class="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <p class="font-semibold text-gray-900">{{ c.contract_number || 'Без номера' }}</p>
+                    <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="contractStatusClass(c.status)">
+                      {{ contractStatusLabel(c.status) }}
+                    </span>
+                  </div>
+                  <p v-if="c.subject" class="text-sm text-gray-500 mt-0.5">{{ c.subject }}</p>
+                </div>
+              </div>
+              <div class="text-right text-sm text-gray-500">
+                <p v-if="c.contract_date">{{ formatDate(c.contract_date) }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ c.sites_count }} {{ sitesWord(c.sites_count) }}</p>
+                <p v-if="c.amount" class="font-medium text-gray-700 mt-1">{{ formatAmount(c.amount) }} ₽</p>
+              </div>
+            </div>
+          </router-link>
+        </div>
+      </div>
+
       <!-- Файлы -->
       <div v-if="activeTab === 'files'">
         <AttachmentsTab entity-type="client" :entity-id="client.id" />
@@ -282,6 +327,33 @@
       </div>
     </div>
 
+    <!-- Contract Create Modal -->
+    <div v-if="contractCreateModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+        <div class="flex items-center justify-between p-6 border-b">
+          <h2 class="text-xl font-semibold text-gray-900">Новый договор</h2>
+          <button @click="contractCreateModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+        </div>
+        <form @submit.prevent="handleContractCreate" class="p-6 space-y-4">
+          <div class="text-sm text-gray-500 bg-gray-50 rounded p-3">
+            Клиент: <span class="font-medium text-gray-900">{{ client.name }}</span>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Номер договора</label><input v-model="contractForm.contract_number" class="input" placeholder="0817/2 от 17.08.2006" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Дата договора</label><input v-model="contractForm.contract_date" type="date" class="input" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Предмет договора</label><input v-model="contractForm.subject" class="input" placeholder="ТО газового оборудования" /></div>
+          <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Сумма договора</label><input v-model="contractForm.amount" type="number" step="0.01" class="input" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Сумма акта</label><input v-model="contractForm.act_amount" type="number" step="0.01" class="input" /></div>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label><textarea v-model="contractForm.notes" class="input" rows="2" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" @click="contractCreateModalOpen = false" class="btn btn-secondary">Отмена</button>
+            <button type="submit" :disabled="contractSaving" class="btn btn-primary disabled:opacity-50">{{ contractSaving ? 'Сохранение...' : 'Создать' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Contact Delete Confirm -->
     <div v-if="contactDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
@@ -299,11 +371,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2 } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2, FileText } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
-import { clientsAPI, sitesAPI } from '../services/api.js'
+import { clientsAPI, sitesAPI, contractsAPI } from '../services/api.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
@@ -327,6 +399,13 @@ const siteSaving = ref(false)
 const siteForm = ref({ title: '', address: '', service_frequency: 'monthly', onsite_contact: '', access_notes: '' })
 const siteErrors = ref({})
 
+// Contracts
+const contracts = ref([])
+const contractsLoading = ref(false)
+const contractCreateModalOpen = ref(false)
+const contractForm = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
+const contractSaving = ref(false)
+
 // Contacts
 const contactModalOpen = ref(false)
 const editingContact = ref(null)
@@ -337,6 +416,7 @@ const tabs = computed(() => [
   { key: 'main', label: 'Основное' },
   { key: 'contacts', label: 'Контакты', count: client.value?.contact_persons?.length ?? 0 },
   { key: 'sites', label: 'Объекты', count: client.value?.sites?.length ?? 0 },
+  { key: 'contracts', label: 'Договоры', count: contracts.value?.length ?? 0 },
   { key: 'visits', label: 'История выездов', count: client.value?.recent_visits?.length ?? 0 },
   { key: 'files', label: 'Файлы и фото' },
 ])
@@ -350,6 +430,53 @@ async function loadClient() {
     loading.value = false
   }
 }
+
+async function loadContracts() {
+  contractsLoading.value = true
+  try {
+    const res = await contractsAPI.getByClient(route.params.id)
+    contracts.value = res.data
+  } finally {
+    contractsLoading.value = false
+  }
+}
+
+function openContractCreate() {
+  contractForm.value = { contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' }
+  contractCreateModalOpen.value = true
+}
+
+async function handleContractCreate() {
+  contractSaving.value = true
+  try {
+    const payload = { ...contractForm.value, client_id: client.value.id }
+    if (!payload.contract_date) delete payload.contract_date
+    if (!payload.amount) delete payload.amount
+    if (!payload.act_amount) delete payload.act_amount
+    await contractsAPI.create(payload)
+    contractCreateModalOpen.value = false
+    await loadContracts()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    contractSaving.value = false
+  }
+}
+
+function contractStatusClass(s) {
+  const m = { active: 'bg-green-100 text-green-700', closed: 'bg-gray-200 text-gray-600', cancelled: 'bg-red-100 text-red-700' }
+  return m[s] || 'bg-gray-100 text-gray-600'
+}
+function contractStatusLabel(s) {
+  const m = { active: 'Активен', closed: 'Закрыт', cancelled: 'Отменён' }
+  return m[s] || s
+}
+function sitesWord(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return 'объект'
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return 'объекта'
+  return 'объектов'
+}
+function formatAmount(v) { return Number(v).toLocaleString('ru-RU') }
 
 function openEdit() {
   editForm.value = {
@@ -479,5 +606,5 @@ function priorityClass(p) {
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(loadClient)
+onMounted(() => { loadClient(); loadContracts() })
 </script>

@@ -30,6 +30,16 @@ const routes = [
     meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
+    path: '/contracts',
+    component: () => import('../pages/ContractsPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
+    path: '/contracts/:id',
+    component: () => import('../pages/ContractDetailPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
     path: '/sites',
     component: () => import('../pages/SitesPage.vue'),
     meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },

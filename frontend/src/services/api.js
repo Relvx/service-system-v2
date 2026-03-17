@@ -153,6 +153,16 @@ export const configAPI = {
   deleteItem: (resource, sysname) => api.delete(`/config/${resource}/${sysname}`),
 }
 
+export const contractsAPI = {
+  getAll: (params) => api.get('/contracts', { params }),
+  getById: (id) => api.get(`/contracts/${id}`),
+  getByClient: (clientId) => api.get(`/contracts/by-client/${clientId}`),
+  create: (data) => api.post('/contracts', data),
+  update: (id, data) => api.patch(`/contracts/${id}`, data),
+  addSite: (contractId, siteId) => api.post(`/contracts/${contractId}/sites/${siteId}`),
+  removeSite: (contractId, siteId) => api.delete(`/contracts/${contractId}/sites/${siteId}`),
+}
+
 export const logsAPI = {
   getAll: (params) => api.get('/logs', { params }),
 }
