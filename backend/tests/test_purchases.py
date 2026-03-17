@@ -241,3 +241,60 @@ class TestPurchaseBlock6:
         assert res.status_code == 201
         assert "is_archived" in res.json()
         assert res.json()["is_archived"] is False
+
+
+class TestPurchaseUpdateLinkFix:
+    """Регрессионные тесты: PUT /purchases/{id} должен сохранять site_id и defect_id.
+
+    Баг: PurchaseUpdate не содержал site_id/defect_id — Pydantic молча их обрезал,
+    привязка закупки к объекту/дефекту не менялась.
+    """
+
+    async def test_update_site_id(self, http_client: AsyncClient, admin_token: str,
+                                   site_id: int):
+        """PUT с site_id сохраняет привязку к объекту."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json=PURCHASE_PAYLOAD)
+        pid = res.json()["id"]
+        assert res.json()["site_id"] is None
+
+        upd = await http_client.put(f"/api/purchases/{pid}", headers=headers,
+                                     json={"site_id": site_id})
+        assert upd.status_code == 200
+        assert upd.json()["site_id"] == site_id
+        assert upd.json()["site_title"] is not None
+
+    async def test_update_defect_id(self, http_client: AsyncClient, admin_token: str):
+        """PUT с defect_id сохраняет привязку к дефекту."""
+        headers = auth_headers(admin_token)
+        d_res = await http_client.post("/api/defects", headers=headers, json={
+            "title": "__test__ Дефект для update_defect_id",
+            "priority": "medium",
+            "action_type": "repair",
+        })
+        defect_id = d_res.json()["id"]
+
+        res = await http_client.post("/api/purchases", headers=headers, json=PURCHASE_PAYLOAD)
+        pid = res.json()["id"]
+        assert res.json()["defect_id"] is None
+
+        upd = await http_client.put(f"/api/purchases/{pid}", headers=headers,
+                                     json={"defect_id": defect_id})
+        assert upd.status_code == 200
+        assert upd.json()["defect_id"] == defect_id
+        assert upd.json()["defect_title"] == "__test__ Дефект для update_defect_id"
+
+    async def test_clear_site_id(self, http_client: AsyncClient, admin_token: str,
+                                  site_id: int):
+        """PUT с site_id=null снимает привязку к объекту."""
+        headers = auth_headers(admin_token)
+        res = await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD, "site_id": site_id,
+        })
+        pid = res.json()["id"]
+        assert res.json()["site_id"] == site_id
+
+        upd = await http_client.put(f"/api/purchases/{pid}", headers=headers,
+                                     json={"site_id": None})
+        assert upd.status_code == 200
+        assert upd.json()["site_id"] is None

@@ -38,3 +38,5 @@ class PurchaseUpdate(BaseModel):
     status: Optional[str] = None
     due_date: Optional[date] = None
     notes: Optional[str] = None
+    site_id: Optional[int] = None
+    defect_id: Optional[int] = None

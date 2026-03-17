@@ -74,7 +74,7 @@
                 <Pencil class="w-4 h-4" />
               </button>
               <button
-                v-if="canCancel(row) && auth.hasGroup('office_group', 'admin_group')"
+                v-if="canCancel(row) && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
                 @click="cancelConfirm = row"
                 class="text-red-500 hover:text-red-700"
                 title="Отменить выезд"
