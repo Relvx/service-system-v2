@@ -17,6 +17,8 @@ from app.models.task import Task
 from app.models.reminder import Reminder
 from app.models.calendar_note import CalendarNote
 from app.models.contract import Contract, ContractSite
+from app.models.equipment import Equipment
+from app.models.service_schedule import ServiceSchedule
 
 __all__ = [
     "Role", "VisitStatus", "VisitType", "Priority",
@@ -24,5 +26,5 @@ __all__ = [
     "PurchaseStatus", "ServiceFrequency", "NotificationType",
     "User", "Client", "ClientContact", "ClientLegal", "Site", "Visit",
     "Defect", "Purchase", "Attachment", "Notification", "Task", "Reminder",
-    "CalendarNote", "Contract", "ContractSite",
+    "CalendarNote", "Contract", "ContractSite", "Equipment", "ServiceSchedule",
 ]

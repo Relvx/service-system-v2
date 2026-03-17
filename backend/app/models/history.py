@@ -103,6 +103,8 @@ class VisitHistory(Base):
     v_completed_at      = Column(DateTime,   nullable=True)
     v_office_notes      = Column(Text,       nullable=True)
     v_cost              = Column(Float,      nullable=True)
+    v_contract_id       = Column(BigInteger, nullable=True)
+    v_master_name_raw   = Column(String(100), nullable=True)
     v_created_at        = Column(DateTime,   nullable=True)
     v_updated_at        = Column(DateTime,   nullable=True)
     changed_at         = Column(DateTime, default=datetime.now, nullable=False)
