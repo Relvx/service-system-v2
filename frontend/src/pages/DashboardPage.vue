@@ -22,7 +22,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-sm text-gray-600">{{ stat.name }}</p>
-                <p class="text-3xl font-bold text-gray-900 mt-2">{{ stat.value }}</p>
+                <p class="text-2xl md:text-3xl font-bold text-gray-900 mt-2">{{ stat.value }}</p>
               </div>
               <div :class="`${stat.color} p-3 rounded-lg`">
                 <component :is="stat.icon" class="h-6 w-6 text-white" />

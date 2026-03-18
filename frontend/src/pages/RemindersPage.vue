@@ -1,7 +1,7 @@
 <template>
   <Layout>
     <div class="max-w-2xl">
-      <h1 class="text-3xl font-bold text-gray-900 mb-8">Напоминания</h1>
+      <h1 class="text-xl md:text-3xl font-bold text-gray-900 mb-8">Напоминания</h1>
 
       <!-- Общие напоминания -->
       <div class="card mb-6">
