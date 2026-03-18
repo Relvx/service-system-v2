@@ -189,7 +189,64 @@
             <button @click="closeModal" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleSave" class="p-6 space-y-4">
-            <div>
+            <!-- CREATE: клиент + мультивыбор объектов -->
+            <template v-if="!editing">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Клиент *</label>
+                <div class="relative">
+                  <input
+                    v-model="clientQuery"
+                    type="text"
+                    class="input pr-8"
+                    :class="{ 'border-red-400': errors.client }"
+                    placeholder="Начните вводить название..."
+                    @focus="clientDropdownOpen = true"
+                    @input="clientDropdownOpen = true; selectedClient = null; clientSites = []; selectedSiteIds = []"
+                    @keydown.escape="clientDropdownOpen = false"
+                    autocomplete="off"
+                  />
+                  <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <div
+                    v-if="clientDropdownOpen && filteredClients.length"
+                    class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                  >
+                    <button
+                      v-for="c in filteredClients"
+                      :key="c.id"
+                      type="button"
+                      class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      @click="selectClient(c); delete errors.client"
+                    >{{ c.name }}</button>
+                  </div>
+                </div>
+                <p v-if="errors.client" class="text-red-600 text-xs mt-1">{{ errors.client }}</p>
+              </div>
+
+              <div v-if="selectedClient">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Объекты * <span class="text-gray-400 font-normal">(выбрано: {{ selectedSiteIds.length }})</span>
+                </label>
+                <div v-if="clientSites.length" class="border border-gray-200 rounded-lg max-h-44 overflow-y-auto divide-y divide-gray-100">
+                  <label
+                    v-for="s in clientSites"
+                    :key="s.id"
+                    class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                    @click.prevent="toggleSite(s.id); delete errors.sites"
+                  >
+                    <input type="checkbox" :checked="selectedSiteIds.includes(s.id)" class="mt-0.5 rounded flex-shrink-0" readonly />
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900 truncate">{{ s.title }}</p>
+                      <p class="text-xs text-gray-500 truncate">{{ s.address }}</p>
+                    </div>
+                  </label>
+                </div>
+                <p v-else class="text-sm text-gray-400 py-2">Нет активных объектов у этого клиента</p>
+                <p v-if="errors.sites" class="text-red-600 text-xs mt-1">{{ errors.sites }}</p>
+              </div>
+            </template>
+
+            <!-- EDIT: обычный select объекта -->
+            <div v-else>
               <label class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
               <select v-model="form.site_id" class="input" :class="{ 'border-red-400': errors.site_id }" @change="delete errors.site_id">
                 <option value="">Выберите объект</option>
@@ -240,7 +297,7 @@
             <div class="flex justify-end gap-3 pt-4">
               <button type="button" @click="closeModal" class="btn btn-secondary">Отмена</button>
               <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
-                {{ saving ? 'Сохранение...' : (editing ? 'Сохранить' : 'Создать') }}
+                {{ saving ? 'Сохранение...' : editing ? 'Сохранить' : selectedSiteIds.length > 1 ? `Создать ${selectedSiteIds.length} выезда` : 'Создать выезд' }}
               </button>
             </div>
           </form>
@@ -355,15 +412,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
-import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
+import { visitsAPI, sitesAPI, usersAPI, clientsAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
@@ -388,6 +445,35 @@ const attachments = ref([])
 const errors = ref({})
 const visitPhotos = ref([])
 const selectedPhotos = ref([])
+
+// Create form: client search + multi-site
+const allClients = ref([])
+const clientQuery = ref('')
+const clientDropdownOpen = ref(false)
+const selectedClient = ref(null)
+const clientSites = ref([])
+const selectedSiteIds = ref([])
+
+const filteredClients = computed(() => {
+  const q = clientQuery.value.toLowerCase().trim()
+  if (!q) return allClients.value.slice(0, 50)
+  return allClients.value.filter(c => c.name.toLowerCase().includes(q)).slice(0, 50)
+})
+
+async function selectClient(client) {
+  selectedClient.value = client
+  clientQuery.value = client.name
+  clientDropdownOpen.value = false
+  selectedSiteIds.value = []
+  const res = await sitesAPI.getAll({ client_id: client.id, active_only: true })
+  clientSites.value = res.data
+}
+
+function toggleSite(id) {
+  const idx = selectedSiteIds.value.indexOf(id)
+  if (idx === -1) selectedSiteIds.value.push(id)
+  else selectedSiteIds.value.splice(idx, 1)
+}
 
 const columns = [
   { key: 'planned_date', label: 'Дата',       width: 130 },
@@ -424,8 +510,8 @@ async function loadVisits() {
 }
 
 async function loadFormData() {
-  const [sr, mr] = await Promise.all([sitesAPI.getAll({ active_only: true }), usersAPI.getMasters()])
-  sites.value = sr.data
+  const [cr, mr] = await Promise.all([clientsAPI.getAll({ active_only: true }), usersAPI.getMasters()])
+  allClients.value = cr.data
   masters.value = mr.data
 }
 
@@ -445,7 +531,12 @@ async function handleCancel() {
 
 function validate() {
   const e = {}
-  if (!form.value.site_id) e.site_id = 'Выберите объект'
+  if (editing.value) {
+    if (!form.value.site_id) e.site_id = 'Выберите объект'
+  } else {
+    if (!selectedClient.value) e.client = 'Выберите клиента'
+    if (selectedSiteIds.value.length === 0) e.sites = 'Выберите хотя бы один объект'
+  }
   if (!form.value.planned_date) e.planned_date = 'Укажите дату'
   errors.value = e
   return Object.keys(e).length === 0
@@ -455,11 +546,16 @@ function openCreate() {
   editing.value = null
   errors.value = {}
   form.value = { site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '', planned_time_to: '', visit_type: 'maintenance', priority: 'medium', office_notes: '', status: 'planned' }
+  clientQuery.value = ''
+  selectedClient.value = null
+  clientSites.value = []
+  selectedSiteIds.value = []
+  clientDropdownOpen.value = false
   loadFormData()
   modalOpen.value = true
 }
 
-function openEdit(v) {
+async function openEdit(v) {
   editing.value = v
   errors.value = {}
   form.value = {
@@ -469,7 +565,9 @@ function openEdit(v) {
     priority: v.priority || 'medium', office_notes: v.office_notes || '', status: v.status || 'planned',
   }
   detailVisit.value = null
-  loadFormData()
+  const [sr, mr] = await Promise.all([sitesAPI.getAll({ active_only: true }), usersAPI.getMasters()])
+  sites.value = sr.data
+  masters.value = mr.data
   modalOpen.value = true
 }
 
@@ -487,16 +585,19 @@ async function handleSave() {
   if (!validate()) return
   saving.value = true
   try {
-    const payload = {
-      site_id: form.value.site_id, assigned_user_id: form.value.assigned_user_id || null,
-      planned_date: form.value.planned_date, planned_time_from: form.value.planned_time_from || null,
-      planned_time_to: form.value.planned_time_to || null, visit_type: form.value.visit_type,
-      priority: form.value.priority, office_notes: form.value.office_notes || null,
+    const base = {
+      assigned_user_id: form.value.assigned_user_id || null,
+      planned_date: form.value.planned_date,
+      planned_time_from: form.value.planned_time_from || null,
+      planned_time_to: form.value.planned_time_to || null,
+      visit_type: form.value.visit_type,
+      priority: form.value.priority,
+      office_notes: form.value.office_notes || null,
     }
     if (editing.value) {
-      await visitsAPI.update(editing.value.id, { ...payload, status: form.value.status })
+      await visitsAPI.update(editing.value.id, { ...base, site_id: form.value.site_id, status: form.value.status })
     } else {
-      await visitsAPI.create(payload)
+      await Promise.all(selectedSiteIds.value.map(sid => visitsAPI.create({ ...base, site_id: sid })))
     }
     closeModal()
     await loadVisits()
@@ -580,7 +681,7 @@ async function handleDefectSave() {
   }
 }
 
-function closeModal() { modalOpen.value = false; editing.value = null; errors.value = {} }
+function closeModal() { modalOpen.value = false; editing.value = null; errors.value = {}; clientDropdownOpen.value = false }
 function openUrl(url) { window.open(url, '_blank') }
 
 function statusClass(s) {

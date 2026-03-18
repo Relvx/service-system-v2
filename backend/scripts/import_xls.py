@@ -165,10 +165,13 @@ async def run_import(xls_path: str, dry_run: bool, limit: int | None):
                     stats["clients_existing"] += 1
                 else:
                     phone = str(sh.cell_value(row, 3)).strip() or None
-                    contact_person = str(sh.cell_value(row, 4)).strip() or None
+                    contact_person_raw = str(sh.cell_value(row, 4)).strip() or None
+                    # contacts — Text (unlimited), contact_person — VARCHAR(255)
+                    contacts_full = "; ".join(filter(None, [phone, contact_person_raw]))
+                    contact_person = contact_person_raw[:255] if contact_person_raw else None
                     client = Client(
                         name=name,
-                        contacts=phone,
+                        contacts=contacts_full or None,
                         contact_person=contact_person,
                         is_active=True,
                         is_archived=False,
@@ -199,10 +202,15 @@ async def run_import(xls_path: str, dry_run: bool, limit: int | None):
 
             client_id = client_map.get(client_name)
             address = str(sh.cell_value(row, 10)).strip() or "Адрес не указан"
-            contract_number = str(sh.cell_value(row, 6)).strip() or None
+            contract_number = (str(sh.cell_value(row, 6)).strip() or None)
+            if contract_number and len(contract_number) > 255:
+                contract_number = contract_number[:255]
             subject_raw = str(sh.cell_value(row, 11)).strip() or None
             act_amount_raw = sh.cell_value(row, 8)
-            act_amount = float(act_amount_raw) if act_amount_raw else None
+            try:
+                act_amount = float(act_amount_raw) if str(act_amount_raw).strip() else None
+            except (ValueError, TypeError):
+                act_amount = None
             history_text = str(sh.cell_value(row, 7)).strip() or None
             note = str(sh.cell_value(row, 0)).strip() or None
 
@@ -294,7 +302,7 @@ async def run_import(xls_path: str, dry_run: bool, limit: int | None):
                 db.add(Equipment(
                     site_id=site_id,
                     contract_id=contract_id,
-                    brand=brand,
+                    brand=brand[:200] if brand else None,
                     quantity=qty,
                     serial_numbers=serial_raw,
                     is_active=True,
