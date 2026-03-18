@@ -99,7 +99,7 @@
 
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <RouterLink to="/visits" class="card hover:shadow-md transition-shadow">
+          <RouterLink to="/visits?open_create=1" class="card hover:shadow-md transition-shadow">
             <div class="flex items-center mb-2">
               <Plus class="w-5 h-5 text-primary-600 mr-2" />
               <h3 class="font-semibold text-gray-900">Создать выезд</h3>
@@ -146,9 +146,18 @@ const loading = ref(true)
 const todayStr = new Date().toISOString().slice(0, 10)
 const todayVisitsLink = `/visits?date_from=${todayStr}&date_to=${todayStr}`
 
+function weekVisitsLink() {
+  const now = new Date()
+  const day = now.getDay() === 0 ? 6 : now.getDay() - 1 // Mon=0
+  const mon = new Date(now); mon.setDate(now.getDate() - day)
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+  const fmt = d => d.toISOString().slice(0, 10)
+  return `/visits?date_from=${fmt(mon)}&date_to=${fmt(sun)}`
+}
+
 const statCards = computed(() => [
   { name: 'Выезды сегодня',  value: stats.value?.visits_today || 0,  icon: Calendar,      color: 'bg-blue-500',   link: todayVisitsLink },
-  { name: 'Выезды на неделю', value: stats.value?.visits_this_week || 0, icon: ClipboardList, color: 'bg-green-500',  link: '/visits' },
+  { name: 'Выезды на неделю', value: stats.value?.visits_this_week || 0, icon: ClipboardList, color: 'bg-green-500',  link: weekVisitsLink() },
   { name: 'Открытые дефекты', value: stats.value?.open_defects?.reduce((s, d) => s + d.count, 0) || 0, icon: AlertTriangle, color: 'bg-yellow-500', link: '/defects' },
   { name: 'Активные закупки', value: stats.value?.active_purchases || 0, icon: ShoppingCart,  color: 'bg-purple-500', link: '/purchases' },
 ])

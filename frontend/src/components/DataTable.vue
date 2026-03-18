@@ -30,7 +30,7 @@
 
     <!-- Table -->
     <div class="overflow-x-auto border border-gray-200 rounded-lg">
-      <table class="w-full text-sm text-left" style="table-layout: fixed; border-collapse: collapse">
+      <table class="text-sm text-left" style="table-layout: fixed; border-collapse: collapse; min-width: 100%">
         <colgroup>
           <col
             v-for="col in visibleColumns"

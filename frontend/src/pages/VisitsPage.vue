@@ -601,12 +601,13 @@ watch(visits, (vl) => {
   }
 }, { once: true })
 
-onMounted(() => {
+onMounted(async () => {
   // Init filters from URL query params (e.g. from dashboard links)
   if (route.query.status) filters.value.status = route.query.status
   if (route.query.date_from) filters.value.date_from = route.query.date_from
   if (route.query.date_to) filters.value.date_to = route.query.date_to
-  loadVisits()
+  await loadVisits()
   usersAPI.getMasters().then(r => { masters.value = r.data })
+  if (route.query.open_create) openCreate()
 })
 </script>
