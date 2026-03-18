@@ -1,7 +1,7 @@
 <template>
   <Layout>
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold text-gray-900">Договоры</h1>
+      <h1 class="text-xl md:text-3xl font-bold text-gray-900">Договоры</h1>
       <button @click="openCreate" class="btn btn-primary flex items-center">
         <Plus class="w-4 h-4 mr-2" />Новый договор
       </button>
@@ -83,7 +83,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Предмет договора</label>
             <input v-model="form.subject" class="input" placeholder="ТО газового оборудования" />
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Сумма договора</label>
               <input v-model="form.amount" type="number" step="0.01" class="input" placeholder="50000" />

@@ -3,7 +3,7 @@
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Задачи</h1>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Задачи</h1>
           <p class="text-gray-600 mt-1">{{ tasks.length }} задач</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">

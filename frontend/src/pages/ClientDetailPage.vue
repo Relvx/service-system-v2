@@ -12,7 +12,7 @@
             <ArrowLeft class="w-5 h-5" />
           </button>
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">{{ client.name }}</h1>
+            <h1 class="text-xl md:text-3xl font-bold text-gray-900">{{ client.name }}</h1>
             <p v-if="client.inn" class="text-gray-500 mt-0.5 text-sm">ИНН: {{ client.inn }}<span v-if="client.kpp"> / КПП: {{ client.kpp }}</span></p>
           </div>
           <span v-if="client.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
@@ -220,7 +220,7 @@
         </div>
         <form @submit.prevent="handleEditSave" class="p-6 space-y-4">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Название *</label><input v-model="editForm.name" required class="input" /></div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium text-gray-700 mb-1">ИНН</label><input v-model="editForm.inn" class="input" /></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">КПП</label><input v-model="editForm.kpp" class="input" /></div>
           </div>
@@ -245,7 +245,7 @@
         <form @submit.prevent="handleLegalSave" class="p-6 space-y-4">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Юридический адрес</label><textarea v-model="legalForm.legal_address" class="input" rows="2" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Банк</label><input v-model="legalForm.bank" class="input" placeholder="ПАО Сбербанк" /></div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium text-gray-700 mb-1">БИК</label><input v-model="legalForm.bik" class="input" placeholder="044525225" /></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Расчётный счёт</label><input v-model="legalForm.account" class="input" placeholder="40702810..." /></div>
           </div>
@@ -341,7 +341,7 @@
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Номер договора</label><input v-model="contractForm.contract_number" class="input" placeholder="0817/2 от 17.08.2006" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Дата договора</label><input v-model="contractForm.contract_date" type="date" class="input" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Предмет договора</label><input v-model="contractForm.subject" class="input" placeholder="ТО газового оборудования" /></div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Сумма договора</label><input v-model="contractForm.amount" type="number" step="0.01" class="input" /></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Сумма акта</label><input v-model="contractForm.act_amount" type="number" step="0.01" class="input" /></div>
           </div>

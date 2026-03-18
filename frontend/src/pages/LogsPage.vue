@@ -2,7 +2,7 @@
   <Layout>
     <div>
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Журнал действий</h1>
+        <h1 class="text-xl md:text-3xl font-bold text-gray-900">Журнал действий</h1>
         <p class="text-gray-600 mt-1">Аудит-лог всех изменений в системе</p>
       </div>
 

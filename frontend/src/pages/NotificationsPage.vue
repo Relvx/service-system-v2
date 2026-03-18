@@ -3,7 +3,7 @@
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Уведомления</h1>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Уведомления</h1>
           <p class="text-gray-600 mt-1">Непрочитанных: {{ unreadCount }}</p>
         </div>
         <button v-if="unreadCount > 0" @click="markAllRead" class="btn btn-secondary text-sm">

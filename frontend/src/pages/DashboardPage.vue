@@ -2,7 +2,7 @@
   <Layout>
     <div>
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Добро пожаловать, {{ user?.full_name }}!</h1>
+        <h1 class="text-xl md:text-3xl font-bold text-gray-900">Добро пожаловать, {{ user?.full_name }}!</h1>
         <p class="text-gray-600 mt-2">Обзор системы учета выездов</p>
       </div>
 

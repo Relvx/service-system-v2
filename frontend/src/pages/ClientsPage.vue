@@ -3,7 +3,7 @@
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Клиенты</h1>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Клиенты</h1>
           <p class="text-gray-600 mt-1">Всего клиентов: {{ clients.length }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
@@ -101,7 +101,7 @@
               <input v-model="form.name" class="input" :class="{ 'border-red-400': errors.name }" placeholder='ООО "Название"' @input="delete errors.name" />
               <p v-if="errors.name" class="text-red-600 text-xs mt-1">{{ errors.name }}</p>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">ИНН</label>
                 <input v-model="form.inn" class="input" :class="{ 'border-red-400': errors.inn }" placeholder="1234567890" @input="delete errors.inn" />

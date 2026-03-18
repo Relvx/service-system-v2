@@ -3,7 +3,7 @@
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Объекты</h1>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Объекты</h1>
           <p class="text-gray-600 mt-1">Всего объектов: {{ sites.length }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
@@ -143,7 +143,7 @@
                 <span>✓</span> Выбран клиент
               </p>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Широта</label>
                 <input v-model="form.latitude" type="number" step="any" class="input" :class="{ 'border-red-400': errors.latitude }" placeholder="55.751244" @input="delete errors.latitude" />
@@ -172,7 +172,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Стоимость выездов (руб.)</label>
-              <div class="grid grid-cols-3 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <div><label class="block text-xs text-gray-500 mb-1">ТО</label><input v-model="form.price_maintenance" type="number" step="any" min="0" class="input" placeholder="0" /></div>
                 <div><label class="block text-xs text-gray-500 mb-1">Ремонт</label><input v-model="form.price_repair" type="number" step="any" min="0" class="input" placeholder="0" /></div>
                 <div><label class="block text-xs text-gray-500 mb-1">Аварийный</label><input v-model="form.price_emergency" type="number" step="any" min="0" class="input" placeholder="0" /></div>

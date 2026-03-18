@@ -1,13 +1,44 @@
 <template>
   <div class="min-h-screen bg-gray-50">
+
+    <!-- Mobile top bar (only on < md) -->
+    <div class="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-4 z-40">
+      <button
+        @click="mobileOpen = !mobileOpen"
+        class="flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+      >
+        <Menu class="w-5 h-5" />
+      </button>
+      <h1 class="ml-3 text-base font-bold text-primary-600">Service System</h1>
+      <div class="ml-auto flex items-center gap-2">
+        <RouterLink to="/notifications" class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg">
+          <Bell class="h-5 w-5" />
+          <span
+            v-if="unreadCount > 0"
+            class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold"
+          >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+        </RouterLink>
+      </div>
+    </div>
+
+    <!-- Mobile overlay -->
+    <div
+      v-if="mobileOpen"
+      class="md:hidden fixed inset-0 bg-black bg-opacity-40 z-30"
+      @click="mobileOpen = false"
+    />
+
     <!-- Sidebar -->
     <div
-      class="fixed inset-y-0 left-0 bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-30"
-      :class="collapsed ? 'w-16' : 'w-64'"
+      class="fixed inset-y-0 left-0 bg-white border-r border-gray-200 flex flex-col z-40 transition-all duration-300 ease-in-out"
+      :class="[
+        collapsed ? 'w-16' : 'w-64',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+      ]"
     >
-      <!-- Logo + collapse toggle -->
+      <!-- Logo + collapse toggle (desktop only) -->
       <div
-        class="flex items-center h-16 border-b border-gray-200"
+        class="hidden md:flex items-center h-16 border-b border-gray-200"
         :class="collapsed ? 'justify-center' : 'justify-between px-4'"
       >
         <h1 v-if="!collapsed" class="text-lg font-bold text-primary-600 truncate">Service System</h1>
@@ -18,6 +49,14 @@
         >
           <ChevronLeft v-if="!collapsed" class="w-4 h-4" />
           <ChevronRight v-else class="w-4 h-4" />
+        </button>
+      </div>
+
+      <!-- Mobile sidebar header -->
+      <div class="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-200">
+        <h1 class="text-base font-bold text-primary-600">Service System</h1>
+        <button @click="mobileOpen = false" class="p-1 text-gray-400 hover:text-gray-600">
+          <X class="w-5 h-5" />
         </button>
       </div>
 
@@ -37,10 +76,11 @@
               ? 'bg-primary-50 text-primary-700'
               : 'text-gray-700 hover:bg-gray-50',
           ]"
+          @click="mobileOpen = false"
         >
           <component :is="item.icon" class="flex-shrink-0 h-5 w-5" :class="collapsed ? '' : 'mr-3'" />
           <span v-if="!collapsed" class="text-sm font-medium truncate">{{ item.name }}</span>
-          <!-- Tooltip в свёрнутом состоянии -->
+          <!-- Tooltip in collapsed state (desktop) -->
           <div
             v-if="collapsed"
             class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50"
@@ -52,8 +92,8 @@
 
       <!-- User section -->
       <div class="border-t border-gray-200 p-3">
-        <!-- Развёрнутое состояние -->
-        <div v-if="!collapsed" class="flex items-center mb-3">
+        <!-- Expanded state -->
+        <div v-if="!collapsed" class="hidden md:flex items-center mb-3">
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 truncate">{{ user?.full_name }}</p>
             <p class="text-xs text-gray-500 truncate">{{ userGroupLabel }}</p>
@@ -66,14 +106,20 @@
             <span
               v-if="unreadCount > 0"
               class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold"
-            >
-              {{ unreadCount > 9 ? '9+' : unreadCount }}
-            </span>
+            >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
           </RouterLink>
         </div>
 
-        <!-- Свёрнутое: только иконка уведомлений -->
-        <div v-if="collapsed" class="flex justify-center mb-2">
+        <!-- Mobile user info -->
+        <div class="md:hidden flex items-center mb-3">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">{{ user?.full_name }}</p>
+            <p class="text-xs text-gray-500 truncate">{{ userGroupLabel }}</p>
+          </div>
+        </div>
+
+        <!-- Collapsed: notifications icon (desktop) -->
+        <div v-if="collapsed" class="hidden md:flex justify-center mb-2">
           <RouterLink
             to="/notifications"
             class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg"
@@ -83,9 +129,7 @@
             <span
               v-if="unreadCount > 0"
               class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold"
-            >
-              {{ unreadCount > 9 ? '9+' : unreadCount }}
-            </span>
+            >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
           </RouterLink>
         </div>
 
@@ -100,9 +144,12 @@
       </div>
     </div>
 
-    <!-- Main content — сдвигается вместе с сайдбаром -->
-    <div class="transition-all duration-300 ease-in-out" :class="collapsed ? 'ml-16' : 'ml-64'">
-      <main class="p-8">
+    <!-- Main content -->
+    <div
+      class="transition-all duration-300 ease-in-out pt-14 md:pt-0"
+      :class="collapsed ? 'md:ml-16' : 'md:ml-64'"
+    >
+      <main class="p-4 md:p-8">
         <slot />
       </main>
     </div>
@@ -115,7 +162,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, Map, Calendar, Users, Building2,
   ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell, Settings, ScrollText,
-  CheckSquare, BellRing, ChevronLeft, ChevronRight, FileText,
+  CheckSquare, BellRing, ChevronLeft, ChevronRight, FileText, Menu, X,
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth.js'
 import { notificationsAPI } from '../services/api.js'
@@ -128,6 +175,7 @@ const unreadCount = ref(0)
 
 const COLLAPSED_KEY = 'sidebar_collapsed'
 const collapsed = ref(localStorage.getItem(COLLAPSED_KEY) === 'true')
+const mobileOpen = ref(false)
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
@@ -147,20 +195,20 @@ const userGroupLabel = computed(() => {
 })
 
 const allNav = [
-  { name: 'Дашборд',    href: '/dashboard', icon: LayoutDashboard, groups: ['office_group', 'admin_group'] },
-  { name: 'Карта',      href: '/map',        icon: Map,             groups: ['office_group', 'admin_group', 'master_group'] },
-  { name: 'Календарь',  href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group'] },
-  { name: 'Мои выезды', href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
-  { name: 'Клиенты',    href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
-  { name: 'Договоры',   href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group'] },
-  { name: 'Объекты',    href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group'] },
-  { name: 'Выезды',     href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group'] },
-  { name: 'Дефекты',    href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },
-  { name: 'Закупки',    href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group'] },
-  { name: 'Задачи',       href: '/tasks',      icon: CheckSquare,     groups: ['office_group', 'admin_group'] },
+  { name: 'Дашборд',     href: '/dashboard', icon: LayoutDashboard, groups: ['office_group', 'admin_group'] },
+  { name: 'Карта',       href: '/map',        icon: Map,             groups: ['office_group', 'admin_group', 'master_group'] },
+  { name: 'Календарь',   href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group'] },
+  { name: 'Мои выезды',  href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
+  { name: 'Клиенты',     href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
+  { name: 'Договоры',    href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group'] },
+  { name: 'Объекты',     href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group'] },
+  { name: 'Выезды',      href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group'] },
+  { name: 'Дефекты',     href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },
+  { name: 'Закупки',     href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group'] },
+  { name: 'Задачи',      href: '/tasks',      icon: CheckSquare,     groups: ['office_group', 'admin_group'] },
   { name: 'Напоминания', href: '/reminders',  icon: BellRing,        groups: ['office_group', 'admin_group'] },
   { name: 'Журнал',      href: '/logs',       icon: ScrollText,      groups: ['office_group', 'admin_group'] },
-  { name: 'Админ',      href: '/admin',      icon: Settings,        groups: ['admin_group'] },
+  { name: 'Админ',       href: '/admin',      icon: Settings,        groups: ['admin_group'] },
 ]
 
 const filteredNav = computed(() =>

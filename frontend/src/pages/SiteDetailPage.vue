@@ -12,7 +12,7 @@
             <ArrowLeft class="w-5 h-5" />
           </button>
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">{{ site.title }}</h1>
+            <h1 class="text-xl md:text-3xl font-bold text-gray-900">{{ site.title }}</h1>
             <p v-if="site.client_name" class="text-gray-500 mt-0.5 text-sm">{{ site.client_name }}</p>
           </div>
           <span v-if="site.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
@@ -171,7 +171,7 @@
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
               <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
             </div>
@@ -227,11 +227,11 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
             <input v-model="editVisitForm.planned_date" type="date" class="input" required />
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Время с</label><input v-model="editVisitForm.planned_time_from" type="time" class="input" /></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Время до</label><input v-model="editVisitForm.planned_time_to" type="time" class="input" /></div>
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Тип выезда</label>
               <select v-model="editVisitForm.visit_type" class="input">
@@ -296,7 +296,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
             <input v-model="visitForm.planned_date" type="date" class="input" required />
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Время с</label>
               <input v-model="visitForm.planned_time_from" type="time" class="input" />
@@ -367,12 +367,12 @@
               <option v-for="f in cfg.serviceFrequencies" :key="f.sysname" :value="f.sysname">{{ f.display_name }}</option>
             </select>
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Широта</label><input v-model="form.latitude" type="number" step="any" class="input" /></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Долгота</label><input v-model="form.longitude" type="number" step="any" class="input" /></div>
           </div>
           <p class="text-sm font-medium text-gray-700 -mb-2">Стоимость выездов (руб.)</p>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             <div>
               <label class="block text-xs text-gray-500 mb-1">ТО</label>
               <input v-model="form.price_maintenance" type="number" step="any" min="0" class="input" placeholder="0" />

@@ -3,7 +3,7 @@
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Выезды</h1>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Выезды</h1>
           <p class="text-gray-600 mt-1">Всего: {{ visits.length }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
@@ -135,7 +135,7 @@
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
               </div>
               <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
                 <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
               </div>
@@ -209,11 +209,11 @@
               <input v-model="form.planned_date" type="date" class="input" :class="{ 'border-red-400': errors.planned_date }" @input="delete errors.planned_date" />
               <p v-if="errors.planned_date" class="text-red-600 text-xs mt-1">{{ errors.planned_date }}</p>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label class="block text-sm font-medium text-gray-700 mb-1">Время с</label><input v-model="form.planned_time_from" type="time" class="input" /></div>
               <div><label class="block text-sm font-medium text-gray-700 mb-1">Время до</label><input v-model="form.planned_time_to" type="time" class="input" /></div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
                 <select v-model="form.visit_type" class="input">
@@ -280,7 +280,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
               <textarea v-model="defectForm.description" class="input" rows="3" placeholder="Подробное описание..." />
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
                 <select v-model="defectForm.priority" class="input">
@@ -304,7 +304,7 @@
                 Фото из выезда
                 <span class="text-gray-400 font-normal">(все выбраны — нажмите на фото чтобы снять выбор)</span>
               </label>
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <label
                   v-for="photo in visitPhotos"
                   :key="photo.id"

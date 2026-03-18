@@ -132,7 +132,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Предмет договора</label>
             <input v-model="editForm.subject" class="input" />
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Сумма договора</label>
               <input v-model="editForm.amount" type="number" step="0.01" class="input" />

@@ -3,7 +3,7 @@
     <div>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Дефекты</h1>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Дефекты</h1>
           <p class="text-gray-600 mt-1">Всего: {{ defects.length }}</p>
         </div>
         <button
@@ -95,7 +95,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
               <textarea v-model="createForm.description" class="input" rows="3" placeholder="Подробное описание дефекта"></textarea>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
                 <select v-model="createForm.priority" class="input">
@@ -139,7 +139,7 @@
             </div>
 
             <!-- Info -->
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div v-if="selectedDefect.site_title"><p class="text-gray-500">Объект</p><p class="font-medium">{{ selectedDefect.site_title }}</p></div>
               <div v-if="selectedDefect.client_name"><p class="text-gray-500">Клиент</p><p class="font-medium">{{ selectedDefect.client_name }}</p></div>
               <div v-if="selectedDefect.visit_date"><p class="text-gray-500">Дата выезда</p><p class="font-medium">{{ formatDate(selectedDefect.visit_date) }}</p></div>
@@ -215,7 +215,7 @@
                   <input v-model="purchaseForm.item" type="text" class="input text-sm" :class="{ 'border-red-500': purchaseErrors.item }" placeholder="Название запчасти или материала" />
                   <p v-if="purchaseErrors.item" class="text-red-500 text-xs mt-1">{{ purchaseErrors.item }}</p>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Количество</label>
                     <input v-model="purchaseForm.qty" type="number" min="0.01" step="0.01" class="input text-sm" />
