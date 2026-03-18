@@ -190,9 +190,14 @@
           <p class="text-gray-500">Выездов не найдено</p>
         </div>
         <div v-else class="space-y-3">
-          <div v-for="v in client.recent_visits" :key="v.id" class="card">
+          <div
+            v-for="v in client.recent_visits"
+            :key="v.id"
+            class="card cursor-pointer hover:shadow-md transition-shadow"
+            @click="openVisitDetail(v)"
+          >
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 flex-wrap">
                 <p class="font-medium text-gray-900">{{ v.site_title }}</p>
                 <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="statusClass(v.status)">
                   {{ cfg.visitStatusLabel(v.status) }}
@@ -201,7 +206,7 @@
                   {{ cfg.priorityLabel(v.priority) }}
                 </span>
               </div>
-              <div class="flex items-center gap-4 text-sm text-gray-500">
+              <div class="flex items-center gap-4 text-sm text-gray-500 flex-shrink-0">
                 <span>{{ formatDate(v.planned_date) }}</span>
                 <span v-if="v.master_name">{{ v.master_name }}</span>
               </div>
@@ -365,6 +370,65 @@
         </div>
       </div>
     </div>
+
+    <!-- Visit Detail Modal -->
+    <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+            <p class="text-sm text-gray-500 mt-0.5">{{ formatDate(detailVisit.planned_date) }}</p>
+          </div>
+          <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+        </div>
+        <div class="flex border-b flex-shrink-0">
+          <button @click="detailTab = 'info'" class="flex-1 py-2.5 text-sm font-medium transition-colors"
+            :class="detailTab === 'info' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'">Информация</button>
+          <button @click="detailTab = 'files'" class="flex-1 py-2.5 text-sm font-medium transition-colors"
+            :class="detailTab === 'files' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'">Файлы и фото</button>
+        </div>
+        <div class="overflow-y-auto flex-1">
+          <div v-if="detailTab === 'info'" class="p-6 space-y-4">
+            <div class="flex gap-2 flex-wrap">
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
+            </div>
+            <div><p class="text-sm text-gray-500">Объект</p><p class="text-gray-900">{{ detailVisit.site_title }}</p></div>
+            <div v-if="detailVisit.site_address"><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
+              <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
+            </div>
+            <div><p class="text-sm text-gray-500">Мастер</p><p class="text-gray-900">{{ detailVisit.master_name || 'Не назначен' }}</p></div>
+            <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
+              <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
+              <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
+            </div>
+            <template v-if="detailVisit.work_summary">
+              <div class="border-t pt-3">
+                <p class="text-sm text-gray-500 mb-1">Итог работ</p>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+              </div>
+              <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded p-2 text-xs">
+                ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+              </div>
+              <div v-if="detailVisit.recommendations">
+                <p class="text-sm text-gray-500">Рекомендации</p>
+                <p class="text-gray-900">{{ detailVisit.recommendations }}</p>
+              </div>
+            </template>
+          </div>
+          <div v-else class="p-6">
+            <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
+          </div>
+        </div>
+        <div class="flex justify-end p-6 border-t flex-shrink-0">
+          <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
   </Layout>
 </template>
 
@@ -375,7 +439,7 @@ import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, Use
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
-import { clientsAPI, sitesAPI, contractsAPI } from '../services/api.js'
+import { clientsAPI, sitesAPI, contractsAPI, visitsAPI } from '../services/api.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
@@ -405,6 +469,20 @@ const contractsLoading = ref(false)
 const contractCreateModalOpen = ref(false)
 const contractForm = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
 const contractSaving = ref(false)
+
+// Visit detail
+const detailVisit = ref(null)
+const detailTab = ref('info')
+
+async function openVisitDetail(v) {
+  detailTab.value = 'info'
+  try {
+    const res = await visitsAPI.getById(v.id)
+    detailVisit.value = res.data
+  } catch {
+    detailVisit.value = v
+  }
+}
 
 // Contacts
 const contactModalOpen = ref(false)
