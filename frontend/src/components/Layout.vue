@@ -21,6 +21,62 @@
       </div>
     </div>
 
+    <!-- Global search bar (desktop) -->
+    <div class="hidden md:block fixed top-0 right-0 z-30 p-3" :class="collapsed ? 'left-16' : 'left-64'">
+      <div class="relative max-w-xl mx-auto" ref="searchWrapRef">
+        <div class="relative">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <input
+            v-model="searchQuery"
+            @input="onSearchInput"
+            @focus="searchFocused = true"
+            @keydown.escape="closeSearch"
+            placeholder="Поиск клиентов, объектов, договоров..."
+            class="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm"
+          />
+          <button v-if="searchQuery" @click="closeSearch" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <!-- Выпадающие результаты -->
+        <div
+          v-if="searchFocused && searchQuery.length >= 2"
+          class="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50"
+        >
+          <div v-if="searchLoading" class="px-4 py-3 text-sm text-gray-500 text-center">Поиск...</div>
+          <div v-else-if="searchResults.length === 0" class="px-4 py-3 text-sm text-gray-500 text-center">Ничего не найдено</div>
+          <div v-else>
+            <RouterLink
+              v-for="r in searchResults" :key="`${r.type}-${r.id}`"
+              :to="r.url"
+              @click="closeSearch"
+              class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+            >
+              <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center"
+                :class="{
+                  'bg-blue-100': r.type === 'client',
+                  'bg-green-100': r.type === 'site',
+                  'bg-purple-100': r.type === 'contract',
+                }"
+              >
+                <Users v-if="r.type === 'client'" class="w-4 h-4 text-blue-600" />
+                <Building2 v-else-if="r.type === 'site'" class="w-4 h-4 text-green-600" />
+                <FileText v-else class="w-4 h-4 text-purple-600" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-gray-900 truncate">{{ r.title }}</p>
+                <p v-if="r.subtitle" class="text-xs text-gray-500 truncate">{{ r.subtitle }}</p>
+              </div>
+              <span class="text-xs text-gray-400 flex-shrink-0">
+                {{ r.type === 'client' ? 'Клиент' : r.type === 'site' ? 'Объект' : 'Договор' }}
+              </span>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Mobile overlay -->
     <div
       v-if="mobileOpen"
@@ -146,7 +202,7 @@
 
     <!-- Main content -->
     <div
-      class="transition-all duration-300 ease-in-out pt-14 md:pt-0"
+      class="transition-all duration-300 ease-in-out pt-14 md:pt-14"
       :class="collapsed ? 'md:ml-16' : 'md:ml-64'"
     >
       <main class="p-4 md:p-8">
@@ -162,10 +218,10 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, Map, Calendar, Users, Building2,
   ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell, Settings, ScrollText,
-  CheckSquare, BellRing, ChevronLeft, ChevronRight, FileText, Menu, X,
+  CheckSquare, BellRing, ChevronLeft, ChevronRight, FileText, Menu, X, Search,
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth.js'
-import { notificationsAPI } from '../services/api.js'
+import { notificationsAPI, searchAPI } from '../services/api.js'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -227,15 +283,57 @@ function handleLogout() {
   router.push('/login')
 }
 
+// ── Глобальный поиск ──────────────────────────────────────────────────────
+const searchQuery = ref('')
+const searchResults = ref([])
+const searchLoading = ref(false)
+const searchFocused = ref(false)
+const searchWrapRef = ref(null)
+
+let searchTimeout = null
+
+function onSearchInput() {
+  clearTimeout(searchTimeout)
+  if (searchQuery.value.length < 2) {
+    searchResults.value = []
+    return
+  }
+  searchLoading.value = true
+  searchTimeout = setTimeout(async () => {
+    try {
+      const res = await searchAPI.search(searchQuery.value)
+      searchResults.value = res.data
+    } catch {
+      searchResults.value = []
+    } finally {
+      searchLoading.value = false
+    }
+  }, 300)
+}
+
+function closeSearch() {
+  searchQuery.value = ''
+  searchResults.value = []
+  searchFocused.value = false
+}
+
+function onClickOutside(e) {
+  if (searchWrapRef.value && !searchWrapRef.value.contains(e.target)) {
+    searchFocused.value = false
+  }
+}
+
 let pollInterval = null
 
 onMounted(() => {
   fetchUnread()
   pollInterval = setInterval(fetchUnread, 30000)
+  document.addEventListener('mousedown', onClickOutside)
 })
 
 onUnmounted(() => {
   clearInterval(pollInterval)
+  document.removeEventListener('mousedown', onClickOutside)
 })
 
 watch(() => route.path, fetchUnread)

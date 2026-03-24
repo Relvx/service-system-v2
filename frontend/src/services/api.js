@@ -192,4 +192,8 @@ export const adminAPI = {
     api.delete(`/admin/permission-groups/${groupSysname}/permissions/${permSysname}`),
 }
 
+export const searchAPI = {
+  search: (q) => api.get('/search', { params: { q } }),
+}
+
 export default api
