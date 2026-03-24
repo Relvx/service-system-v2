@@ -24,6 +24,7 @@ class Contract(Base):
     act_amount = Column(Numeric(10, 2), nullable=True)
     status = Column(String(50), nullable=False, default="active")
     notes = Column(Text, nullable=True)
+    description = Column(Text, nullable=True)
     raw_visit_history = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)

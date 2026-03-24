@@ -51,6 +51,18 @@
             </div>
           </div>
 
+          <!-- Примечание -->
+          <div v-if="contract.description" class="card space-y-2">
+            <h3 class="font-semibold text-gray-900">Примечание</h3>
+            <p class="text-gray-700 whitespace-pre-wrap text-sm">{{ contract.description }}</p>
+          </div>
+
+          <!-- История выездов -->
+          <div v-if="contract.raw_visit_history" class="card space-y-2">
+            <h3 class="font-semibold text-gray-900">История выездов</h3>
+            <p class="text-gray-700 whitespace-pre-wrap text-sm">{{ contract.raw_visit_history }}</p>
+          </div>
+
           <!-- Статус -->
           <div class="card space-y-3">
             <h3 class="font-semibold text-gray-900">Статус</h3>
@@ -113,13 +125,13 @@
     </div>
 
     <!-- Модал редактирования -->
-    <div v-if="editModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-        <div class="flex items-center justify-between p-6 border-b">
+    <div v-if="editModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
           <h2 class="text-xl font-semibold text-gray-900">Редактировать договор</h2>
           <button @click="editModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleEditSave" class="p-6 space-y-4">
+        <form @submit.prevent="handleEditSave" class="p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Номер договора</label>
             <input v-model="editForm.contract_number" class="input" />
@@ -145,6 +157,14 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
             <textarea v-model="editForm.notes" class="input" rows="3" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Примечание</label>
+            <textarea v-model="editForm.description" class="input" rows="3" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">История выездов</label>
+            <textarea v-model="editForm.raw_visit_history" class="input" rows="4" placeholder="Например: 15.02.2024 Клочков ТО; 18.05.2024 Ильяс ТО" />
           </div>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="editModalOpen = false" class="btn btn-secondary">Отмена</button>
@@ -243,6 +263,8 @@ function openEdit() {
     amount: contract.value.amount || '',
     act_amount: contract.value.act_amount || '',
     notes: contract.value.notes || '',
+    description: contract.value.description || '',
+    raw_visit_history: contract.value.raw_visit_history || '',
   }
   editModalOpen.value = true
 }

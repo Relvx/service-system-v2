@@ -26,6 +26,8 @@ class ContractOut(BaseModel):
     act_amount: Optional[Decimal] = None
     status: str
     notes: Optional[str] = None
+    description: Optional[str] = None
+    raw_visit_history: Optional[str] = None
     is_archived: bool
     created_at: datetime
     updated_at: datetime
@@ -54,6 +56,8 @@ class ContractUpdate(BaseModel):
     act_amount: Optional[Decimal] = None
     status: Optional[str] = None
     notes: Optional[str] = None
+    description: Optional[str] = None
+    raw_visit_history: Optional[str] = None
     is_archived: Optional[bool] = None
 
 

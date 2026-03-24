@@ -12,8 +12,9 @@
             <ArrowLeft class="w-5 h-5" />
           </button>
           <div>
-            <h1 class="text-xl md:text-3xl font-bold text-gray-900">{{ site.title }}</h1>
-            <p v-if="site.client_name" class="text-gray-500 mt-0.5 text-sm">{{ site.client_name }}</p>
+            <h1 class="text-xl md:text-3xl font-bold text-gray-900">{{ site.address }}</h1>
+            <p v-if="site.title" class="text-gray-600 mt-0.5 text-sm">{{ site.title }}</p>
+            <router-link v-if="site.client_name" :to="`/clients/${site.client_id}`" class="text-primary-600 hover:underline mt-0.5 text-sm block">{{ site.client_name }}</router-link>
           </div>
           <span v-if="site.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
         </div>
