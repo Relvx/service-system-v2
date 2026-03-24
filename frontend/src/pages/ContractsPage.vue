@@ -13,7 +13,7 @@
         v-model="search"
         placeholder="Поиск по номеру или предмету..."
         class="input flex-1 min-w-48"
-        @input="load"
+        @input="debouncedLoad"
       />
       <select v-model="filterStatus" @change="load" class="input w-40">
         <option value="">Все статусы</option>
@@ -122,6 +122,12 @@ const filterStatus = ref('')
 const createModalOpen = ref(false)
 const saving = ref(false)
 const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
+
+let searchTimer = null
+function debouncedLoad() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(load, 300)
+}
 
 async function load() {
   loading.value = true

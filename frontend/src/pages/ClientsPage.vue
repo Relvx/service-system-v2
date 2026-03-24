@@ -17,7 +17,7 @@
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               v-model="search"
-              @keyup.enter="loadClients"
+              @input="debouncedLoad"
               type="text"
               placeholder="Поиск по названию, ИНН, контактному лицу..."
               class="input pl-10"
@@ -177,6 +177,12 @@ function validate() {
   if (form.value.kpp && !/^\d{9}$/.test(form.value.kpp)) e.kpp = 'КПП должен содержать 9 цифр'
   errors.value = e
   return Object.keys(e).length === 0
+}
+
+let searchTimer = null
+function debouncedLoad() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadClients, 300)
 }
 
 async function loadClients() {

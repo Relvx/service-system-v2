@@ -15,9 +15,8 @@
         <div class="flex gap-4 flex-wrap">
           <div class="flex-1 relative min-w-[200px]">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input v-model="search" @keyup.enter="loadSites" type="text" placeholder="Поиск по названию или адресу..." class="input pl-10" />
+            <input v-model="search" @input="debouncedLoad" type="text" placeholder="Поиск по названию или адресу..." class="input pl-10" />
           </div>
-          <button @click="loadSites" class="btn btn-primary">Найти</button>
           <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
             <input type="checkbox" v-model="showArchived" @change="loadSites" class="rounded" />
             Показать архивные
@@ -248,6 +247,12 @@ function validate() {
   if (form.value.longitude !== '' && (isNaN(lon) || lon < -180 || lon > 180)) e.longitude = 'Долгота должна быть от −180 до 180'
   errors.value = e
   return Object.keys(e).length === 0
+}
+
+let searchTimer = null
+function debouncedLoad() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadSites, 300)
 }
 
 async function loadSites() {
