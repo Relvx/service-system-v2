@@ -565,9 +565,11 @@ async function openEdit(v) {
     priority: v.priority || 'medium', office_notes: v.office_notes || '', status: v.status || 'planned',
   }
   detailVisit.value = null
-  const [sr, mr] = await Promise.all([sitesAPI.getAll({ active_only: true }), usersAPI.getMasters()])
-  sites.value = sr.data
-  masters.value = mr.data
+  // Загружаем только если ещё не загружено
+  const tasks = []
+  if (!sites.value.length) tasks.push(sitesAPI.getAll({ active_only: true }).then(r => { sites.value = r.data }))
+  if (!masters.value.length) tasks.push(usersAPI.getMasters().then(r => { masters.value = r.data }))
+  if (tasks.length) await Promise.all(tasks)
   modalOpen.value = true
 }
 

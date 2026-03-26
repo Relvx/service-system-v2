@@ -463,9 +463,5 @@ async function handleSave() {
 
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(() => {
-  loadPurchases()
-  loadSites()
-  loadDefects()
-})
+onMounted(() => { Promise.all([loadPurchases(), loadSites(), loadDefects()]) })
 </script>

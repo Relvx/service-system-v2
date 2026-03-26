@@ -33,17 +33,20 @@ class TestCalendarNotesCRUD:
         assert res.status_code == 200
         assert isinstance(res.json(), list)
 
-    async def test_get_notes_by_year(self, http_client: AsyncClient, office_token: str):
-        """Фильтр по году возвращает только заметки за этот год."""
-        # Создаём заметку за 2026
+    async def test_get_notes_by_date_range(self, http_client: AsyncClient, office_token: str):
+        """Фильтр по start/end возвращает только заметки за этот период."""
+        # Создаём заметку внутри диапазона
         await http_client.post("/api/calendar-notes", headers=auth_headers(office_token), json={
             "date": "2026-06-01",
-            "text": "__test__ 2026 year",
+            "text": "__test__ 2026 range",
         })
-        res = await http_client.get("/api/calendar-notes?year=2026", headers=auth_headers(office_token))
+        res = await http_client.get(
+            "/api/calendar-notes?start=2026-01-01&end=2026-12-31",
+            headers=auth_headers(office_token),
+        )
         assert res.status_code == 200
         for n in res.json():
-            assert n["date"].startswith("2026")
+            assert "2026-01-01" <= n["date"] <= "2026-12-31"
 
     async def test_update_note(self, http_client: AsyncClient, office_token: str):
         """Редактирование заметки меняет текст."""

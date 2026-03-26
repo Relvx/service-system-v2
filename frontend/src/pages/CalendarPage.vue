@@ -159,6 +159,9 @@ const calendarRef = ref(null)
 const masters = ref([])
 const selectedMasterId = ref(null)
 
+// Текущее окно отображения (заполняется из datesSet FullCalendar)
+const currentWindow = ref({ start: null, end: null })
+
 const dayChoiceDate = ref(null)
 
 const noteModal = ref({
@@ -232,26 +235,30 @@ const filteredVisitEvents = computed(() => {
 
 const allEvents = computed(() => [...filteredVisitEvents.value, ...allNotes.value.map(noteToEvent)])
 
-async function loadVisits(year) {
-  const res = await visitsAPI.getCalendar(`${year}-01-01`, `${year}-12-31`)
-  allVisitEvents.value = res.data.map(visitToEvent)
-}
-
-async function loadNotes(year) {
-  if (!canEditNotes.value) return
-  const res = await calendarNotesAPI.getAll(year)
-  allNotes.value = res.data
-}
-
-async function loadAll(isRefresh = false) {
+async function loadWindow(start, end, isRefresh = false) {
+  if (!start || !end) return
   isRefresh ? (refreshing.value = true) : (loading.value = true)
   try {
-    const year = new Date().getFullYear()
-    await Promise.all([loadVisits(year), loadNotes(year)])
+    const startStr = start.toISOString().slice(0, 10)
+    const endStr = end.toISOString().slice(0, 10)
+    const tasks = [visitsAPI.getCalendar(startStr, endStr)]
+    if (canEditNotes.value) {
+      tasks.push(calendarNotesAPI.getAll(startStr, endStr))
+    }
+    const results = await Promise.all(tasks)
+    allVisitEvents.value = results[0].data.map(visitToEvent)
+    if (canEditNotes.value && results[1]) {
+      allNotes.value = results[1].data
+    }
   } finally {
     loading.value = false
     refreshing.value = false
   }
+}
+
+async function loadAll(isRefresh = false) {
+  const { start, end } = currentWindow.value
+  await loadWindow(start, end, isRefresh)
 }
 
 function goToVisit() {
@@ -365,15 +372,24 @@ const calendarOptions = computed(() => ({
   },
   dateClick: handleDateClick,
   datesSet: (info) => {
-    const year = info.view.currentStart.getFullYear()
-    loadVisits(year)
-    loadNotes(year)
+    const start = info.view.activeStart
+    const end = info.view.activeEnd
+    // Обновляем только если окно изменилось
+    const prev = currentWindow.value
+    if (
+      prev.start?.getTime() !== start.getTime() ||
+      prev.end?.getTime() !== end.getTime()
+    ) {
+      currentWindow.value = { start, end }
+      loadWindow(start, end)
+    }
   },
   height: 'auto',
 }))
 
 onMounted(async () => {
-  loadAll()
+  // Данные загружаются через datesSet при инициализации FullCalendar.
+  // Здесь только загружаем список мастеров для фильтра.
   if (canFilterByMaster.value) {
     try {
       const res = await usersAPI.getMasters()

@@ -119,7 +119,7 @@ export const remindersAPI = {
 }
 
 export const calendarNotesAPI = {
-  getAll: (year) => api.get('/calendar-notes', { params: year ? { year } : {} }),
+  getAll: (start, end) => api.get('/calendar-notes', { params: { start, end } }),
   create: (data) => api.post('/calendar-notes', data),
   update: (id, data) => api.put(`/calendar-notes/${id}`, data),
   delete: (id) => api.delete(`/calendar-notes/${id}`),

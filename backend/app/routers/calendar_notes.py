@@ -1,7 +1,8 @@
 from typing import List, Optional
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import extract, select
+from sqlalchemy import select
 
 from app.dependencies import get_db, require_groups
 from app.models.calendar_note import CalendarNote
@@ -13,13 +14,16 @@ router = APIRouter(prefix="/calendar-notes", tags=["calendar-notes"])
 
 @router.get("", response_model=List[CalendarNoteOut])
 async def get_calendar_notes(
-    year: Optional[int] = Query(None),
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_groups("office_group", "admin_group")),
 ):
     stmt = select(CalendarNote).order_by(CalendarNote.date)
-    if year:
-        stmt = stmt.where(extract("year", CalendarNote.date) == year)
+    if start:
+        stmt = stmt.where(CalendarNote.date >= start)
+    if end:
+        stmt = stmt.where(CalendarNote.date <= end)
     result = await db.execute(stmt)
     notes = result.scalars().all()
 

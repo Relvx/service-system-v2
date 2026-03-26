@@ -352,5 +352,5 @@ async function handleUnarchive(s) {
   }
 }
 
-onMounted(() => { loadSites(); loadClients() })
+onMounted(() => { Promise.all([loadSites(), loadClients()]) })
 </script>

@@ -425,19 +425,19 @@ class TestCalendarNotes:
                                       headers=auth_headers(office_token))
         assert dl.status_code == 204
 
-    async def test_year_filter(self, http_client: AsyncClient, office_token: str):
-        """Фильтр по году возвращает только нужные заметки."""
+    async def test_date_range_filter(self, http_client: AsyncClient, office_token: str):
+        """Фильтр по start/end возвращает только нужные заметки."""
         cr = await http_client.post("/api/calendar-notes", headers=auth_headers(office_token),
-                                    json={"date": "2027-03-01", "text": "__test__ 2027 year"})
+                                    json={"date": "2027-03-01", "text": "__test__ 2027 range"})
         nid = cr.json()["id"]
 
-        res_2027 = await http_client.get("/api/calendar-notes?year=2027",
-                                         headers=auth_headers(office_token))
-        assert nid in [n["id"] for n in res_2027.json()]
+        res_in = await http_client.get("/api/calendar-notes?start=2027-01-01&end=2027-12-31",
+                                       headers=auth_headers(office_token))
+        assert nid in [n["id"] for n in res_in.json()]
 
-        res_2026 = await http_client.get("/api/calendar-notes?year=2026",
-                                         headers=auth_headers(office_token))
-        assert nid not in [n["id"] for n in res_2026.json()]
+        res_out = await http_client.get("/api/calendar-notes?start=2026-01-01&end=2026-12-31",
+                                        headers=auth_headers(office_token))
+        assert nid not in [n["id"] for n in res_out.json()]
 
         await http_client.delete(f"/api/calendar-notes/{nid}",
                                  headers=auth_headers(office_token))
