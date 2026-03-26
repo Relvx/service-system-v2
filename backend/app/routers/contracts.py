@@ -37,8 +37,13 @@ async def get_contracts(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
+    sites_count_sq = (
+        select(func.count())
+        .where(ContractSite.contract_id == Contract.id)
+        .correlate(Contract).scalar_subquery()
+    )
     stmt = (
-        select(Contract, Client.name.label("client_name"))
+        select(Contract, Client.name.label("client_name"), sites_count_sq.label("sites_count"))
         .outerjoin(Client, Contract.client_id == Client.id)
     )
     if not show_archived:
@@ -51,6 +56,7 @@ async def get_contracts(
         stmt = stmt.where(
             Contract.contract_number.ilike(f"%{search}%")
             | Contract.subject.ilike(f"%{search}%")
+            | Client.name.ilike(f"%{search}%")
         )
     stmt = stmt.order_by(Contract.created_at.desc())
 
@@ -60,9 +66,10 @@ async def get_contracts(
     result = await db.execute(stmt.offset(offset).limit(limit))
     out = []
     for row in result.all():
-        c, client_name = row[0], row[1]
+        c, client_name, s_cnt = row[0], row[1], row[2]
         obj = ContractOut.model_validate(c)
         obj.client_name = client_name
+        obj.sites_count = s_cnt
         out.append(obj)
     return ContractPage(items=out, total=total, limit=limit, offset=offset)
 

@@ -31,6 +31,8 @@ class ContractOut(BaseModel):
     is_archived: bool
     created_at: datetime
     updated_at: datetime
+    # joined counter
+    sites_count: Optional[int] = None
 
 
 class ContractDetailOut(ContractOut):

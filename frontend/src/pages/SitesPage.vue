@@ -1,7 +1,7 @@
 <template>
   <Layout>
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Объекты</h1>
           <p class="text-gray-600 mt-1">Показано: {{ sites.length }} из {{ total }}</p>
@@ -11,16 +11,41 @@
         </button>
       </div>
 
-      <div class="card mb-6">
-        <div class="flex gap-4 flex-wrap">
-          <div class="flex-1 relative min-w-[200px]">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input v-model="search" @input="debouncedLoad" type="text" placeholder="Поиск по названию или адресу..." class="input pl-10" />
+      <!-- Фильтры -->
+      <div class="card mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="relative flex-1 min-w-[200px]">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              v-model="filters.search"
+              @input="debouncedLoad"
+              type="text"
+              placeholder="Поиск по названию или адресу..."
+              class="input pl-9 text-sm"
+            />
           </div>
-          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-            <input type="checkbox" v-model="showArchived" @change="loadSites" class="rounded" />
-            Показать архивные
+
+          <!-- Частота обслуживания -->
+          <div class="min-w-[170px]">
+            <select v-model="filters.serviceFrequency" @change="loadSites" class="input text-sm">
+              <option value="">Все частоты</option>
+              <option v-for="f in cfg.serviceFrequencies" :key="f.sysname" :value="f.sysname">{{ f.display_name }}</option>
+            </select>
+          </div>
+
+          <!-- Архивные (только admin) -->
+          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap">
+            <input type="checkbox" v-model="filters.showArchived" @change="loadSites" class="rounded" />
+            Архивные
           </label>
+
+          <button
+            v-if="hasActiveFilters"
+            @click="resetFilters"
+            class="btn btn-secondary text-sm flex items-center gap-1"
+          >
+            <X class="w-4 h-4" />Сбросить
+          </button>
         </div>
       </div>
 
@@ -28,65 +53,104 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div
-          v-for="s in sites" :key="s.id"
-          class="card hover:shadow-md transition-shadow flex flex-col"
-          :class="{ 'opacity-50 bg-gray-50': s.is_archived }"
+      <template v-else>
+        <DataTable
+          :columns="columns"
+          :rows="filteredSites"
+          storage-key="sites-table-v1"
+          :row-class="rowClass"
+          @row-click="onRowClick"
         >
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center">
-              <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                <Building2 class="w-5 h-5 text-green-600" />
+          <!-- Название / адрес -->
+          <template #title="{ row }">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 bg-green-100 rounded-md flex-shrink-0 flex items-center justify-center">
+                <Building2 class="w-4 h-4 text-green-600" />
               </div>
-              <div>
-                <h3 class="font-semibold text-gray-900">{{ s.title }}</h3>
-                <p v-if="s.client_name" class="text-sm text-gray-500">{{ s.client_name }}</p>
+              <div class="min-w-0">
+                <div class="font-medium text-gray-900 truncate">{{ row.title }}</div>
+                <div class="text-xs text-gray-400 truncate">{{ row.address }}</div>
               </div>
             </div>
-            <span v-if="s.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
-          </div>
+          </template>
 
-          <div class="flex items-start text-sm text-gray-600 mb-2">
-            <MapPin class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />{{ s.address }}
-          </div>
-          <div v-if="s.onsite_contact" class="flex items-center text-sm text-gray-600 mb-2">
-            <Phone class="w-4 h-4 mr-2" />{{ s.onsite_contact }}
-          </div>
-          <div v-if="s.service_frequency" class="text-sm text-gray-500 mb-2">
-            Обслуживание: {{ cfg.serviceFrequencyLabel(s.service_frequency) }}
-          </div>
-          <div class="text-sm text-gray-500 mb-3">Выездов: {{ s.total_visits || 0 }}</div>
+          <!-- Клиент -->
+          <template #client_name="{ row }">
+            <span v-if="row.client_name" class="truncate block text-gray-700">{{ row.client_name }}</span>
+            <span v-else class="text-gray-300">—</span>
+          </template>
 
-          <div v-if="s.is_archived && auth.hasGroup('admin_group')" class="flex gap-2 mt-auto pt-3 border-t">
-            <button @click="handleUnarchive(s)" class="flex-1 btn bg-green-50 text-green-700 hover:bg-green-100 text-sm py-2 flex items-center justify-center">
-              <ArchiveRestore class="w-4 h-4 mr-1" />Восстановить
-            </button>
-          </div>
-          <div v-if="!s.is_archived" class="flex gap-2 mt-auto pt-3 border-t">
-            <button @click="openDetail(s)" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
-              <Eye class="w-4 h-4 mr-1" />Подробнее
-            </button>
-            <button @click="openEdit(s)" class="btn btn-secondary text-sm py-2 px-3">
-              <Edit class="w-4 h-4" />
-            </button>
-            <button @click="archiveConfirm = s" class="btn bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm py-2 px-3" title="В архив">
-              <Archive class="w-4 h-4" />
-            </button>
-          </div>
+          <!-- Контакт на месте -->
+          <template #onsite_contact="{ row }">
+            <span v-if="row.onsite_contact" class="truncate block text-gray-700 text-sm">{{ row.onsite_contact }}</span>
+            <span v-else class="text-gray-300">—</span>
+          </template>
+
+          <!-- Частота -->
+          <template #service_frequency="{ row }">
+            <span v-if="row.service_frequency" class="text-sm text-gray-700">{{ cfg.serviceFrequencyLabel(row.service_frequency) }}</span>
+            <span v-else class="text-gray-300">—</span>
+          </template>
+
+          <!-- Выезды -->
+          <template #total_visits="{ row }">
+            <span
+              class="inline-flex items-center gap-1 text-sm font-medium"
+              :class="(row.total_visits || 0) > 0 ? 'text-green-700' : 'text-gray-400'"
+            >
+              <CalendarCheck class="w-3.5 h-3.5" />{{ row.total_visits || 0 }}
+            </span>
+          </template>
+
+          <!-- Статус -->
+          <template #status="{ row }">
+            <span v-if="row.is_archived" class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Архив</span>
+            <span v-else class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Активен</span>
+          </template>
+
+          <!-- Действия -->
+          <template #actions="{ row }">
+            <div class="flex items-center gap-1" @click.stop>
+              <button
+                v-if="!row.is_archived"
+                @click="openEdit(row)"
+                class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                title="Редактировать"
+              >
+                <Edit class="w-4 h-4" />
+              </button>
+              <button
+                v-if="!row.is_archived"
+                @click="archiveConfirm = row"
+                class="p-1.5 rounded hover:bg-amber-50 text-gray-400 hover:text-amber-600"
+                title="В архив"
+              >
+                <Archive class="w-4 h-4" />
+              </button>
+              <button
+                v-if="row.is_archived && auth.hasGroup('admin_group')"
+                @click="handleUnarchive(row)"
+                class="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600"
+                title="Восстановить"
+              >
+                <ArchiveRestore class="w-4 h-4" />
+              </button>
+            </div>
+          </template>
+
+          <template #empty>
+            <div class="flex flex-col items-center py-8 text-gray-400">
+              <Building2 class="w-12 h-12 mb-3 text-gray-200" />
+              <p>Объекты не найдены</p>
+            </div>
+          </template>
+        </DataTable>
+
+        <div ref="sentinelRef" class="h-4 mt-2"></div>
+        <div v-if="loadingMore" class="flex justify-center py-4">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-      </div>
-
-      <div v-if="!loading && sites.length === 0" class="text-center py-12">
-        <Building2 class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 class="text-lg font-medium text-gray-900">Объекты не найдены</h3>
-      </div>
-
-      <!-- Infinite scroll sentinel -->
-      <div ref="sentinelRef" class="h-4 mt-4"></div>
-      <div v-if="loadingMore" class="flex justify-center py-4">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
+      </template>
 
       <!-- Create/Edit Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -212,8 +276,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Plus, MapPin, Building2, Phone, X, Eye, Edit, Archive, ArchiveRestore } from 'lucide-vue-next'
+import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { sitesAPI, clientsAPI } from '../services/api.js'
@@ -221,16 +286,16 @@ import { sitesAPI, clientsAPI } from '../services/api.js'
 const cfg = useConfigStore()
 const auth = useAuthStore()
 const router = useRouter()
+
 const sites = ref([])
 const total = ref(0)
-const clients = ref([])
+const clientsList = ref([])
 const loading = ref(true)
 const loadingMore = ref(false)
-const search = ref('')
-const showArchived = ref(false)
 const LIMIT = 50
 const sentinelRef = ref(null)
 let observer = null
+
 const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)
@@ -242,40 +307,56 @@ const clientDropdownOpen = ref(false)
 const geocoding = ref(false)
 const geocodeError = ref('')
 
-const filteredClients = computed(() => {
-  const q = clientSearch.value.toLowerCase()
-  if (!q) return clients.value
-  return clients.value.filter(c => c.name.toLowerCase().includes(q))
+const filters = ref({
+  search: '',
+  serviceFrequency: '',
+  showArchived: false,
 })
 
-function validate() {
-  const e = {}
-  if (!form.value.title.trim()) e.title = 'Введите название'
-  if (!form.value.address.trim()) e.address = 'Введите адрес'
-  const lat = parseFloat(form.value.latitude)
-  if (form.value.latitude !== '' && (isNaN(lat) || lat < -90 || lat > 90)) e.latitude = 'Широта должна быть от −90 до 90'
-  const lon = parseFloat(form.value.longitude)
-  if (form.value.longitude !== '' && (isNaN(lon) || lon < -180 || lon > 180)) e.longitude = 'Долгота должна быть от −180 до 180'
-  errors.value = e
-  return Object.keys(e).length === 0
+const hasActiveFilters = computed(() =>
+  filters.value.search || filters.value.serviceFrequency || filters.value.showArchived
+)
+
+// Клиентский фильтр по service_frequency (бэк не поддерживает этот фильтр)
+const filteredSites = computed(() => {
+  if (!filters.value.serviceFrequency) return sites.value
+  return sites.value.filter(s => s.service_frequency === filters.value.serviceFrequency)
+})
+
+const columns = [
+  { key: 'title',             label: 'Объект',          width: 280, sortable: true },
+  { key: 'client_name',       label: 'Клиент',          width: 180, sortable: true },
+  { key: 'onsite_contact',    label: 'Контакт на месте', width: 180, sortable: false },
+  { key: 'service_frequency', label: 'Частота',         width: 150, sortable: true },
+  { key: 'total_visits',      label: 'Выезды',          width: 100, sortable: true },
+  { key: 'status',            label: 'Статус',          width: 110, sortable: false },
+  { key: 'actions',           label: '',               width: 90,  sortable: false },
+]
+
+function rowClass(row) {
+  return row.is_archived ? 'opacity-60 bg-gray-50' : ''
 }
 
-let searchTimer = null
-function debouncedLoad() {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(loadSites, 300)
+function onRowClick(row) {
+  if (!row.is_archived) router.push(`/sites/${row.id}`)
+}
+
+const filteredClients = computed(() => {
+  const q = clientSearch.value.toLowerCase()
+  if (!q) return clientsList.value
+  return clientsList.value.filter(c => c.name.toLowerCase().includes(q))
+})
+
+function buildParams(offset = 0) {
+  const p = { limit: LIMIT, offset, show_archived: filters.value.showArchived || undefined }
+  if (filters.value.search) p.search = filters.value.search
+  return p
 }
 
 async function loadSites() {
   loading.value = true
   try {
-    const res = await sitesAPI.getAll({
-      search: search.value || undefined,
-      active_only: true,
-      show_archived: showArchived.value || undefined,
-      limit: LIMIT,
-      offset: 0,
-    })
+    const res = await sitesAPI.getAll(buildParams(0))
     sites.value = res.data.items
     total.value = res.data.total
   } finally {
@@ -287,18 +368,23 @@ async function loadMore() {
   if (loadingMore.value || sites.value.length >= total.value) return
   loadingMore.value = true
   try {
-    const res = await sitesAPI.getAll({
-      search: search.value || undefined,
-      active_only: true,
-      show_archived: showArchived.value || undefined,
-      limit: LIMIT,
-      offset: sites.value.length,
-    })
+    const res = await sitesAPI.getAll(buildParams(sites.value.length))
     sites.value.push(...res.data.items)
     total.value = res.data.total
   } finally {
     loadingMore.value = false
   }
+}
+
+let searchTimer = null
+function debouncedLoad() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadSites, 300)
+}
+
+function resetFilters() {
+  filters.value = { search: '', serviceFrequency: '', showArchived: false }
+  loadSites()
 }
 
 function setupObserver() {
@@ -311,7 +397,19 @@ function setupObserver() {
 
 async function loadClients() {
   const res = await clientsAPI.getAll({ active_only: true, limit: 500 })
-  clients.value = res.data.items
+  clientsList.value = res.data.items
+}
+
+function validate() {
+  const e = {}
+  if (!form.value.title.trim()) e.title = 'Введите название'
+  if (!form.value.address.trim()) e.address = 'Введите адрес'
+  const lat = parseFloat(form.value.latitude)
+  if (form.value.latitude !== '' && (isNaN(lat) || lat < -90 || lat > 90)) e.latitude = 'Широта должна быть от −90 до 90'
+  const lon = parseFloat(form.value.longitude)
+  if (form.value.longitude !== '' && (isNaN(lon) || lon < -180 || lon > 180)) e.longitude = 'Долгота должна быть от −180 до 180'
+  errors.value = e
+  return Object.keys(e).length === 0
 }
 
 function openCreate() {
@@ -332,10 +430,6 @@ function openEdit(s) {
   clientSearch.value = s.client_name || ''
   clientDropdownOpen.value = false
   modalOpen.value = true
-}
-
-function openDetail(s) {
-  router.push(`/sites/${s.id}`)
 }
 
 async function handleGeocode() {

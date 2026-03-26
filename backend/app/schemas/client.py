@@ -17,6 +17,10 @@ class ClientOut(BaseModel):
     is_archived: bool
     created_at: datetime
     updated_at: datetime
+    # joined counters
+    sites_count: Optional[int] = None
+    visits_count: Optional[int] = None
+    contracts_count: Optional[int] = None
 
 
 class ClientCreate(BaseModel):

@@ -1,7 +1,7 @@
 <template>
   <Layout>
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Клиенты</h1>
           <p class="text-gray-600 mt-1">Показано: {{ clients.length }} из {{ total }}</p>
@@ -11,86 +11,163 @@
         </button>
       </div>
 
-      <div class="card mb-6">
-        <div class="flex gap-4 flex-wrap">
-          <div class="flex-1 relative min-w-[200px]">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <!-- Фильтры -->
+      <div class="card mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <!-- Поиск -->
+          <div class="relative flex-1 min-w-[200px]">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
-              v-model="search"
+              v-model="filters.search"
               @input="debouncedLoad"
               type="text"
-              placeholder="Поиск по названию, ИНН, контактному лицу..."
-              class="input pl-10"
+              placeholder="Поиск по названию, ИНН, контакту..."
+              class="input pl-9 text-sm"
             />
           </div>
-          <button @click="loadClients" class="btn btn-primary">Найти</button>
-          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-            <input type="checkbox" v-model="showArchived" @change="loadClients" class="rounded" />
-            Показать архивные
+
+          <!-- Статус -->
+          <div class="min-w-[150px]">
+            <select v-model="filters.status" @change="loadClients" class="input text-sm">
+              <option value="">Все статусы</option>
+              <option value="active">Активные</option>
+              <option value="inactive">Неактивные</option>
+            </select>
+          </div>
+
+          <!-- Архивные (только admin) -->
+          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap">
+            <input type="checkbox" v-model="filters.showArchived" @change="loadClients" class="rounded" />
+            Архивные
           </label>
+
+          <!-- Сброс фильтров -->
+          <button
+            v-if="hasActiveFilters"
+            @click="resetFilters"
+            class="btn btn-secondary text-sm flex items-center gap-1"
+          >
+            <X class="w-4 h-4" />Сбросить
+          </button>
         </div>
       </div>
 
+      <!-- Таблица -->
       <div v-if="loading" class="flex items-center justify-center h-64">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div
-          v-for="c in clients" :key="c.id"
-          class="card hover:shadow-md transition-shadow flex flex-col"
-          :class="{ 'opacity-50 bg-gray-50': c.is_archived }"
+      <template v-else>
+        <DataTable
+          :columns="columns"
+          :rows="clients"
+          storage-key="clients-table-v1"
+          :row-class="rowClass"
+          @row-click="onRowClick"
         >
-          <div class="flex items-start justify-between mb-3">
-            <div class="flex items-center">
-              <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
-                <Building2 class="w-5 h-5 text-primary-600" />
+          <!-- Название -->
+          <template #name="{ row }">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 bg-primary-100 rounded-md flex-shrink-0 flex items-center justify-center">
+                <Building2 class="w-4 h-4 text-primary-600" />
               </div>
-              <div>
-                <h3 class="font-semibold text-gray-900">{{ c.name }}</h3>
-                <p v-if="c.inn" class="text-sm text-gray-500">ИНН: {{ c.inn }}</p>
+              <div class="min-w-0">
+                <div class="font-medium text-gray-900 truncate">{{ row.name }}</div>
+                <div v-if="row.inn" class="text-xs text-gray-400 truncate">ИНН: {{ row.inn }}</div>
               </div>
             </div>
-            <span v-if="c.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
-          </div>
+          </template>
 
-          <div v-if="c.contact_person" class="flex items-center text-sm text-gray-600 mb-2">
-            <Phone class="w-4 h-4 mr-2" />{{ c.contact_person }}
-          </div>
-          <div v-if="c.contacts" class="flex items-center text-sm text-gray-600 mb-3">
-            <Mail class="w-4 h-4 mr-2" />{{ c.contacts.split(',')[0] }}
-          </div>
-          <p v-if="c.notes" class="text-sm text-gray-500 mb-3 border-t pt-3">{{ c.notes }}</p>
+          <!-- Контакт -->
+          <template #contacts="{ row }">
+            <div class="min-w-0">
+              <div v-if="row.contact_person" class="truncate text-gray-800">{{ row.contact_person }}</div>
+              <div v-if="row.contacts" class="text-xs text-gray-500 truncate">{{ row.contacts.split(',')[0] }}</div>
+              <span v-if="!row.contact_person && !row.contacts" class="text-gray-300">—</span>
+            </div>
+          </template>
 
-          <div v-if="c.is_archived && auth.hasGroup('admin_group')" class="flex gap-2 mt-auto pt-3 border-t">
-            <button @click="handleUnarchive(c)" class="flex-1 btn bg-green-50 text-green-700 hover:bg-green-100 text-sm py-2 flex items-center justify-center">
-              <ArchiveRestore class="w-4 h-4 mr-1" />Восстановить
-            </button>
-          </div>
-          <div v-if="!c.is_archived" class="flex gap-2 mt-auto pt-3 border-t">
-            <router-link :to="`/clients/${c.id}`" class="flex-1 btn btn-secondary text-sm py-2 flex items-center justify-center">
-              <Eye class="w-4 h-4 mr-1" />Подробнее
-            </router-link>
-            <button @click="openEdit(c)" class="btn btn-secondary text-sm py-2 px-3">
-              <Edit class="w-4 h-4" />
-            </button>
-            <button @click="archiveConfirm = c" class="btn bg-amber-50 text-amber-700 hover:bg-amber-100 text-sm py-2 px-3" title="В архив">
-              <Archive class="w-4 h-4" />
-            </button>
-          </div>
+          <!-- Объекты -->
+          <template #sites_count="{ row }">
+            <span
+              class="inline-flex items-center gap-1 text-sm font-medium"
+              :class="row.sites_count > 0 ? 'text-blue-700' : 'text-gray-400'"
+            >
+              <MapPin class="w-3.5 h-3.5" />{{ row.sites_count ?? 0 }}
+            </span>
+          </template>
+
+          <!-- Договоры -->
+          <template #contracts_count="{ row }">
+            <span
+              class="inline-flex items-center gap-1 text-sm font-medium"
+              :class="row.contracts_count > 0 ? 'text-violet-700' : 'text-gray-400'"
+            >
+              <FileText class="w-3.5 h-3.5" />{{ row.contracts_count ?? 0 }}
+            </span>
+          </template>
+
+          <!-- Выезды -->
+          <template #visits_count="{ row }">
+            <span
+              class="inline-flex items-center gap-1 text-sm font-medium"
+              :class="row.visits_count > 0 ? 'text-green-700' : 'text-gray-400'"
+            >
+              <CalendarCheck class="w-3.5 h-3.5" />{{ row.visits_count ?? 0 }}
+            </span>
+          </template>
+
+          <!-- Статус -->
+          <template #status="{ row }">
+            <span v-if="row.is_archived" class="badge bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">Архив</span>
+            <span v-else-if="row.is_active" class="badge bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">Активен</span>
+            <span v-else class="badge bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded-full">Неактивен</span>
+          </template>
+
+          <!-- Действия -->
+          <template #actions="{ row }">
+            <div class="flex items-center gap-1" @click.stop>
+              <button
+                v-if="!row.is_archived"
+                @click="openEdit(row)"
+                class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                title="Редактировать"
+              >
+                <Edit class="w-4 h-4" />
+              </button>
+              <button
+                v-if="!row.is_archived"
+                @click="archiveConfirm = row"
+                class="p-1.5 rounded hover:bg-amber-50 text-gray-400 hover:text-amber-600"
+                title="В архив"
+              >
+                <Archive class="w-4 h-4" />
+              </button>
+              <button
+                v-if="row.is_archived && auth.hasGroup('admin_group')"
+                @click="handleUnarchive(row)"
+                class="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600"
+                title="Восстановить"
+              >
+                <ArchiveRestore class="w-4 h-4" />
+              </button>
+            </div>
+          </template>
+
+          <template #empty>
+            <div class="flex flex-col items-center py-8 text-gray-400">
+              <Building2 class="w-12 h-12 mb-3 text-gray-200" />
+              <p>Клиенты не найдены</p>
+            </div>
+          </template>
+        </DataTable>
+
+        <!-- Infinite scroll sentinel -->
+        <div ref="sentinelRef" class="h-4 mt-2"></div>
+        <div v-if="loadingMore" class="flex justify-center py-4">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-      </div>
-
-      <div v-if="!loading && clients.length === 0" class="text-center py-12">
-        <Building2 class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 class="text-lg font-medium text-gray-900 mb-2">Клиенты не найдены</h3>
-      </div>
-
-      <!-- Infinite scroll sentinel -->
-      <div ref="sentinelRef" class="h-4 mt-4"></div>
-      <div v-if="loadingMore" class="flex justify-center py-4">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
+      </template>
 
       <!-- Create / Edit Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -158,19 +235,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { Search, Plus, Building2, Phone, Mail, Edit, Archive, ArchiveRestore, X, Eye } from 'lucide-vue-next'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  Search, Plus, Building2, Edit, Archive, ArchiveRestore, X,
+  MapPin, FileText, CalendarCheck,
+} from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import DataTable from '../components/DataTable.vue'
 import { clientsAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
 
+const router = useRouter()
 const auth = useAuthStore()
+
 const clients = ref([])
 const total = ref(0)
 const loading = ref(true)
 const loadingMore = ref(false)
-const search = ref('')
-const showArchived = ref(false)
 const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)
@@ -178,36 +260,53 @@ const saving = ref(false)
 const form = ref({ name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' })
 const errors = ref({})
 
+const filters = ref({
+  search: '',
+  status: '',      // '' | 'active' | 'inactive'
+  showArchived: false,
+})
+
+const hasActiveFilters = computed(() =>
+  filters.value.search || filters.value.status || filters.value.showArchived
+)
+
+const columns = [
+  { key: 'name',            label: 'Клиент',      width: 280, sortable: true },
+  { key: 'contacts',        label: 'Контакт',     width: 180, sortable: false },
+  { key: 'sites_count',     label: 'Объекты',     width: 100, sortable: true },
+  { key: 'contracts_count', label: 'Договоры',    width: 110, sortable: true },
+  { key: 'visits_count',    label: 'Выезды',      width: 100, sortable: true },
+  { key: 'status',          label: 'Статус',      width: 120, sortable: false },
+  { key: 'actions',         label: '',            width: 90,  sortable: false },
+]
+
+function rowClass(row) {
+  return row.is_archived ? 'opacity-60 bg-gray-50' : ''
+}
+
+function onRowClick(row) {
+  if (!row.is_archived) router.push(`/clients/${row.id}`)
+}
+
 const LIMIT = 50
 const sentinelRef = ref(null)
 let observer = null
 
-function validate() {
-  const e = {}
-  if (!form.value.name.trim()) e.name = 'Введите название'
-  if (form.value.inn && !/^\d{10}(\d{2})?$/.test(form.value.inn)) e.inn = 'ИНН должен содержать 10 или 12 цифр'
-  if (form.value.kpp && !/^\d{9}$/.test(form.value.kpp)) e.kpp = 'КПП должен содержать 9 цифр'
-  errors.value = e
-  return Object.keys(e).length === 0
-}
-
-let searchTimer = null
-function debouncedLoad() {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(loadClients, 300)
+function buildParams(offset = 0) {
+  const p = { limit: LIMIT, offset, show_archived: filters.value.showArchived || undefined }
+  if (filters.value.search) p.search = filters.value.search
+  if (filters.value.status === 'active') p.active_only = true
+  // 'inactive' — нет серверного фильтра, фильтруем на клиенте
+  return p
 }
 
 async function loadClients() {
   loading.value = true
   try {
-    const res = await clientsAPI.getAll({
-      search: search.value || undefined,
-      active_only: true,
-      show_archived: showArchived.value || undefined,
-      limit: LIMIT,
-      offset: 0,
-    })
-    clients.value = res.data.items
+    const res = await clientsAPI.getAll(buildParams(0))
+    let items = res.data.items
+    if (filters.value.status === 'inactive') items = items.filter(c => !c.is_active && !c.is_archived)
+    clients.value = items
     total.value = res.data.total
   } finally {
     loading.value = false
@@ -218,18 +317,25 @@ async function loadMore() {
   if (loadingMore.value || clients.value.length >= total.value) return
   loadingMore.value = true
   try {
-    const res = await clientsAPI.getAll({
-      search: search.value || undefined,
-      active_only: true,
-      show_archived: showArchived.value || undefined,
-      limit: LIMIT,
-      offset: clients.value.length,
-    })
-    clients.value.push(...res.data.items)
+    const res = await clientsAPI.getAll(buildParams(clients.value.length))
+    let items = res.data.items
+    if (filters.value.status === 'inactive') items = items.filter(c => !c.is_active && !c.is_archived)
+    clients.value.push(...items)
     total.value = res.data.total
   } finally {
     loadingMore.value = false
   }
+}
+
+let searchTimer = null
+function debouncedLoad() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadClients, 300)
+}
+
+function resetFilters() {
+  filters.value = { search: '', status: '', showArchived: false }
+  loadClients()
 }
 
 function setupObserver() {
@@ -238,6 +344,15 @@ function setupObserver() {
     if (entries[0].isIntersecting) loadMore()
   }, { threshold: 0.1 })
   if (sentinelRef.value) observer.observe(sentinelRef.value)
+}
+
+function validate() {
+  const e = {}
+  if (!form.value.name.trim()) e.name = 'Введите название'
+  if (form.value.inn && !/^\d{10}(\d{2})?$/.test(form.value.inn)) e.inn = 'ИНН должен содержать 10 или 12 цифр'
+  if (form.value.kpp && !/^\d{9}$/.test(form.value.kpp)) e.kpp = 'КПП должен содержать 9 цифр'
+  errors.value = e
+  return Object.keys(e).length === 0
 }
 
 function openCreate() {

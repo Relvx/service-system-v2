@@ -10,6 +10,7 @@ from app.models.client_contact import ClientContact
 from app.models.client_legal import ClientLegal
 from app.models.site import Site
 from app.models.visit import Visit
+from app.models.contract import Contract
 from app.models.user import User
 from app.models.history import ClientHistory
 from app.schemas.client import (
@@ -43,7 +44,28 @@ async def get_clients(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    stmt = select(Client)
+    sites_count_sq = (
+        select(func.count()).where(Site.client_id == Client.id, Site.is_archived == False)
+        .correlate(Client).scalar_subquery()
+    )
+    visits_count_sq = (
+        select(func.count())
+        .select_from(Visit)
+        .join(Site, Visit.site_id == Site.id)
+        .where(Site.client_id == Client.id, Visit.is_archived == False)
+        .correlate(Client).scalar_subquery()
+    )
+    contracts_count_sq = (
+        select(func.count()).where(Contract.client_id == Client.id, Contract.is_archived == False)
+        .correlate(Client).scalar_subquery()
+    )
+
+    stmt = select(
+        Client,
+        sites_count_sq.label("sites_count"),
+        visits_count_sq.label("visits_count"),
+        contracts_count_sq.label("contracts_count"),
+    )
     if not show_archived:
         stmt = stmt.where(Client.is_archived == False)
     if active_only:
@@ -60,7 +82,15 @@ async def get_clients(
     total = total_res.scalar() or 0
 
     result = await db.execute(stmt.offset(offset).limit(limit))
-    return ClientPage(items=result.scalars().all(), total=total, limit=limit, offset=offset)
+    out = []
+    for row in result.all():
+        client, s_cnt, v_cnt, c_cnt = row[0], row[1], row[2], row[3]
+        obj = ClientOut.model_validate(client)
+        obj.sites_count = s_cnt
+        obj.visits_count = v_cnt
+        obj.contracts_count = c_cnt
+        out.append(obj)
+    return ClientPage(items=out, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{client_id}", response_model=ClientDetailOut)

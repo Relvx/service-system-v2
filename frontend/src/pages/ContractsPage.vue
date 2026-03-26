@@ -1,139 +1,229 @@
 <template>
   <Layout>
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-xl md:text-3xl font-bold text-gray-900">Договоры</h1>
-      <button @click="openCreate" class="btn btn-primary flex items-center">
-        <Plus class="w-4 h-4 mr-2" />Новый договор
-      </button>
-    </div>
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Договоры</h1>
+          <p class="text-gray-600 mt-1">Показано: {{ contracts.length }} из {{ total }}</p>
+        </div>
+        <button @click="openCreate" class="btn btn-primary flex items-center">
+          <Plus class="w-4 h-4 mr-2" />Новый договор
+        </button>
+      </div>
 
-    <!-- Фильтры -->
-    <div class="card mb-6 flex flex-wrap gap-3">
-      <input
-        v-model="search"
-        placeholder="Поиск по номеру или предмету..."
-        class="input flex-1 min-w-48"
-        @input="debouncedLoad"
-      />
-      <select v-model="filterStatus" @change="load" class="input w-40">
-        <option value="">Все статусы</option>
-        <option value="active">Активен</option>
-        <option value="closed">Закрыт</option>
-        <option value="cancelled">Отменён</option>
-      </select>
-    </div>
+      <!-- Фильтры -->
+      <div class="card mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <div class="relative flex-1 min-w-[200px]">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              v-model="filters.search"
+              @input="debouncedLoad"
+              placeholder="Поиск по номеру, предмету, клиенту..."
+              class="input pl-9 text-sm"
+            />
+          </div>
+          <div class="min-w-[150px]">
+            <select v-model="filters.status" @change="load" class="input text-sm">
+              <option value="">Все статусы</option>
+              <option value="active">Активен</option>
+              <option value="closed">Закрыт</option>
+              <option value="cancelled">Отменён</option>
+            </select>
+          </div>
+          <button
+            v-if="hasActiveFilters"
+            @click="resetFilters"
+            class="btn btn-secondary text-sm flex items-center gap-1"
+          >
+            <X class="w-4 h-4" />Сбросить
+          </button>
+        </div>
+      </div>
 
-    <!-- Список -->
-    <div v-if="loading" class="flex justify-center py-16">
-      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
-    </div>
+      <div v-if="loading" class="flex justify-center py-16">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+      </div>
 
-    <div v-else-if="contracts.length === 0" class="text-center py-16 card">
-      <FileText class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-      <p class="text-gray-500">Договоры не найдены</p>
-    </div>
-
-    <div v-else class="space-y-3">
-      <router-link
-        v-for="c in contracts" :key="c.id"
-        :to="`/contracts/${c.id}`"
-        class="card hover:shadow-md transition-shadow block"
-      >
-        <div class="flex items-start justify-between">
-          <div class="flex items-start gap-3">
-            <div class="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-              <FileText class="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <p class="font-semibold text-gray-900">{{ c.contract_number || 'Без номера' }}</p>
-                <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="statusClass(c.status)">
-                  {{ statusLabel(c.status) }}
-                </span>
+      <template v-else>
+        <DataTable
+          :columns="columns"
+          :rows="contracts"
+          storage-key="contracts-table-v1"
+          @row-click="onRowClick"
+        >
+          <!-- Номер -->
+          <template #contract_number="{ row }">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 bg-blue-100 rounded-md flex-shrink-0 flex items-center justify-center">
+                <FileText class="w-4 h-4 text-blue-600" />
               </div>
-              <p v-if="c.client_name" class="text-sm text-gray-600 mt-0.5">{{ c.client_name }}</p>
-              <p v-if="c.subject" class="text-sm text-gray-500 mt-0.5">{{ c.subject }}</p>
+              <div class="min-w-0">
+                <div class="font-medium text-gray-900 truncate">{{ row.contract_number || 'Без номера' }}</div>
+                <div v-if="row.subject" class="text-xs text-gray-400 truncate">{{ row.subject }}</div>
+              </div>
             </div>
-          </div>
-          <div class="text-right text-sm text-gray-500 flex-shrink-0 ml-4">
-            <p v-if="c.contract_date">{{ formatDate(c.contract_date) }}</p>
-            <p v-if="c.amount" class="font-medium text-gray-700 mt-1">{{ formatAmount(c.amount) }} ₽</p>
-          </div>
-        </div>
-      </router-link>
-    </div>
+          </template>
 
-    <!-- Infinite scroll sentinel -->
-    <div ref="sentinelRef" class="h-4 mt-4"></div>
-    <div v-if="loadingMore" class="flex justify-center py-4">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-    </div>
+          <!-- Клиент -->
+          <template #client_name="{ row }">
+            <span v-if="row.client_name" class="truncate block text-gray-700">{{ row.client_name }}</span>
+            <span v-else class="text-gray-300">—</span>
+          </template>
 
-    <!-- Модал создания -->
-    <div v-if="createModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-        <div class="flex items-center justify-between p-6 border-b">
-          <h2 class="text-xl font-semibold text-gray-900">Новый договор</h2>
-          <button @click="createModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          <!-- Дата -->
+          <template #contract_date="{ row }">
+            <span class="text-sm text-gray-700">{{ formatDate(row.contract_date) }}</span>
+          </template>
+
+          <!-- Сумма -->
+          <template #amount="{ row }">
+            <span v-if="row.amount" class="text-sm font-medium text-gray-800">{{ formatAmount(row.amount) }} ₽</span>
+            <span v-else class="text-gray-300">—</span>
+          </template>
+
+          <!-- Сумма акта -->
+          <template #act_amount="{ row }">
+            <span v-if="row.act_amount" class="text-sm font-medium text-gray-800">{{ formatAmount(row.act_amount) }} ₽</span>
+            <span v-else class="text-gray-300">—</span>
+          </template>
+
+          <!-- Объекты -->
+          <template #sites_count="{ row }">
+            <span
+              class="inline-flex items-center gap-1 text-sm font-medium"
+              :class="(row.sites_count || 0) > 0 ? 'text-green-700' : 'text-gray-400'"
+            >
+              <MapPin class="w-3.5 h-3.5" />{{ row.sites_count ?? 0 }}
+            </span>
+          </template>
+
+          <!-- Статус -->
+          <template #status="{ row }">
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusClass(row.status)">
+              {{ statusLabel(row.status) }}
+            </span>
+          </template>
+
+          <!-- Действия -->
+          <template #actions="{ row }">
+            <div class="flex items-center gap-1" @click.stop>
+              <router-link
+                :to="`/contracts/${row.id}`"
+                class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-primary-600"
+                title="Открыть"
+              >
+                <Eye class="w-4 h-4" />
+              </router-link>
+            </div>
+          </template>
+
+          <template #empty>
+            <div class="flex flex-col items-center py-8 text-gray-400">
+              <FileText class="w-12 h-12 mb-3 text-gray-200" />
+              <p>Договоры не найдены</p>
+            </div>
+          </template>
+        </DataTable>
+
+        <div ref="sentinelRef" class="h-4 mt-2"></div>
+        <div v-if="loadingMore" class="flex justify-center py-4">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-        <form @submit.prevent="handleCreate" class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Номер договора</label>
-            <input v-model="form.contract_number" class="input" placeholder="0817/2 от 17.08.2006" />
+      </template>
+
+      <!-- Модал создания -->
+      <div v-if="createModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+          <div class="flex items-center justify-between p-6 border-b">
+            <h2 class="text-xl font-semibold text-gray-900">Новый договор</h2>
+            <button @click="createModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Дата договора</label>
-            <input v-model="form.contract_date" type="date" class="input" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Предмет договора</label>
-            <input v-model="form.subject" class="input" placeholder="ТО газового оборудования" />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form @submit.prevent="handleCreate" class="p-6 space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Сумма договора</label>
-              <input v-model="form.amount" type="number" step="0.01" class="input" placeholder="50000" />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Номер договора</label>
+              <input v-model="form.contract_number" class="input" placeholder="0817/2 от 17.08.2006" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Сумма акта</label>
-              <input v-model="form.act_amount" type="number" step="0.01" class="input" placeholder="50000" />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Дата договора</label>
+              <input v-model="form.contract_date" type="date" class="input" />
             </div>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
-            <textarea v-model="form.notes" class="input" rows="2" />
-          </div>
-          <div class="flex justify-end gap-3 pt-2">
-            <button type="button" @click="createModalOpen = false" class="btn btn-secondary">Отмена</button>
-            <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
-              {{ saving ? 'Сохранение...' : 'Создать' }}
-            </button>
-          </div>
-        </form>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Предмет договора</label>
+              <input v-model="form.subject" class="input" placeholder="ТО газового оборудования" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Сумма договора</label>
+                <input v-model="form.amount" type="number" step="0.01" class="input" placeholder="50000" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Сумма акта</label>
+                <input v-model="form.act_amount" type="number" step="0.01" class="input" placeholder="50000" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
+              <textarea v-model="form.notes" class="input" rows="2" />
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" @click="createModalOpen = false" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Создать' }}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </Layout>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { Plus, FileText, X } from 'lucide-vue-next'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Plus, FileText, X, Search, MapPin, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import DataTable from '../components/DataTable.vue'
 import { contractsAPI } from '../services/api.js'
 
+const router = useRouter()
 const contracts = ref([])
 const total = ref(0)
 const loading = ref(true)
 const loadingMore = ref(false)
-const search = ref('')
-const filterStatus = ref('')
 const createModalOpen = ref(false)
 const saving = ref(false)
 const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
 
+const filters = ref({ search: '', status: '' })
+const hasActiveFilters = computed(() => filters.value.search || filters.value.status)
+
 const LIMIT = 50
 const sentinelRef = ref(null)
 let observer = null
+
+const columns = [
+  { key: 'contract_number', label: 'Договор',    width: 260, sortable: true },
+  { key: 'client_name',     label: 'Клиент',     width: 200, sortable: true },
+  { key: 'contract_date',   label: 'Дата',       width: 120, sortable: true },
+  { key: 'amount',          label: 'Сумма',      width: 140, sortable: true },
+  { key: 'act_amount',      label: 'Сумма акта', width: 140, sortable: true, defaultVisible: false },
+  { key: 'sites_count',     label: 'Объекты',    width: 100, sortable: true },
+  { key: 'status',          label: 'Статус',     width: 110, sortable: false },
+  { key: 'actions',         label: '',           width: 60,  sortable: false },
+]
+
+function onRowClick(row) {
+  router.push(`/contracts/${row.id}`)
+}
+
+function buildParams(offset = 0) {
+  const p = { limit: LIMIT, offset }
+  if (filters.value.search) p.search = filters.value.search
+  if (filters.value.status) p.status = filters.value.status
+  return p
+}
 
 let searchTimer = null
 function debouncedLoad() {
@@ -144,10 +234,7 @@ function debouncedLoad() {
 async function load() {
   loading.value = true
   try {
-    const params = { limit: LIMIT, offset: 0 }
-    if (search.value) params.search = search.value
-    if (filterStatus.value) params.status = filterStatus.value
-    const res = await contractsAPI.getAll(params)
+    const res = await contractsAPI.getAll(buildParams(0))
     contracts.value = res.data.items
     total.value = res.data.total
   } finally {
@@ -159,15 +246,17 @@ async function loadMore() {
   if (loadingMore.value || contracts.value.length >= total.value) return
   loadingMore.value = true
   try {
-    const params = { limit: LIMIT, offset: contracts.value.length }
-    if (search.value) params.search = search.value
-    if (filterStatus.value) params.status = filterStatus.value
-    const res = await contractsAPI.getAll(params)
+    const res = await contractsAPI.getAll(buildParams(contracts.value.length))
     contracts.value.push(...res.data.items)
     total.value = res.data.total
   } finally {
     loadingMore.value = false
   }
+}
+
+function resetFilters() {
+  filters.value = { search: '', status: '' }
+  load()
 }
 
 function setupObserver() {
