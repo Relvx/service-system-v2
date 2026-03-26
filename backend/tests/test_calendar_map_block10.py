@@ -32,7 +32,6 @@ class TestCalendarBlock10:
         )
         assert res.status_code == 200
         data = res.json()
-        # Если есть выезды — проверяем наличие поля
         for v in data:
             assert "assigned_user_id" in v
             assert "master_name" in v
@@ -44,7 +43,6 @@ class TestCalendarBlock10:
         """GET /api/visits?master_id= возвращает только выезды этого мастера."""
         headers = auth_headers(admin_token)
 
-        # Создаём выезд на имя admin_user_id
         res = await http_client.post(
             "/api/visits",
             headers=headers,
@@ -60,25 +58,24 @@ class TestCalendarBlock10:
         assert res.status_code == 201
         visit_id = res.json()["id"]
 
-        # Фильтрация по мастеру — должен вернуть наш выезд
+        # Filter by master_id + site_id + date to narrow down result set
         res2 = await http_client.get(
-            f"/api/visits?master_id={admin_user_id}&date_from={TODAY}&date_to={TODAY}",
+            f"/api/visits?master_id={admin_user_id}&site_id={site_id}&date_from={TODAY}&date_to={TODAY}",
             headers=headers,
         )
         assert res2.status_code == 200
-        ids = [v["id"] for v in res2.json()]
+        ids = [v["id"] for v in res2.json()["items"]]
         assert visit_id in ids
 
-        # Фильтрация по несуществующему мастеру — не должен вернуть наш выезд
+        # Filter by nonexistent master_id
         res3 = await http_client.get(
-            f"/api/visits?master_id=999999&date_from={TODAY}&date_to={TODAY}",
+            f"/api/visits?master_id=999999&site_id={site_id}&date_from={TODAY}&date_to={TODAY}",
             headers=headers,
         )
         assert res3.status_code == 200
-        ids3 = [v["id"] for v in res3.json()]
+        ids3 = [v["id"] for v in res3.json()["items"]]
         assert visit_id not in ids3
 
-        # Cleanup
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
 
     async def test_visits_date_filter_for_map(
@@ -103,14 +100,13 @@ class TestCalendarBlock10:
         visit_id = res.json()["id"]
 
         res2 = await http_client.get(
-            f"/api/visits?date_from={TODAY}",
+            f"/api/visits?date_from={TODAY}&date_to={TODAY}&site_id={site_id}",
             headers=headers,
         )
         assert res2.status_code == 200
-        ids = [v["id"] for v in res2.json()]
+        ids = [v["id"] for v in res2.json()["items"]]
         assert visit_id in ids
 
-        # Cleanup
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
 
 

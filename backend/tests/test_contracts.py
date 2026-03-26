@@ -57,7 +57,7 @@ class TestContractsList:
         """GET /contracts возвращает список."""
         res = await http_client.get("/api/contracts", headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert isinstance(res.json(), list)
+        assert isinstance(res.json()["items"], list)
 
     async def test_list_unauthenticated(self, http_client: AsyncClient):
         """Без токена → 401."""
@@ -114,9 +114,9 @@ class TestContractCRUD:
         contract_id = await _create_contract(http_client, headers)
         await http_client.patch(f"/api/contracts/{contract_id}", headers=headers, json={"status": "cancelled"})
 
-        res = await http_client.get("/api/contracts?status=cancelled", headers=headers)
+        res = await http_client.get("/api/contracts?status=cancelled&limit=500", headers=headers)
         assert res.status_code == 200
-        ids = [c["id"] for c in res.json()]
+        ids = [c["id"] for c in res.json()["items"]]
         assert contract_id in ids
 
     async def test_search_by_number(self, http_client: AsyncClient, admin_token: str):
@@ -124,9 +124,9 @@ class TestContractCRUD:
         headers = auth_headers(admin_token)
         await _create_contract(http_client, headers)
 
-        res = await http_client.get("/api/contracts?search=__test__", headers=headers)
+        res = await http_client.get("/api/contracts?search=__test__&limit=500", headers=headers)
         assert res.status_code == 200
-        assert len(res.json()) >= 1
+        assert len(res.json()["items"]) >= 1
 
 
 class TestContractSiteLinks:

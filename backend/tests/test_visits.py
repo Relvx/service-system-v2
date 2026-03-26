@@ -23,13 +23,13 @@ class TestGetVisits:
     async def test_list_returns_list(self, http_client: AsyncClient, admin_token: str):
         res = await http_client.get("/api/visits", headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert isinstance(res.json(), list)
+        assert isinstance(res.json()["items"], list)
 
     async def test_list_filter_by_status(self, http_client: AsyncClient, admin_token: str):
         res = await http_client.get("/api/visits?status=planned",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200
-        for v in res.json():
+        for v in res.json()["items"]:
             assert v["status"] == "planned"
 
     async def test_calendar_endpoint(self, http_client: AsyncClient, admin_token: str):
@@ -141,7 +141,7 @@ class TestVisitCRUD:
         res = await http_client.get("/api/visits?priority=high",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200
-        for v in res.json():
+        for v in res.json()["items"]:
             assert v["priority"] == "high"
 
 
@@ -171,8 +171,10 @@ class TestVisitArchive:
                                                site_id: str, admin_user_id: str):
         """Архивированный выезд не появляется в стандартном списке."""
         headers = auth_headers(admin_token)
+        # Use a far-future date to make the visit unique in filter context
+        far_future = str(date.today() + timedelta(days=3650))
         payload = {
-            "planned_date": TODAY,
+            "planned_date": far_future,
             "site_id": site_id,
             "assigned_user_id": admin_user_id,
             "visit_type": "maintenance",
@@ -183,8 +185,12 @@ class TestVisitArchive:
         visit_id = res.json()["id"]
         await http_client.patch(f"/api/visits/{visit_id}/archive", headers=headers)
 
-        list_res = await http_client.get("/api/visits", headers=headers)
-        ids = [v["id"] for v in list_res.json()]
+        # Use date filter to narrow down
+        list_res = await http_client.get(
+            f"/api/visits?site_id={site_id}&date_from={far_future}&date_to={far_future}",
+            headers=headers
+        )
+        ids = [v["id"] for v in list_res.json()["items"]]
         assert visit_id not in ids
 
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
@@ -193,8 +199,9 @@ class TestVisitArchive:
                                         site_id: str, admin_user_id: str):
         """show_archived=true включает архивные выезды в список."""
         headers = auth_headers(admin_token)
+        far_future = str(date.today() + timedelta(days=3651))
         payload = {
-            "planned_date": TODAY,
+            "planned_date": far_future,
             "site_id": site_id,
             "assigned_user_id": admin_user_id,
             "visit_type": "maintenance",
@@ -205,8 +212,11 @@ class TestVisitArchive:
         visit_id = res.json()["id"]
         await http_client.patch(f"/api/visits/{visit_id}/archive", headers=headers)
 
-        list_res = await http_client.get("/api/visits?show_archived=true", headers=headers)
-        ids = [v["id"] for v in list_res.json()]
+        list_res = await http_client.get(
+            f"/api/visits?show_archived=true&site_id={site_id}&date_from={far_future}&date_to={far_future}",
+            headers=headers
+        )
+        ids = [v["id"] for v in list_res.json()["items"]]
         assert visit_id in ids
 
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
@@ -294,17 +304,21 @@ class TestVisitBlock7:
                                         site_id: int, admin_user_id: str):
         """GET /visits?master_id=... возвращает только выезды нужного мастера."""
         headers = auth_headers(admin_token)
+        far_future = str(date.today() + timedelta(days=3652))
         res = await http_client.post("/api/visits", headers=headers, json={
             "site_id": site_id, "assigned_user_id": admin_user_id,
-            "planned_date": TODAY, "visit_type": "maintenance", "priority": "medium",
+            "planned_date": far_future, "visit_type": "maintenance", "priority": "medium",
         })
         visit_id = res.json()["id"]
 
-        lst = await http_client.get(f"/api/visits?master_id={admin_user_id}", headers=headers)
+        lst = await http_client.get(
+            f"/api/visits?master_id={admin_user_id}&site_id={site_id}&date_from={far_future}&date_to={far_future}",
+            headers=headers
+        )
         assert lst.status_code == 200
-        ids = [v["id"] for v in lst.json()]
+        ids = [v["id"] for v in lst.json()["items"]]
         assert visit_id in ids
-        for v in lst.json():
+        for v in lst.json()["items"]:
             assert v["assigned_user_id"] == int(admin_user_id)
 
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)

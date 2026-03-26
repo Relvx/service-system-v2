@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Клиенты</h1>
-          <p class="text-gray-600 mt-1">Всего клиентов: {{ clients.length }}</p>
+          <p class="text-gray-600 mt-1">Показано: {{ clients.length }} из {{ total }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Добавить клиента
@@ -86,6 +86,12 @@
         <h3 class="text-lg font-medium text-gray-900 mb-2">Клиенты не найдены</h3>
       </div>
 
+      <!-- Infinite scroll sentinel -->
+      <div ref="sentinelRef" class="h-4 mt-4"></div>
+      <div v-if="loadingMore" class="flex justify-center py-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+
       <!-- Create / Edit Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
@@ -152,7 +158,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Search, Plus, Building2, Phone, Mail, Edit, Archive, ArchiveRestore, X, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { clientsAPI } from '../services/api.js'
@@ -160,7 +166,9 @@ import { useAuthStore } from '../stores/auth.js'
 
 const auth = useAuthStore()
 const clients = ref([])
+const total = ref(0)
 const loading = ref(true)
+const loadingMore = ref(false)
 const search = ref('')
 const showArchived = ref(false)
 const modalOpen = ref(false)
@@ -169,6 +177,10 @@ const archiveConfirm = ref(null)
 const saving = ref(false)
 const form = ref({ name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' })
 const errors = ref({})
+
+const LIMIT = 50
+const sentinelRef = ref(null)
+let observer = null
 
 function validate() {
   const e = {}
@@ -192,11 +204,40 @@ async function loadClients() {
       search: search.value || undefined,
       active_only: true,
       show_archived: showArchived.value || undefined,
+      limit: LIMIT,
+      offset: 0,
     })
-    clients.value = res.data
+    clients.value = res.data.items
+    total.value = res.data.total
   } finally {
     loading.value = false
   }
+}
+
+async function loadMore() {
+  if (loadingMore.value || clients.value.length >= total.value) return
+  loadingMore.value = true
+  try {
+    const res = await clientsAPI.getAll({
+      search: search.value || undefined,
+      active_only: true,
+      show_archived: showArchived.value || undefined,
+      limit: LIMIT,
+      offset: clients.value.length,
+    })
+    clients.value.push(...res.data.items)
+    total.value = res.data.total
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect()
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore()
+  }, { threshold: 0.1 })
+  if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
 
 function openCreate() {
@@ -251,5 +292,9 @@ async function handleUnarchive(c) {
   }
 }
 
-onMounted(loadClients)
+onMounted(async () => {
+  await loadClients()
+  setupObserver()
+})
+onUnmounted(() => { if (observer) observer.disconnect() })
 </script>

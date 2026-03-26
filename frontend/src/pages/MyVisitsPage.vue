@@ -265,8 +265,8 @@ const filteredVisits = computed(() => {
 async function loadMyVisits() {
   loading.value = true
   try {
-    const res = await visitsAPI.getAll({ master_id: user.value.id })
-    visits.value = res.data
+    const res = await visitsAPI.getAll({ master_id: user.value.id, limit: 500 })
+    visits.value = res.data.items
   } finally {
     loading.value = false
   }

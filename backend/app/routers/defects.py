@@ -1,7 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
+from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user
 from app.models.defect import Defect
@@ -14,6 +15,15 @@ from app.utils.notifications import notify_users_by_group
 from app.enums import enums
 
 router = APIRouter(prefix="/defects", tags=["defects"])
+
+DEFAULT_LIMIT = 50
+
+
+class DefectPage(BaseModel):
+    items: List[DefectOut]
+    total: int
+    limit: int
+    offset: int
 
 
 def _build_defect_query():
@@ -43,11 +53,13 @@ def _row_to_out(row) -> DefectOut:
     return obj
 
 
-@router.get("", response_model=List[DefectOut])
+@router.get("", response_model=DefectPage)
 async def get_defects(
     site_id: Optional[int] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -59,8 +71,12 @@ async def get_defects(
     if priority:
         stmt = stmt.where(Defect.priority == priority)
     stmt = stmt.order_by(Defect.created_at.desc())
-    result = await db.execute(stmt)
-    return [_row_to_out(r) for r in result.all()]
+
+    total_res = await db.execute(select(func.count()).select_from(stmt.subquery()))
+    total = total_res.scalar() or 0
+
+    result = await db.execute(stmt.offset(offset).limit(limit))
+    return DefectPage(items=[_row_to_out(r) for r in result.all()], total=total, limit=limit, offset=offset)
 
 
 @router.post("", response_model=DefectOut, status_code=status.HTTP_201_CREATED)

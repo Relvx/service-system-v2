@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Объекты</h1>
-          <p class="text-gray-600 mt-1">Всего объектов: {{ sites.length }}</p>
+          <p class="text-gray-600 mt-1">Показано: {{ sites.length }} из {{ total }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Добавить объект
@@ -80,6 +80,12 @@
       <div v-if="!loading && sites.length === 0" class="text-center py-12">
         <Building2 class="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h3 class="text-lg font-medium text-gray-900">Объекты не найдены</h3>
+      </div>
+
+      <!-- Infinite scroll sentinel -->
+      <div ref="sentinelRef" class="h-4 mt-4"></div>
+      <div v-if="loadingMore" class="flex justify-center py-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
 
       <!-- Create/Edit Modal -->
@@ -204,7 +210,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Plus, MapPin, Building2, Phone, X, Eye, Edit, Archive, ArchiveRestore } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -216,10 +222,15 @@ const cfg = useConfigStore()
 const auth = useAuthStore()
 const router = useRouter()
 const sites = ref([])
+const total = ref(0)
 const clients = ref([])
 const loading = ref(true)
+const loadingMore = ref(false)
 const search = ref('')
 const showArchived = ref(false)
+const LIMIT = 50
+const sentinelRef = ref(null)
+let observer = null
 const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)
@@ -262,16 +273,45 @@ async function loadSites() {
       search: search.value || undefined,
       active_only: true,
       show_archived: showArchived.value || undefined,
+      limit: LIMIT,
+      offset: 0,
     })
-    sites.value = res.data
+    sites.value = res.data.items
+    total.value = res.data.total
   } finally {
     loading.value = false
   }
 }
 
+async function loadMore() {
+  if (loadingMore.value || sites.value.length >= total.value) return
+  loadingMore.value = true
+  try {
+    const res = await sitesAPI.getAll({
+      search: search.value || undefined,
+      active_only: true,
+      show_archived: showArchived.value || undefined,
+      limit: LIMIT,
+      offset: sites.value.length,
+    })
+    sites.value.push(...res.data.items)
+    total.value = res.data.total
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect()
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore()
+  }, { threshold: 0.1 })
+  if (sentinelRef.value) observer.observe(sentinelRef.value)
+}
+
 async function loadClients() {
-  const res = await clientsAPI.getAll({ active_only: true })
-  clients.value = res.data
+  const res = await clientsAPI.getAll({ active_only: true, limit: 500 })
+  clients.value = res.data.items
 }
 
 function openCreate() {
@@ -352,5 +392,9 @@ async function handleUnarchive(s) {
   }
 }
 
-onMounted(() => { Promise.all([loadSites(), loadClients()]) })
+onMounted(async () => {
+  await Promise.all([loadSites(), loadClients()])
+  setupObserver()
+})
+onUnmounted(() => { if (observer) observer.disconnect() })
 </script>

@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Выезды</h1>
-          <p class="text-gray-600 mt-1">Всего: {{ visits.length }}</p>
+          <p class="text-gray-600 mt-1">Показано: {{ visits.length }} из {{ total }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Создать выезд
@@ -100,6 +100,12 @@
           </div>
         </template>
       </DataTable>
+
+      <!-- Infinite scroll sentinel -->
+      <div ref="sentinelRef" class="h-4 mt-2"></div>
+      <div v-if="loadingMore" class="flex justify-center py-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
 
       <!-- Detail Modal -->
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -412,7 +418,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -427,7 +433,12 @@ const cfg = useConfigStore()
 const auth = useAuthStore()
 
 const visits = ref([])
+const total = ref(0)
 const loading = ref(true)
+const loadingMore = ref(false)
+const LIMIT = 50
+const sentinelRef = ref(null)
+let observer = null
 const filters = ref({ status: '', priority: '', date_from: '', date_to: '', master_id: '' })
 const showArchived = ref(false)
 const modalOpen = ref(false)
@@ -465,8 +476,8 @@ async function selectClient(client) {
   clientQuery.value = client.name
   clientDropdownOpen.value = false
   selectedSiteIds.value = []
-  const res = await sitesAPI.getAll({ client_id: client.id, active_only: true })
-  clientSites.value = res.data
+  const res = await sitesAPI.getAll({ client_id: client.id, active_only: true, limit: 500 })
+  clientSites.value = res.data.items
 }
 
 function toggleSite(id) {
@@ -492,26 +503,51 @@ const form = ref({
   office_notes: '', status: 'planned',
 })
 
+function buildVisitParams() {
+  const params = {}
+  if (filters.value.status) params.status = filters.value.status
+  if (filters.value.priority) params.priority = filters.value.priority
+  if (filters.value.date_from) params.date_from = filters.value.date_from
+  if (filters.value.date_to) params.date_to = filters.value.date_to
+  if (filters.value.master_id) params.master_id = filters.value.master_id
+  if (showArchived.value) params.show_archived = true
+  return params
+}
+
 async function loadVisits() {
   loading.value = true
   try {
-    const params = {}
-    if (filters.value.status) params.status = filters.value.status
-    if (filters.value.priority) params.priority = filters.value.priority
-    if (filters.value.date_from) params.date_from = filters.value.date_from
-    if (filters.value.date_to) params.date_to = filters.value.date_to
-    if (filters.value.master_id) params.master_id = filters.value.master_id
-    if (showArchived.value) params.show_archived = true
-    const res = await visitsAPI.getAll(params)
-    visits.value = res.data
+    const res = await visitsAPI.getAll({ ...buildVisitParams(), limit: LIMIT, offset: 0 })
+    visits.value = res.data.items
+    total.value = res.data.total
   } finally {
     loading.value = false
   }
 }
 
+async function loadMore() {
+  if (loadingMore.value || visits.value.length >= total.value) return
+  loadingMore.value = true
+  try {
+    const res = await visitsAPI.getAll({ ...buildVisitParams(), limit: LIMIT, offset: visits.value.length })
+    visits.value.push(...res.data.items)
+    total.value = res.data.total
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect()
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore()
+  }, { threshold: 0.1 })
+  if (sentinelRef.value) observer.observe(sentinelRef.value)
+}
+
 async function loadFormData() {
-  const [cr, mr] = await Promise.all([clientsAPI.getAll({ active_only: true }), usersAPI.getMasters()])
-  allClients.value = cr.data
+  const [cr, mr] = await Promise.all([clientsAPI.getAll({ active_only: true, limit: 500 }), usersAPI.getMasters()])
+  allClients.value = cr.data.items
   masters.value = mr.data
 }
 
@@ -710,7 +746,9 @@ onMounted(async () => {
   if (route.query.date_from) filters.value.date_from = route.query.date_from
   if (route.query.date_to) filters.value.date_to = route.query.date_to
   await loadVisits()
+  setupObserver()
   usersAPI.getMasters().then(r => { masters.value = r.data })
   if (route.query.open_create) openCreate()
 })
+onUnmounted(() => { if (observer) observer.disconnect() })
 </script>

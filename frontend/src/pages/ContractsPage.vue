@@ -63,6 +63,12 @@
       </router-link>
     </div>
 
+    <!-- Infinite scroll sentinel -->
+    <div ref="sentinelRef" class="h-4 mt-4"></div>
+    <div v-if="loadingMore" class="flex justify-center py-4">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+    </div>
+
     <!-- Модал создания -->
     <div v-if="createModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
@@ -110,18 +116,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Plus, FileText, X } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { contractsAPI } from '../services/api.js'
 
 const contracts = ref([])
+const total = ref(0)
 const loading = ref(true)
+const loadingMore = ref(false)
 const search = ref('')
 const filterStatus = ref('')
 const createModalOpen = ref(false)
 const saving = ref(false)
 const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
+
+const LIMIT = 50
+const sentinelRef = ref(null)
+let observer = null
 
 let searchTimer = null
 function debouncedLoad() {
@@ -132,14 +144,38 @@ function debouncedLoad() {
 async function load() {
   loading.value = true
   try {
-    const params = {}
+    const params = { limit: LIMIT, offset: 0 }
     if (search.value) params.search = search.value
     if (filterStatus.value) params.status = filterStatus.value
     const res = await contractsAPI.getAll(params)
-    contracts.value = res.data
+    contracts.value = res.data.items
+    total.value = res.data.total
   } finally {
     loading.value = false
   }
+}
+
+async function loadMore() {
+  if (loadingMore.value || contracts.value.length >= total.value) return
+  loadingMore.value = true
+  try {
+    const params = { limit: LIMIT, offset: contracts.value.length }
+    if (search.value) params.search = search.value
+    if (filterStatus.value) params.status = filterStatus.value
+    const res = await contractsAPI.getAll(params)
+    contracts.value.push(...res.data.items)
+    total.value = res.data.total
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect()
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore()
+  }, { threshold: 0.1 })
+  if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
 
 function openCreate() {
@@ -175,5 +211,9 @@ function statusLabel(s) {
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 function formatAmount(v) { return Number(v).toLocaleString('ru-RU') }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  setupObserver()
+})
+onUnmounted(() => { if (observer) observer.disconnect() })
 </script>

@@ -1,8 +1,9 @@
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user
 from app.models.contract import Contract, ContractSite
@@ -15,17 +16,31 @@ from app.schemas.contract import (
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
+DEFAULT_LIMIT = 50
 
-@router.get("", response_model=List[ContractOut])
+
+class ContractPage(BaseModel):
+    items: List[ContractOut]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get("", response_model=ContractPage)
 async def get_contracts(
     client_id: Optional[int] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
     show_archived: bool = False,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    stmt = select(Contract)
+    stmt = (
+        select(Contract, Client.name.label("client_name"))
+        .outerjoin(Client, Contract.client_id == Client.id)
+    )
     if not show_archived:
         stmt = stmt.where(Contract.is_archived == False)
     if client_id:
@@ -38,24 +53,18 @@ async def get_contracts(
             | Contract.subject.ilike(f"%{search}%")
         )
     stmt = stmt.order_by(Contract.created_at.desc())
-    result = await db.execute(stmt)
-    contracts = result.scalars().all()
 
-    # Подгружаем имена клиентов
+    total_res = await db.execute(select(func.count()).select_from(stmt.subquery()))
+    total = total_res.scalar() or 0
+
+    result = await db.execute(stmt.offset(offset).limit(limit))
     out = []
-    client_cache = {}
-    for c in contracts:
-        client_name = None
-        if c.client_id:
-            if c.client_id not in client_cache:
-                r = await db.execute(select(Client).where(Client.id == c.client_id))
-                cl = r.scalar_one_or_none()
-                client_cache[c.client_id] = cl.name if cl else None
-            client_name = client_cache[c.client_id]
-        row = ContractOut.model_validate(c)
-        row.client_name = client_name
-        out.append(row)
-    return out
+    for row in result.all():
+        c, client_name = row[0], row[1]
+        obj = ContractOut.model_validate(c)
+        obj.client_name = client_name
+        out.append(obj)
+    return ContractPage(items=out, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{contract_id}", response_model=ContractDetailOut)

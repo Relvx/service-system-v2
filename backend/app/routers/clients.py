@@ -1,7 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
+from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user, require_groups
 from app.models.client import Client
@@ -22,12 +23,23 @@ from app.enums import enums
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
+DEFAULT_LIMIT = 50
 
-@router.get("", response_model=List[ClientOut])
+
+class ClientPage(BaseModel):
+    items: List[ClientOut]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get("", response_model=ClientPage)
 async def get_clients(
     search: Optional[str] = None,
     active_only: Optional[bool] = None,
     show_archived: bool = False,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -43,8 +55,12 @@ async def get_clients(
             | Client.contact_person.ilike(f"%{search}%")
         )
     stmt = stmt.order_by(Client.name)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+
+    total_res = await db.execute(select(func.count()).select_from(stmt.subquery()))
+    total = total_res.scalar() or 0
+
+    result = await db.execute(stmt.offset(offset).limit(limit))
+    return ClientPage(items=result.scalars().all(), total=total, limit=limit, offset=offset)
 
 
 @router.get("/{client_id}", response_model=ClientDetailOut)

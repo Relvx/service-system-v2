@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Дефекты</h1>
-          <p class="text-gray-600 mt-1">Всего: {{ defects.length }}</p>
+          <p class="text-gray-600 mt-1">Показано: {{ defects.length }} из {{ total }}</p>
         </div>
         <button
           v-if="canManage"
@@ -69,6 +69,12 @@
           </div>
         </template>
       </DataTable>
+
+      <!-- Infinite scroll sentinel -->
+      <div ref="sentinelRef" class="h-4 mt-2"></div>
+      <div v-if="loadingMore" class="flex justify-center py-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
 
       <!-- ─── Create Defect Modal ────────────────────────────────────────── -->
       <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -268,7 +274,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { AlertTriangle, X, Eye, Plus, Image as ImageIcon, Upload } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -282,6 +288,11 @@ const auth = useAuthStore()
 const canManage = auth.hasGroup('office_group') || auth.hasGroup('admin_group')
 
 const defects = ref([])
+const total = ref(0)
+const loadingMore = ref(false)
+const LIMIT = 50
+const sentinelRef = ref(null)
+let observer = null
 const loading = ref(true)
 const filterStatus = ref('')
 const filterPriority = ref('')
@@ -325,17 +336,42 @@ const columns = [
 
 watch(selectedDefect, (d) => { if (d) newStatus.value = d.status })
 
+function buildDefectParams() {
+  const params = {}
+  if (filterStatus.value) params.status = filterStatus.value
+  if (filterPriority.value) params.priority = filterPriority.value
+  return params
+}
+
 async function loadDefects() {
   loading.value = true
   try {
-    const params = {}
-    if (filterStatus.value) params.status = filterStatus.value
-    if (filterPriority.value) params.priority = filterPriority.value
-    const res = await defectsAPI.getAll(params)
-    defects.value = res.data
+    const res = await defectsAPI.getAll({ ...buildDefectParams(), limit: LIMIT, offset: 0 })
+    defects.value = res.data.items
+    total.value = res.data.total
   } finally {
     loading.value = false
   }
+}
+
+async function loadMore() {
+  if (loadingMore.value || defects.value.length >= total.value) return
+  loadingMore.value = true
+  try {
+    const res = await defectsAPI.getAll({ ...buildDefectParams(), limit: LIMIT, offset: defects.value.length })
+    defects.value.push(...res.data.items)
+    total.value = res.data.total
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect()
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore()
+  }, { threshold: 0.1 })
+  if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
 
 async function openDetail(defect) {
@@ -404,8 +440,8 @@ async function deletePhoto(att) {
 async function loadPurchases(defectId) {
   loadingPurchases.value = true
   try {
-    const res = await purchasesAPI.getAll({ defect_id: defectId })
-    defectPurchases.value = res.data
+    const res = await purchasesAPI.getAll({ defect_id: defectId, limit: 500 })
+    defectPurchases.value = res.data.items
   } finally {
     loadingPurchases.value = false
   }
@@ -430,8 +466,8 @@ async function openCreateModal() {
   createErrors.value = {}
   showCreateModal.value = true
   if (sites.value.length === 0) {
-    const res = await sitesAPI.getAll({ show_archived: false })
-    sites.value = res.data
+    const res = await sitesAPI.getAll({ show_archived: false, limit: 500 })
+    sites.value = res.data.items
   }
 }
 
@@ -512,5 +548,9 @@ function formatDate(d) {
   return new Date(d.includes('T') ? d : d + 'T00:00:00').toLocaleDateString('ru-RU')
 }
 
-onMounted(loadDefects)
+onMounted(async () => {
+  await loadDefects()
+  setupObserver()
+})
+onUnmounted(() => { if (observer) observer.disconnect() })
 </script>

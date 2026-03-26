@@ -28,14 +28,14 @@ class TestGetClients:
         """GET /clients возвращает список."""
         res = await http_client.get("/api/clients", headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert isinstance(res.json(), list)
+        assert isinstance(res.json()["items"], list)
 
     async def test_list_search(self, http_client: AsyncClient, admin_token: str):
         """Поиск по имени фильтрует результаты."""
         res = await http_client.get("/api/clients?search=nonexistent_xyz_12345",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert res.json() == []
+        assert res.json()["items"] == []
 
     async def test_list_unauthenticated(self, http_client: AsyncClient):
         """Без токена → 401."""
@@ -119,15 +119,17 @@ class TestClientArchive:
     async def test_archived_hidden_by_default(self, http_client: AsyncClient, admin_token: str):
         """Архивированный клиент не появляется в стандартном списке."""
         headers = auth_headers(admin_token)
+        unique_name = "__test__ Архивный скрытый уникальный"
 
         res = await http_client.post("/api/clients", headers=headers, json={
-            **CLIENT_PAYLOAD, "name": "__test__ Архивный"
+            **CLIENT_PAYLOAD, "name": unique_name
         })
         client_id = res.json()["id"]
         await http_client.patch(f"/api/clients/{client_id}/archive", headers=headers)
 
-        list_res = await http_client.get("/api/clients", headers=headers)
-        ids = [c["id"] for c in list_res.json()]
+        # Ищем по уникальному имени — без show_archived не должен появиться
+        list_res = await http_client.get(f"/api/clients?search={unique_name}", headers=headers)
+        ids = [c["id"] for c in list_res.json()["items"]]
         assert client_id not in ids
 
         await http_client.delete(f"/api/clients/{client_id}", headers=headers)
@@ -135,15 +137,19 @@ class TestClientArchive:
     async def test_show_archived_param(self, http_client: AsyncClient, admin_token: str):
         """show_archived=true включает архивные записи в список."""
         headers = auth_headers(admin_token)
+        unique_name = "__test__ Показать архивный уникальный"
 
         res = await http_client.post("/api/clients", headers=headers, json={
-            **CLIENT_PAYLOAD, "name": "__test__ Показать архивный"
+            **CLIENT_PAYLOAD, "name": unique_name
         })
         client_id = res.json()["id"]
         await http_client.patch(f"/api/clients/{client_id}/archive", headers=headers)
 
-        list_res = await http_client.get("/api/clients?show_archived=true", headers=headers)
-        ids = [c["id"] for c in list_res.json()]
+        # Ищем по уникальному имени с show_archived — должен появиться
+        list_res = await http_client.get(
+            f"/api/clients?show_archived=true&search={unique_name}", headers=headers
+        )
+        ids = [c["id"] for c in list_res.json()["items"]]
         assert client_id in ids
 
         await http_client.delete(f"/api/clients/{client_id}", headers=headers)

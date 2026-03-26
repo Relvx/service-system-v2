@@ -301,10 +301,10 @@ async function searchSites() {
   clearTimeout(searchTimeout)
   if (siteSearch.value.length < 2) { siteResults.value = []; return }
   searchTimeout = setTimeout(async () => {
-    const res = await sitesAPI.getAll({ search: siteSearch.value })
+    const res = await sitesAPI.getAll({ search: siteSearch.value, limit: 50 })
     // Исключаем уже привязанные
     const linked = new Set(contract.value.sites.map(s => s.id))
-    siteResults.value = res.data.filter(s => !linked.has(s.id)).slice(0, 10)
+    siteResults.value = res.data.items.filter(s => !linked.has(s.id)).slice(0, 10)
   }, 300)
 }
 

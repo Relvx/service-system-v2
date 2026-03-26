@@ -23,13 +23,13 @@ class TestGetPurchases:
     async def test_list_returns_list(self, http_client: AsyncClient, admin_token: str):
         res = await http_client.get("/api/purchases", headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert isinstance(res.json(), list)
+        assert isinstance(res.json()["items"], list)
 
     async def test_filter_by_status(self, http_client: AsyncClient, admin_token: str):
         res = await http_client.get("/api/purchases?status=draft",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200
-        for p in res.json():
+        for p in res.json()["items"]:
             assert p["status"] == "draft"
 
     async def test_list_unauthenticated(self, http_client: AsyncClient):
@@ -151,9 +151,10 @@ class TestPurchaseBlock5:
         await http_client.post("/api/purchases", headers=headers, json={
             **PURCHASE_PAYLOAD, "defect_id": defect_id,
         })
+        # Filter by defect_id — always a small set since we just created a unique defect
         res = await http_client.get(f"/api/purchases?defect_id={defect_id}", headers=headers)
         assert res.status_code == 200
-        data = res.json()
+        data = res.json()["items"]
         assert len(data) >= 1
         for p in data:
             assert p["defect_id"] == defect_id
@@ -175,33 +176,56 @@ class TestPurchaseBlock6:
     async def test_archived_hidden_by_default(self, http_client: AsyncClient, admin_token: str):
         """Архивированная закупка не попадает в стандартный список."""
         headers = auth_headers(admin_token)
+        # Use a unique defect to narrow the filter
+        d_res = await http_client.post("/api/defects", headers=headers, json={
+            "title": "__test__ дефект архивная закупка",
+            "priority": "low", "action_type": "repair",
+        })
+        defect_id = d_res.json()["id"]
+
         res = await http_client.post("/api/purchases", headers=headers, json={
-            **PURCHASE_PAYLOAD, "item": "__test__ Архивная закупка"
+            **PURCHASE_PAYLOAD, "item": "__test__ Архивная закупка", "defect_id": defect_id,
         })
         pid = res.json()["id"]
         await http_client.patch(f"/api/purchases/{pid}/archive", headers=headers)
 
-        lst = await http_client.get("/api/purchases", headers=headers)
-        ids = [p["id"] for p in lst.json()]
+        lst = await http_client.get(f"/api/purchases?defect_id={defect_id}", headers=headers)
+        ids = [p["id"] for p in lst.json()["items"]]
         assert pid not in ids
 
     async def test_show_archived_param(self, http_client: AsyncClient, admin_token: str):
         """show_archived=true включает архивные закупки в список."""
         headers = auth_headers(admin_token)
+        d_res = await http_client.post("/api/defects", headers=headers, json={
+            "title": "__test__ дефект показать архивную",
+            "priority": "low", "action_type": "repair",
+        })
+        defect_id = d_res.json()["id"]
+
         res = await http_client.post("/api/purchases", headers=headers, json={
-            **PURCHASE_PAYLOAD, "item": "__test__ Показать архивную"
+            **PURCHASE_PAYLOAD, "item": "__test__ Показать архивную", "defect_id": defect_id,
         })
         pid = res.json()["id"]
         await http_client.patch(f"/api/purchases/{pid}/archive", headers=headers)
 
-        lst = await http_client.get("/api/purchases?show_archived=true", headers=headers)
-        ids = [p["id"] for p in lst.json()]
+        lst = await http_client.get(
+            f"/api/purchases?show_archived=true&defect_id={defect_id}", headers=headers
+        )
+        ids = [p["id"] for p in lst.json()["items"]]
         assert pid in ids
 
     async def test_unarchive_purchase(self, http_client: AsyncClient, admin_token: str):
         """PATCH /unarchive восстанавливает закупку из архива."""
         headers = auth_headers(admin_token)
-        res = await http_client.post("/api/purchases", headers=headers, json=PURCHASE_PAYLOAD)
+        d_res = await http_client.post("/api/defects", headers=headers, json={
+            "title": "__test__ дефект разархивирование",
+            "priority": "low", "action_type": "repair",
+        })
+        defect_id = d_res.json()["id"]
+
+        res = await http_client.post("/api/purchases", headers=headers, json={
+            **PURCHASE_PAYLOAD, "defect_id": defect_id,
+        })
         pid = res.json()["id"]
 
         await http_client.patch(f"/api/purchases/{pid}/archive", headers=headers)
@@ -210,8 +234,8 @@ class TestPurchaseBlock6:
         assert una.json()["is_archived"] is False
 
         # снова видна в обычном списке
-        lst = await http_client.get("/api/purchases", headers=headers)
-        ids = [p["id"] for p in lst.json()]
+        lst = await http_client.get(f"/api/purchases?defect_id={defect_id}", headers=headers)
+        ids = [p["id"] for p in lst.json()["items"]]
         assert pid in ids
 
     async def test_archive_not_found(self, http_client: AsyncClient, admin_token: str):
@@ -229,7 +253,7 @@ class TestPurchaseBlock6:
         })
         res = await http_client.get(f"/api/purchases?site_id={site_id}", headers=headers)
         assert res.status_code == 200
-        data = res.json()
+        data = res.json()["items"]
         assert len(data) >= 1
         for p in data:
             assert p["site_id"] == site_id
@@ -244,11 +268,7 @@ class TestPurchaseBlock6:
 
 
 class TestPurchaseUpdateLinkFix:
-    """Регрессионные тесты: PUT /purchases/{id} должен сохранять site_id и defect_id.
-
-    Баг: PurchaseUpdate не содержал site_id/defect_id — Pydantic молча их обрезал,
-    привязка закупки к объекту/дефекту не менялась.
-    """
+    """Регрессионные тесты: PUT /purchases/{id} должен сохранять site_id и defect_id."""
 
     async def test_update_site_id(self, http_client: AsyncClient, admin_token: str,
                                    site_id: int):

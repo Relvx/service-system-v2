@@ -193,7 +193,7 @@ export const adminAPI = {
 }
 
 export const searchAPI = {
-  search: (q) => api.get('/search', { params: { q } }),
+  search: (q, params = {}) => api.get('/search', { params: { q, ...params } }),
 }
 
 export default api

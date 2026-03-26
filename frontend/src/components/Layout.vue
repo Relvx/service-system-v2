@@ -72,6 +72,15 @@
                 {{ r.type === 'client' ? 'Клиент' : r.type === 'site' ? 'Объект' : 'Договор' }}
               </span>
             </RouterLink>
+            <div v-if="hasMoreResults" class="border-t border-gray-100">
+              <button
+                @click="loadMoreSearch"
+                :disabled="searchLoadingMore"
+                class="w-full px-4 py-2.5 text-sm text-primary-600 hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 text-center"
+              >
+                {{ searchLoadingMore ? 'Загрузка...' : `Показать ещё (${searchTotal - searchResults.length})` }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -284,11 +293,16 @@ function handleLogout() {
 }
 
 // ── Глобальный поиск ──────────────────────────────────────────────────────
+const SEARCH_LIMIT = 5
 const searchQuery = ref('')
 const searchResults = ref([])
+const searchTotal = ref(0)
 const searchLoading = ref(false)
+const searchLoadingMore = ref(false)
 const searchFocused = ref(false)
 const searchWrapRef = ref(null)
+
+const hasMoreResults = computed(() => searchResults.value.length < searchTotal.value)
 
 let searchTimeout = null
 
@@ -296,24 +310,40 @@ function onSearchInput() {
   clearTimeout(searchTimeout)
   if (searchQuery.value.length < 2) {
     searchResults.value = []
+    searchTotal.value = 0
     return
   }
   searchLoading.value = true
   searchTimeout = setTimeout(async () => {
     try {
-      const res = await searchAPI.search(searchQuery.value)
-      searchResults.value = res.data
+      const res = await searchAPI.search(searchQuery.value, { limit: SEARCH_LIMIT, offset: 0 })
+      searchResults.value = res.data.results
+      searchTotal.value = res.data.clients_total + res.data.sites_total + res.data.contracts_total
     } catch {
       searchResults.value = []
+      searchTotal.value = 0
     } finally {
       searchLoading.value = false
     }
   }, 300)
 }
 
+async function loadMoreSearch() {
+  if (searchLoadingMore.value || !hasMoreResults.value) return
+  searchLoadingMore.value = true
+  try {
+    const res = await searchAPI.search(searchQuery.value, { limit: SEARCH_LIMIT, offset: searchResults.value.length })
+    searchResults.value.push(...res.data.results)
+    searchTotal.value = res.data.clients_total + res.data.sites_total + res.data.contracts_total
+  } catch {} finally {
+    searchLoadingMore.value = false
+  }
+}
+
 function closeSearch() {
   searchQuery.value = ''
   searchResults.value = []
+  searchTotal.value = 0
   searchFocused.value = false
 }
 

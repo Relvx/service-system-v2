@@ -1,7 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user, require_groups
 from app.models.site import Site
@@ -17,6 +18,15 @@ from app.enums import enums
 
 router = APIRouter(prefix="/sites", tags=["sites"])
 
+DEFAULT_LIMIT = 50
+
+
+class SitePage(BaseModel):
+    items: List[SiteOut]
+    total: int
+    limit: int
+    offset: int
+
 
 @router.get("/geocode")
 async def geocode_address_endpoint(
@@ -30,12 +40,14 @@ async def geocode_address_endpoint(
     return {"latitude": coords[0], "longitude": coords[1]}
 
 
-@router.get("", response_model=List[SiteOut])
+@router.get("", response_model=SitePage)
 async def get_sites(
     client_id: Optional[int] = None,
     search: Optional[str] = None,
     active_only: Optional[bool] = None,
     show_archived: bool = False,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -60,7 +72,11 @@ async def get_sites(
         )
 
     stmt = stmt.order_by(Site.title)
-    result = await db.execute(stmt)
+
+    total_res = await db.execute(select(func.count()).select_from(stmt.subquery()))
+    total = total_res.scalar() or 0
+
+    result = await db.execute(stmt.offset(offset).limit(limit))
     rows = result.all()
 
     out = []
@@ -70,7 +86,7 @@ async def get_sites(
         obj.client_name = row[1]
         obj.total_visits = row[2]
         out.append(obj)
-    return out
+    return SitePage(items=out, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{site_id}", response_model=SiteDetailOut)

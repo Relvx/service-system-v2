@@ -25,13 +25,13 @@ class TestGetSites:
     async def test_list_returns_list(self, http_client: AsyncClient, admin_token: str):
         res = await http_client.get("/api/sites", headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert isinstance(res.json(), list)
+        assert isinstance(res.json()["items"], list)
 
     async def test_list_search_empty(self, http_client: AsyncClient, admin_token: str):
         res = await http_client.get("/api/sites?search=xyz_nonexistent_12345",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert res.json() == []
+        assert res.json()["items"] == []
 
     async def test_list_unauthenticated(self, http_client: AsyncClient):
         res = await http_client.get("/api/sites")
@@ -88,7 +88,7 @@ class TestSiteCRUD:
         res = await http_client.get(f"/api/sites?client_id={fake_id}",
                                     headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert res.json() == []
+        assert res.json()["items"] == []
 
 
 class TestSiteArchive:
@@ -108,15 +108,16 @@ class TestSiteArchive:
     async def test_archived_hidden_by_default(self, http_client: AsyncClient, admin_token: str):
         """Архивированный объект не появляется в стандартном списке."""
         headers = auth_headers(admin_token)
+        unique_title = "__test__ Архивный объект уникальный скрытый"
 
         res = await http_client.post("/api/sites", headers=headers, json={
-            **SITE_PAYLOAD, "title": "__test__ Архивный объект"
+            **SITE_PAYLOAD, "title": unique_title
         })
         site_id = res.json()["id"]
         await http_client.patch(f"/api/sites/{site_id}/archive", headers=headers)
 
-        list_res = await http_client.get("/api/sites", headers=headers)
-        ids = [s["id"] for s in list_res.json()]
+        list_res = await http_client.get(f"/api/sites?search={unique_title}", headers=headers)
+        ids = [s["id"] for s in list_res.json()["items"]]
         assert site_id not in ids
 
         await http_client.delete(f"/api/sites/{site_id}", headers=headers)
@@ -124,15 +125,18 @@ class TestSiteArchive:
     async def test_show_archived_param(self, http_client: AsyncClient, admin_token: str):
         """show_archived=true включает архивные объекты в список."""
         headers = auth_headers(admin_token)
+        unique_title = "__test__ Показать архивный объект уникальный"
 
         res = await http_client.post("/api/sites", headers=headers, json={
-            **SITE_PAYLOAD, "title": "__test__ Показать архивный объект"
+            **SITE_PAYLOAD, "title": unique_title
         })
         site_id = res.json()["id"]
         await http_client.patch(f"/api/sites/{site_id}/archive", headers=headers)
 
-        list_res = await http_client.get("/api/sites?show_archived=true", headers=headers)
-        ids = [s["id"] for s in list_res.json()]
+        list_res = await http_client.get(
+            f"/api/sites?show_archived=true&search={unique_title}", headers=headers
+        )
+        ids = [s["id"] for s in list_res.json()["items"]]
         assert site_id in ids
 
         await http_client.delete(f"/api/sites/{site_id}", headers=headers)

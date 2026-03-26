@@ -1,7 +1,8 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
+from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user
 from app.models.purchase import Purchase
@@ -14,6 +15,15 @@ from app.utils.notifications import notify_users_by_group
 from app.enums import enums
 
 router = APIRouter(prefix="/purchases", tags=["purchases"])
+
+DEFAULT_LIMIT = 50
+
+
+class PurchasePage(BaseModel):
+    items: List[PurchaseOut]
+    total: int
+    limit: int
+    offset: int
 
 
 def _build_query():
@@ -36,12 +46,14 @@ def _row_to_out(row) -> PurchaseOut:
     return obj
 
 
-@router.get("", response_model=List[PurchaseOut])
+@router.get("", response_model=PurchasePage)
 async def get_purchases(
     status: Optional[str] = None,
     defect_id: Optional[int] = None,
     site_id: Optional[int] = None,
     show_archived: bool = False,
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -55,8 +67,12 @@ async def get_purchases(
     if site_id:
         stmt = stmt.where(Purchase.site_id == site_id)
     stmt = stmt.order_by(Purchase.created_at.desc())
-    result = await db.execute(stmt)
-    return [_row_to_out(r) for r in result.all()]
+
+    total_res = await db.execute(select(func.count()).select_from(stmt.subquery()))
+    total = total_res.scalar() or 0
+
+    result = await db.execute(stmt.offset(offset).limit(limit))
+    return PurchasePage(items=[_row_to_out(r) for r in result.all()], total=total, limit=limit, offset=offset)
 
 
 @router.post("", response_model=PurchaseOut, status_code=status.HTTP_201_CREATED)

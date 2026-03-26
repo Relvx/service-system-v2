@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Закупки</h1>
-          <p class="text-gray-600 mt-1">Всего: {{ purchases.length }}</p>
+          <p class="text-gray-600 mt-1">Показано: {{ purchases.length }} из {{ total }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Добавить закупку
@@ -89,6 +89,12 @@
           </div>
         </template>
       </DataTable>
+
+      <!-- Infinite scroll sentinel -->
+      <div ref="sentinelRef" class="h-4 mt-2"></div>
+      <div v-if="loadingMore" class="flex justify-center py-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
 
       <!-- Detail / Edit Modal -->
       <div v-if="detailPurchase" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -250,7 +256,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, ShoppingCart, X } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -262,6 +268,11 @@ const cfg = useConfigStore()
 const auth = useAuthStore()
 
 const purchases = ref([])
+const total = ref(0)
+const loadingMore = ref(false)
+const LIMIT = 50
+const sentinelRef = ref(null)
+let observer = null
 const sites = ref([])
 const defects = ref([])
 const loading = ref(true)
@@ -372,28 +383,53 @@ async function handleEditSave() {
   }
 }
 
+function buildPurchaseParams() {
+  const params = {}
+  if (filterStatus.value) params.status = filterStatus.value
+  if (filterSiteId.value) params.site_id = filterSiteId.value
+  if (showArchived.value) params.show_archived = true
+  return params
+}
+
 async function loadPurchases() {
   loading.value = true
   try {
-    const params = {}
-    if (filterStatus.value) params.status = filterStatus.value
-    if (filterSiteId.value) params.site_id = filterSiteId.value
-    if (showArchived.value) params.show_archived = true
-    const res = await purchasesAPI.getAll(params)
-    purchases.value = res.data.map((p) => ({ ...p, _newStatus: p.status }))
+    const res = await purchasesAPI.getAll({ ...buildPurchaseParams(), limit: LIMIT, offset: 0 })
+    purchases.value = res.data.items.map((p) => ({ ...p, _newStatus: p.status }))
+    total.value = res.data.total
   } finally {
     loading.value = false
   }
 }
 
+async function loadMore() {
+  if (loadingMore.value || purchases.value.length >= total.value) return
+  loadingMore.value = true
+  try {
+    const res = await purchasesAPI.getAll({ ...buildPurchaseParams(), limit: LIMIT, offset: purchases.value.length })
+    purchases.value.push(...res.data.items.map((p) => ({ ...p, _newStatus: p.status })))
+    total.value = res.data.total
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect()
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) loadMore()
+  }, { threshold: 0.1 })
+  if (sentinelRef.value) observer.observe(sentinelRef.value)
+}
+
 async function loadSites() {
-  const res = await sitesAPI.getAll({})
-  sites.value = res.data
+  const res = await sitesAPI.getAll({ limit: 500 })
+  sites.value = res.data.items
 }
 
 async function loadDefects() {
-  const res = await defectsAPI.getAll({})
-  defects.value = res.data
+  const res = await defectsAPI.getAll({ limit: 500 })
+  defects.value = res.data.items
 }
 
 async function updateStatus(p, newStatus) {
@@ -463,5 +499,9 @@ async function handleSave() {
 
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(() => { Promise.all([loadPurchases(), loadSites(), loadDefects()]) })
+onMounted(async () => {
+  await Promise.all([loadPurchases(), loadSites(), loadDefects()])
+  setupObserver()
+})
+onUnmounted(() => { if (observer) observer.disconnect() })
 </script>
