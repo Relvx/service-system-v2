@@ -12,30 +12,56 @@
       </div>
 
       <!-- Filters -->
-      <div class="card mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-          <select v-model="filters.status" class="input">
-            <option value="">Все статусы</option>
-            <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
-          </select>
-          <select v-model="filters.priority" class="input">
-            <option value="">Все приоритеты</option>
-            <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
-          </select>
-          <select v-model="filters.master_id" class="input">
-            <option value="">Все мастера</option>
-            <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
-          </select>
-          <input v-model="filters.date_from" type="date" class="input" placeholder="Дата с" />
-          <input v-model="filters.date_to" type="date" class="input" placeholder="Дата по" />
-          <button @click="loadVisits" class="btn btn-primary flex items-center justify-center">
-            <Filter class="w-5 h-5 mr-2" />Применить
+      <div class="card mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <!-- Статус -->
+          <div class="min-w-[150px]">
+            <label class="block text-xs text-gray-400 mb-1">Статус</label>
+            <select v-model="filters.status" @change="loadVisits" class="input text-sm">
+              <option value="">Все статусы</option>
+              <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
+            </select>
+          </div>
+          <!-- Приоритет -->
+          <div class="min-w-[140px]">
+            <label class="block text-xs text-gray-400 mb-1">Приоритет</label>
+            <select v-model="filters.priority" @change="loadVisits" class="input text-sm">
+              <option value="">Все приоритеты</option>
+              <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
+            </select>
+          </div>
+          <!-- Мастер -->
+          <div class="min-w-[160px]">
+            <label class="block text-xs text-gray-400 mb-1">Мастер</label>
+            <select v-model="filters.master_id" @change="loadVisits" class="input text-sm">
+              <option value="">Все мастера</option>
+              <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
+            </select>
+          </div>
+          <!-- Дата с -->
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Дата с</label>
+            <input v-model="filters.date_from" @change="loadVisits" type="date" class="input text-sm" />
+          </div>
+          <!-- Дата по -->
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Дата по</label>
+            <input v-model="filters.date_to" @change="loadVisits" type="date" class="input text-sm" />
+          </div>
+          <!-- Архивные -->
+          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap pb-1">
+            <input type="checkbox" v-model="showArchived" @change="loadVisits" class="rounded" />
+            Архивные
+          </label>
+          <!-- Сброс -->
+          <button
+            v-if="hasActiveFilters"
+            @click="resetFilters"
+            class="btn btn-secondary text-sm flex items-center gap-1 pb-1"
+          >
+            <X class="w-4 h-4" />Сбросить
           </button>
         </div>
-        <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-          <input type="checkbox" v-model="showArchived" @change="loadVisits" class="rounded" />
-          Показать архивные
-        </label>
       </div>
 
       <div v-if="loading" class="flex items-center justify-center h-64">
@@ -420,7 +446,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Plus, Calendar, MapPin, User, Filter, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
@@ -441,6 +467,17 @@ const sentinelRef = ref(null)
 let observer = null
 const filters = ref({ status: '', priority: '', date_from: '', date_to: '', master_id: '' })
 const showArchived = ref(false)
+
+const hasActiveFilters = computed(() =>
+  filters.value.status || filters.value.priority || filters.value.date_from ||
+  filters.value.date_to || filters.value.master_id || showArchived.value
+)
+
+function resetFilters() {
+  filters.value = { status: '', priority: '', date_from: '', date_to: '', master_id: '' }
+  showArchived.value = false
+  loadVisits()
+}
 const modalOpen = ref(false)
 const detailVisit = ref(null)
 const detailTab = ref('info')

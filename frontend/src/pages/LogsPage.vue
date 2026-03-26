@@ -1,39 +1,39 @@
 <template>
   <Layout>
     <div>
-      <div class="mb-6">
+      <div class="mb-4">
         <h1 class="text-xl md:text-3xl font-bold text-gray-900">Журнал действий</h1>
         <p class="text-gray-600 mt-1">Аудит-лог всех изменений в системе</p>
       </div>
 
-      <!-- Фильтры и поиск -->
-      <div class="card mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- Поиск по номеру документа -->
+      <!-- Фильтры -->
+      <div class="card mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Номер документа -->
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Номер документа</label>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Номер документа</label>
             <div class="relative">
               <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 v-model="filters.entity_id_search"
                 type="text"
                 placeholder="UUID или часть..."
-                class="input pl-9"
+                class="input pl-9 text-sm"
                 @input="debouncedLoad"
               />
             </div>
           </div>
 
-          <!-- Поиск по пользователю -->
+          <!-- Пользователь -->
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Пользователь</label>
+            <label class="block text-xs font-medium text-gray-400 mb-1">Пользователь</label>
             <div class="relative">
               <User class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 v-model="filters.user_name_search"
                 type="text"
                 placeholder="Имя пользователя..."
-                class="input pl-9"
+                class="input pl-9 text-sm"
                 @input="debouncedLoad"
               />
             </div>
@@ -41,8 +41,8 @@
 
           <!-- Тип действия -->
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Тип действия</label>
-            <select v-model="filters.action_sysname" class="input" @change="resetAndLoad">
+            <label class="block text-xs font-medium text-gray-400 mb-1">Тип действия</label>
+            <select v-model="filters.action_sysname" class="input text-sm" @change="resetAndLoad">
               <option value="">Все действия</option>
               <optgroup label="Создание">
                 <option value="client_create">Создание клиента</option>
@@ -75,62 +75,38 @@
             </select>
           </div>
 
-          <!-- Сущность (тип документа) -->
+          <!-- Тип документа -->
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Тип документа</label>
-            <select v-model="filters.entity_type" class="input" @change="resetAndLoad">
+            <label class="block text-xs font-medium text-gray-400 mb-1">Тип документа</label>
+            <select v-model="filters.entity_type" class="input text-sm" @change="resetAndLoad">
               <option value="">Все документы</option>
-              <option
-                v-for="et in entityTypes"
-                :key="et.sysname"
-                :value="et.sysname"
-              >{{ et.display_name_plural }}</option>
+              <option v-for="et in entityTypes" :key="et.sysname" :value="et.sysname">{{ et.display_name_plural }}</option>
             </select>
           </div>
         </div>
 
         <!-- Активные фильтры + сброс -->
-        <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+        <div v-if="hasActiveFilters" class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
           <div class="flex flex-wrap gap-2">
-            <span
-              v-if="filters.entity_id_search"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs"
-            >
+            <span v-if="filters.entity_id_search" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs">
               Документ: {{ filters.entity_id_search }}
-              <button @click="filters.entity_id_search = ''; resetAndLoad()">
-                <X class="w-3 h-3" />
-              </button>
+              <button @click="filters.entity_id_search = ''; resetAndLoad()"><X class="w-3 h-3" /></button>
             </span>
-            <span
-              v-if="filters.user_name_search"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs"
-            >
+            <span v-if="filters.user_name_search" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs">
               Пользователь: {{ filters.user_name_search }}
-              <button @click="filters.user_name_search = ''; resetAndLoad()">
-                <X class="w-3 h-3" />
-              </button>
+              <button @click="filters.user_name_search = ''; resetAndLoad()"><X class="w-3 h-3" /></button>
             </span>
-            <span
-              v-if="filters.action_sysname"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs"
-            >
+            <span v-if="filters.action_sysname" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs">
               Действие: {{ actionLabel(filters.action_sysname) }}
-              <button @click="filters.action_sysname = ''; resetAndLoad()">
-                <X class="w-3 h-3" />
-              </button>
+              <button @click="filters.action_sysname = ''; resetAndLoad()"><X class="w-3 h-3" /></button>
             </span>
-            <span
-              v-if="filters.entity_type"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs"
-            >
-              Документ: {{ activeEntityLabel }}
-              <button @click="filters.entity_type = ''; resetAndLoad()">
-                <X class="w-3 h-3" />
-              </button>
+            <span v-if="filters.entity_type" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs">
+              Раздел: {{ activeEntityLabel }}
+              <button @click="filters.entity_type = ''; resetAndLoad()"><X class="w-3 h-3" /></button>
             </span>
           </div>
-          <button @click="reset" class="btn text-sm text-gray-500 hover:text-gray-700">
-            Сбросить все
+          <button @click="reset" class="btn text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
+            <X class="w-4 h-4" />Сбросить все
           </button>
         </div>
       </div>
@@ -140,92 +116,72 @@
         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else>
+      <template v-else>
         <!-- Счётчик -->
-        <div class="flex items-center justify-between mb-3">
-          <p class="text-sm text-gray-500">
-            Показано <span class="font-medium text-gray-700">{{ logs.length }}</span> записей
-            <span v-if="offset > 0"> (смещение: {{ offset }})</span>
-          </p>
-        </div>
+        <p class="text-sm text-gray-500 mb-3">
+          Показано <span class="font-medium text-gray-700">{{ logs.length }}</span> записей
+        </p>
 
-        <div class="card overflow-hidden p-0">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th class="text-left px-4 py-3 font-medium text-gray-600 w-36">Дата/Время</th>
-                <th class="text-left px-4 py-3 font-medium text-gray-600 w-32">Действие</th>
-                <th class="text-left px-4 py-3 font-medium text-gray-600 w-24">Раздел</th>
-                <th class="text-left px-4 py-3 font-medium text-gray-600">Номер документа</th>
-                <th class="text-left px-4 py-3 font-medium text-gray-600 w-44">Пользователь</th>
-                <th class="text-left px-4 py-3 font-medium text-gray-600">Детали</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr v-if="!logs.length">
-                <td colspan="6" class="px-4 py-12 text-center text-gray-400">
-                  <div class="flex flex-col items-center gap-2">
-                    <ScrollText class="w-8 h-8 text-gray-300" />
-                    <span>Записей не найдено</span>
-                  </div>
-                </td>
-              </tr>
-              <tr
-                v-for="log in logs"
-                :key="log.id"
-                class="hover:bg-gray-50 cursor-pointer"
-                @click="openDetail(log)"
-              >
-                <td class="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
-                  {{ formatDate(log.created_at) }}
-                </td>
-                <td class="px-4 py-2.5">
-                  <span
-                    class="px-2 py-0.5 rounded-full text-xs font-medium"
-                    :class="actionClass(log.action_sysname)"
-                  >
-                    {{ actionLabel(log.action_sysname) }}
-                  </span>
-                </td>
-                <td class="px-4 py-2.5 text-gray-600 text-xs">
-                  {{ entityLabel(log.entity_type) }}
-                </td>
-                <td class="px-4 py-2.5 font-mono text-xs text-gray-400 truncate max-w-[160px]">
-                  <span :title="log.entity_id">{{ log.entity_id }}</span>
-                </td>
-                <td class="px-4 py-2.5 text-gray-700 text-xs">
-                  {{ log.user_name || '—' }}
-                </td>
-                <td class="px-4 py-2.5 text-gray-400 text-xs truncate max-w-[200px]">
-                  <span v-if="log.details">{{ JSON.stringify(log.details) }}</span>
-                  <span v-else>—</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          :columns="columns"
+          :rows="logs"
+          storage-key="logs-table-v1"
+          @row-click="openDetail"
+        >
+          <!-- Дата/Время -->
+          <template #created_at="{ row }">
+            <span class="text-xs text-gray-500 whitespace-nowrap">{{ formatDate(row.created_at) }}</span>
+          </template>
+
+          <!-- Действие -->
+          <template #action_sysname="{ row }">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium" :class="actionClass(row.action_sysname)">
+              {{ actionLabel(row.action_sysname) }}
+            </span>
+          </template>
+
+          <!-- Раздел -->
+          <template #entity_type="{ row }">
+            <span class="text-xs text-gray-600">{{ entityLabel(row.entity_type) }}</span>
+          </template>
+
+          <!-- Номер документа -->
+          <template #entity_id="{ row }">
+            <span class="font-mono text-xs text-gray-400 truncate block" :title="row.entity_id">{{ row.entity_id }}</span>
+          </template>
+
+          <!-- Пользователь -->
+          <template #user_name="{ row }">
+            <span class="text-xs text-gray-700">{{ row.user_name || '—' }}</span>
+          </template>
+
+          <!-- Детали -->
+          <template #details="{ row }">
+            <span v-if="row.details" class="text-xs text-gray-400 truncate block">{{ JSON.stringify(row.details) }}</span>
+            <span v-else class="text-gray-300">—</span>
+          </template>
+
+          <template #empty>
+            <div class="flex flex-col items-center py-8 text-gray-400">
+              <ScrollText class="w-10 h-10 mb-2 text-gray-200" />
+              <p>Записей не найдено</p>
+            </div>
+          </template>
+        </DataTable>
 
         <!-- Пагинация -->
         <div class="flex justify-between items-center mt-4 text-sm text-gray-600">
           <span class="text-xs text-gray-400">Страница {{ currentPage }}</span>
           <div class="flex gap-2">
-            <button
-              :disabled="offset === 0"
-              @click="prevPage"
-              class="btn disabled:opacity-40 flex items-center gap-1"
-            >
+            <button :disabled="offset === 0" @click="prevPage" class="btn disabled:opacity-40 flex items-center gap-1">
               <ChevronLeft class="w-4 h-4" /> Назад
             </button>
-            <button
-              :disabled="logs.length < limit"
-              @click="nextPage"
-              class="btn disabled:opacity-40 flex items-center gap-1"
-            >
+            <button :disabled="logs.length < limit" @click="nextPage" class="btn disabled:opacity-40 flex items-center gap-1">
               Вперёд <ChevronRight class="w-4 h-4" />
             </button>
           </div>
         </div>
-      </div>
+      </template>
     </div>
 
     <!-- Модал деталей -->
@@ -233,10 +189,9 @@
       <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg">
         <div class="flex justify-between items-start mb-4">
           <div>
-            <span
-              class="px-2 py-0.5 rounded-full text-xs font-medium mr-2"
-              :class="actionClass(detail.action_sysname)"
-            >{{ actionLabel(detail.action_sysname) }}</span>
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium mr-2" :class="actionClass(detail.action_sysname)">
+              {{ actionLabel(detail.action_sysname) }}
+            </span>
             <span class="text-sm text-gray-500">{{ entityLabel(detail.entity_type) }}</span>
           </div>
           <button @click="detail = null" class="text-gray-400 hover:text-gray-600">
@@ -271,15 +226,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import {
-  Search, User, X, ScrollText,
-  ChevronLeft, ChevronRight,
-} from 'lucide-vue-next'
+import { Search, User, X, ScrollText, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import DataTable from '../components/DataTable.vue'
 import { logsAPI, configAPI } from '../services/api.js'
 
 const logs = ref([])
-const entityTypes = ref([])   // [{sysname, display_name, display_name_plural}]
+const entityTypes = ref([])
 const loading = ref(false)
 const limit = 100
 const offset = ref(0)
@@ -292,16 +245,30 @@ const filters = reactive({
   entity_type: '',
 })
 
+const hasActiveFilters = computed(() =>
+  filters.entity_id_search || filters.user_name_search ||
+  filters.action_sysname || filters.entity_type
+)
+
 const currentPage = computed(() => Math.floor(offset.value / limit) + 1)
+
+const columns = [
+  { key: 'created_at',     label: 'Дата/Время',      width: 150, sortable: false },
+  { key: 'action_sysname', label: 'Действие',        width: 180, sortable: false },
+  { key: 'entity_type',    label: 'Раздел',          width: 120, sortable: false },
+  { key: 'entity_id',      label: 'Документ',        width: 170, sortable: false },
+  { key: 'user_name',      label: 'Пользователь',   width: 160, sortable: false },
+  { key: 'details',        label: 'Детали',          width: 220, sortable: false, defaultVisible: false },
+]
 
 async function load() {
   loading.value = true
   try {
     const params = { limit, offset: offset.value }
-    if (filters.entity_type)      params.entity_type       = filters.entity_type
-    if (filters.action_sysname)   params.action_sysname    = filters.action_sysname
-    if (filters.entity_id_search) params.entity_id_search  = filters.entity_id_search
-    if (filters.user_name_search) params.user_name_search  = filters.user_name_search
+    if (filters.entity_type)      params.entity_type      = filters.entity_type
+    if (filters.action_sysname)   params.action_sysname   = filters.action_sysname
+    if (filters.entity_id_search) params.entity_id_search = filters.entity_id_search
+    if (filters.user_name_search) params.user_name_search = filters.user_name_search
     const res = await logsAPI.getAll(params)
     logs.value = res.data
   } finally {
@@ -349,23 +316,17 @@ function formatDate(iso) {
 }
 
 const ACTION_LABELS = {
-  // legacy
   create: 'Создание', update: 'Изменение', delete: 'Удаление',
   complete: 'Завершение', approve: 'Согласование', assign: 'Назначение',
-  // clients
   client_create: 'Создание клиента', client_update: 'Изменение клиента',
   client_delete: 'Удаление клиента', client_change_status: 'Статус клиента',
-  // sites
   site_create: 'Создание объекта', site_update: 'Изменение объекта',
   site_delete: 'Удаление объекта',
-  // visits
   visit_create: 'Создание выезда', visit_update: 'Изменение выезда',
   visit_delete: 'Удаление выезда', visit_complete: 'Завершение выезда',
   visit_assign: 'Назначение мастера', visit_change_status: 'Статус выезда',
-  // defects
   defect_create: 'Создание дефекта', defect_update: 'Изменение дефекта',
   defect_change_status: 'Статус дефекта', defect_approve: 'Согласование дефекта',
-  // purchases
   purchase_create: 'Создание закупки', purchase_update: 'Изменение закупки',
   purchase_change_status: 'Статус закупки',
 }
@@ -391,7 +352,7 @@ const ACTION_CLASSES = {
   status:   'bg-orange-100 text-orange-700',
   other:    'bg-gray-100 text-gray-600',
 }
-// Динамически строится из entityTypes после загрузки
+
 const entityLabelMap = computed(() => {
   const m = {}
   for (const et of entityTypes.value) m[et.sysname] = et.display_name
@@ -402,7 +363,6 @@ function actionLabel(s) { return ACTION_LABELS[s] || s || '—' }
 function actionClass(s)  { return ACTION_CLASSES[_actionGroup(s)] || ACTION_CLASSES.other }
 function entityLabel(s)  { return entityLabelMap.value[s] || s || '—' }
 
-// Фильтр фишки — русское название активного типа документа
 const activeEntityLabel = computed(() =>
   filters.entity_type ? (entityLabelMap.value[filters.entity_type] || filters.entity_type) : ''
 )

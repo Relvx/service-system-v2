@@ -12,21 +12,37 @@
       </div>
 
       <!-- Filters -->
-      <div class="card mb-6">
-        <div class="flex flex-wrap gap-3">
-          <select v-model="filterStatus" @change="loadPurchases" class="input flex-1 min-w-36">
-            <option value="">Все статусы</option>
-            <option v-for="s in cfg.purchaseStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
-          </select>
-          <select v-model="filterSiteId" @change="loadPurchases" class="input flex-1 min-w-40">
-            <option value="">Все объекты</option>
-            <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }}</option>
-          </select>
-          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+      <div class="card mb-4">
+        <div class="flex flex-wrap gap-3 items-end">
+          <!-- Статус -->
+          <div class="min-w-[160px]">
+            <label class="block text-xs text-gray-400 mb-1">Статус</label>
+            <select v-model="filterStatus" @change="loadPurchases" class="input text-sm">
+              <option value="">Все статусы</option>
+              <option v-for="s in cfg.purchaseStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
+            </select>
+          </div>
+          <!-- Объект -->
+          <div class="min-w-[200px] flex-1 max-w-xs">
+            <label class="block text-xs text-gray-400 mb-1">Объект</label>
+            <select v-model="filterSiteId" @change="loadPurchases" class="input text-sm">
+              <option value="">Все объекты</option>
+              <option v-for="s in activeSites" :key="s.id" :value="s.id">{{ s.title }}</option>
+            </select>
+          </div>
+          <!-- Архивные -->
+          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none whitespace-nowrap pb-1">
             <input type="checkbox" v-model="showArchived" @change="loadPurchases" class="rounded" />
-            Показать архивные
+            Архивные
           </label>
-          <button @click="loadPurchases" class="btn btn-secondary">Обновить</button>
+          <!-- Сброс -->
+          <button
+            v-if="filterStatus || filterSiteId || showArchived"
+            @click="resetPurchaseFilters"
+            class="btn btn-secondary text-sm flex items-center gap-1 pb-1"
+          >
+            <X class="w-4 h-4" />Сбросить
+          </button>
         </div>
       </div>
 
@@ -43,7 +59,7 @@
         @row-click="openDetail"
       >
         <template #status="{ row }">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2" @click.stop>
             <select
               :value="row._newStatus"
               @change="updateStatus(row, $event.target.value)"
@@ -258,6 +274,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, ShoppingCart, X } from 'lucide-vue-next'
+
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
@@ -288,6 +305,16 @@ const detailPurchase = ref(null)
 const editForm = ref({})
 const editErrors = ref({})
 const editSaving = ref(false)
+
+// Только не-архивные объекты для фильтра
+const activeSites = computed(() => sites.value.filter(s => !s.is_archived))
+
+function resetPurchaseFilters() {
+  filterStatus.value = ''
+  filterSiteId.value = ''
+  showArchived.value = false
+  loadPurchases()
+}
 
 const columns = [
   { key: 'item',         label: 'Наименование', width: 220 },
