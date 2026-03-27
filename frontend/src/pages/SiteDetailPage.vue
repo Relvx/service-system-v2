@@ -486,6 +486,7 @@ const route = useRoute()
 const site = ref(null)
 const loading = ref(true)
 const modalOpen = ref(false)
+const originalForm = ref(null)
 const saving = ref(false)
 const activeTab = ref('main')
 const form = ref({})
@@ -576,10 +577,15 @@ function openEdit() {
     price_repair: site.value.price_repair || '',
     price_emergency: site.value.price_emergency || '',
   }
+  originalForm.value = { ...form.value }
   modalOpen.value = true
 }
 
 async function handleSave() {
+  if (JSON.stringify(form.value) === JSON.stringify(originalForm.value)) {
+    modalOpen.value = false
+    return
+  }
   saving.value = true
   try {
     const payload = {

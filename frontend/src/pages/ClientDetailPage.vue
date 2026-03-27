@@ -453,6 +453,7 @@ const saving = ref(false)
 // Edit client
 const editModalOpen = ref(false)
 const editForm = ref({})
+const originalEditForm = ref(null)
 
 // Legal
 const legalModalOpen = ref(false)
@@ -576,10 +577,15 @@ function openEdit() {
     contacts: client.value.contacts || '',
     notes: client.value.notes || '',
   }
+  originalEditForm.value = { ...editForm.value }
   editModalOpen.value = true
 }
 
 async function handleEditSave() {
+  if (JSON.stringify(editForm.value) === JSON.stringify(originalEditForm.value)) {
+    editModalOpen.value = false
+    return
+  }
   saving.value = true
   try {
     await clientsAPI.update(client.value.id, editForm.value)

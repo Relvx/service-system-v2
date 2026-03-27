@@ -262,6 +262,7 @@ const editing = ref(null)
 const archiveConfirm = ref(null)
 const saving = ref(false)
 const form = ref({ name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' })
+const originalForm = ref(null)
 const errors = ref({})
 
 useEscClose([
@@ -375,6 +376,7 @@ function openEdit(c) {
   editing.value = c
   errors.value = {}
   form.value = { name: c.name, inn: c.inn || '', kpp: c.kpp || '', contact_person: c.contact_person || '', contacts: c.contacts || '', notes: c.notes || '' }
+  originalForm.value = { ...form.value }
   modalOpen.value = true
 }
 
@@ -383,6 +385,10 @@ async function handleSave() {
   saving.value = true
   try {
     if (editing.value) {
+      if (JSON.stringify(form.value) === JSON.stringify(originalForm.value)) {
+        modalOpen.value = false
+        return
+      }
       await clientsAPI.update(editing.value.id, form.value)
     } else {
       await clientsAPI.create(form.value)

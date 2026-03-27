@@ -548,6 +548,7 @@ const form = ref({
   planned_time_to: '', visit_type: 'maintenance', priority: 'medium',
   office_notes: '', status: 'planned',
 })
+const originalForm = ref(null)
 
 function buildVisitParams() {
   const params = {}
@@ -646,6 +647,7 @@ async function openEdit(v) {
     planned_time_to: v.planned_time_to?.slice(0, 5) || '', visit_type: v.visit_type || 'maintenance',
     priority: v.priority || 'medium', office_notes: v.office_notes || '', status: v.status || 'planned',
   }
+  originalForm.value = { ...form.value }
   detailVisit.value = null
   // Загружаем только если ещё не загружено
   const tasks = []
@@ -679,6 +681,10 @@ async function handleSave() {
       office_notes: form.value.office_notes || null,
     }
     if (editing.value) {
+      if (JSON.stringify(form.value) === JSON.stringify(originalForm.value)) {
+        closeModal()
+        return
+      }
       await visitsAPI.update(editing.value.id, { ...base, site_id: form.value.site_id, status: form.value.status })
     } else {
       await Promise.all(selectedSiteIds.value.map(sid => visitsAPI.create({ ...base, site_id: sid })))

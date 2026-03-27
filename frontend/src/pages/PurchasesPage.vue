@@ -304,6 +304,7 @@ const errors = ref({})
 
 const detailPurchase = ref(null)
 const editForm = ref({})
+const originalEditForm = ref(null)
 const editErrors = ref({})
 const editSaving = ref(false)
 
@@ -380,6 +381,7 @@ function openDetail(row) {
     defect_id: row.defect_id || null,
     status:    row.status,
   }
+  originalEditForm.value = { ...editForm.value }
   editErrors.value = {}
 }
 
@@ -404,6 +406,10 @@ async function handleEditSave() {
       site_id:   editForm.value.site_id || null,
       defect_id: editForm.value.defect_id || null,
       status:    editForm.value.status,
+    }
+    if (JSON.stringify(editForm.value) === JSON.stringify(originalEditForm.value)) {
+      detailPurchase.value = null
+      return
     }
     const res = await purchasesAPI.update(detailPurchase.value.id, payload)
     const idx = purchases.value.findIndex(x => x.id === detailPurchase.value.id)

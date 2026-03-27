@@ -155,6 +155,7 @@ const saving = ref(false)
 const deleteConfirm = ref(null)
 const filesTask = ref(null)
 const form = ref({ title: '', description: '', deadline: '' })
+const originalForm = ref(null)
 const errors = ref({})
 
 useEscClose([
@@ -194,6 +195,7 @@ function openEdit(task) {
     description: task.description || '',
     deadline: task.deadline || '',
   }
+  originalForm.value = { ...form.value }
   errors.value = {}
   modalOpen.value = true
 }
@@ -215,6 +217,10 @@ async function handleSave() {
       deadline: form.value.deadline || null,
     }
     if (editing.value) {
+      if (JSON.stringify(form.value) === JSON.stringify(originalForm.value)) {
+        modalOpen.value = false
+        return
+      }
       await tasksAPI.update(editing.value.id, payload)
     } else {
       await tasksAPI.create(payload)

@@ -307,6 +307,7 @@ const editing = ref(null)
 const archiveConfirm = ref(null)
 const saving = ref(false)
 const form = ref({ title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' })
+const originalForm = ref(null)
 const errors = ref({})
 const clientSearch = ref('')
 const clientDropdownOpen = ref(false)
@@ -438,6 +439,7 @@ function openEdit(s) {
   errors.value = {}
   geocodeError.value = ''
   form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly', price_maintenance: s.price_maintenance || '', price_repair: s.price_repair || '', price_emergency: s.price_emergency || '' }
+  originalForm.value = { ...form.value }
   clientSearch.value = s.client_name || ''
   clientDropdownOpen.value = false
   modalOpen.value = true
@@ -464,6 +466,10 @@ async function handleSave() {
   try {
     const payload = { ...form.value, client_id: form.value.client_id || null, latitude: form.value.latitude || null, longitude: form.value.longitude || null, price_maintenance: form.value.price_maintenance || null, price_repair: form.value.price_repair || null, price_emergency: form.value.price_emergency || null }
     if (editing.value) {
+      if (JSON.stringify(form.value) === JSON.stringify(originalForm.value)) {
+        modalOpen.value = false
+        return
+      }
       await sitesAPI.update(editing.value.id, payload)
     } else {
       await sitesAPI.create(payload)
