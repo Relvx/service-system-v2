@@ -48,7 +48,9 @@ class VisitCreate(BaseModel):
     planned_time_to: Optional[time] = None
     visit_type: str = "maintenance"
     priority: str = "medium"
+    status: Optional[str] = None  # None → default 'planned'; 'done' для исторических выездов
     work_summary: Optional[str] = None
+    defects_present: Optional[bool] = None
     office_notes: Optional[str] = None
     cost: Optional[float] = None
 

@@ -151,7 +151,11 @@ async def create_visit(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    visit = Visit(**body.model_dump())
+    data = body.model_dump()
+    # Применяем статус по умолчанию если не передан
+    if not data.get("status"):
+        data["status"] = "planned"
+    visit = Visit(**data)
 
     # Автоподстановка стоимости из объекта, если не задана явно
     if visit.cost is None and visit.site_id:
@@ -168,14 +172,16 @@ async def create_visit(
     db.add(visit)
     await db.flush()
 
-    await create_notification(
-        db,
-        user_id=body.assigned_user_id,
-        type_="visit_assigned",
-        title="Новый выезд",
-        message=f"Вам назначен новый выезд на {body.planned_date}",
-        related_visit_id=visit.id,
-    )
+    # Для исторических выездов (статус done) уведомление не нужно
+    if visit.status != "done":
+        await create_notification(
+            db,
+            user_id=body.assigned_user_id,
+            type_="visit_assigned",
+            title="Новый выезд",
+            message=f"Вам назначен новый выезд на {body.planned_date}",
+            related_visit_id=visit.id,
+        )
 
     await save_log(db, current_user.id, enums.log_actions.visit_create, "visit", visit.id)
 

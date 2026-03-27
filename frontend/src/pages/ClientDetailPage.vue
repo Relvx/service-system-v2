@@ -185,6 +185,11 @@
 
       <!-- История выездов -->
       <div v-if="activeTab === 'visits'">
+        <div class="flex justify-end mb-4">
+          <button @click="openHistoricalVisitModal" class="btn btn-secondary flex items-center text-sm">
+            <Plus class="w-4 h-4 mr-2" />Внести исторический
+          </button>
+        </div>
         <div v-if="client.recent_visits.length === 0" class="text-center py-12 card">
           <Calendar class="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p class="text-gray-500">Выездов не найдено</p>
@@ -371,6 +376,59 @@
       </div>
     </div>
 
+    <!-- Historical Visit Modal -->
+    <div v-if="historicalVisitModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-6 border-b">
+          <h2 class="text-xl font-semibold text-gray-900">Внести исторический выезд</h2>
+          <button @click="historicalVisitModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+        </div>
+        <form @submit.prevent="handleHistoricalVisitSave" class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Дата выезда *</label>
+            <input v-model="historicalVisitForm.planned_date" type="date" required class="input" :class="{ 'border-red-400': historicalVisitErrors.planned_date }" @change="delete historicalVisitErrors.planned_date" />
+            <p v-if="historicalVisitErrors.planned_date" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.planned_date }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
+            <select v-model="historicalVisitForm.site_id" required class="input" :class="{ 'border-red-400': historicalVisitErrors.site_id }" @change="delete historicalVisitErrors.site_id">
+              <option value="">— Выберите объект —</option>
+              <option v-for="s in client.sites" :key="s.id" :value="s.id">{{ s.title }}</option>
+            </select>
+            <p v-if="historicalVisitErrors.site_id" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.site_id }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Мастер *</label>
+            <select v-model="historicalVisitForm.assigned_user_id" required class="input" :class="{ 'border-red-400': historicalVisitErrors.assigned_user_id }" @change="delete historicalVisitErrors.assigned_user_id">
+              <option value="">— Выберите мастера —</option>
+              <option v-for="u in masters" :key="u.id" :value="u.id">{{ u.full_name || u.username }}</option>
+            </select>
+            <p v-if="historicalVisitErrors.assigned_user_id" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.assigned_user_id }}</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Тип выезда</label>
+            <select v-model="historicalVisitForm.visit_type" class="input">
+              <option v-for="vt in cfg.visitTypes" :key="vt.sysname" :value="vt.sysname">{{ vt.display_name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Итог работы</label>
+            <textarea v-model="historicalVisitForm.work_summary" class="input" rows="3" placeholder="Описание выполненных работ..." />
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+            <input type="checkbox" v-model="historicalVisitForm.defects_present" class="rounded" />
+            Обнаружены дефекты
+          </label>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" @click="historicalVisitModalOpen = false" class="btn btn-secondary">Отмена</button>
+            <button type="submit" :disabled="historicalVisitSaving" class="btn btn-primary disabled:opacity-50">
+              {{ historicalVisitSaving ? 'Сохранение...' : 'Внести выезд' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Visit Detail Modal -->
     <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
@@ -439,7 +497,7 @@ import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, Use
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
-import { clientsAPI, sitesAPI, contractsAPI, visitsAPI } from '../services/api.js'
+import { clientsAPI, sitesAPI, contractsAPI, visitsAPI, usersAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
@@ -486,6 +544,61 @@ async function openVisitDetail(v) {
   }
 }
 
+// Historical visit
+const historicalVisitModalOpen = ref(false)
+const historicalVisitSaving = ref(false)
+const historicalVisitForm = ref({
+  planned_date: '',
+  site_id: '',
+  assigned_user_id: '',
+  visit_type: 'maintenance',
+  work_summary: '',
+  defects_present: false,
+})
+const historicalVisitErrors = ref({})
+const masters = ref([])
+
+function openHistoricalVisitModal() {
+  historicalVisitForm.value = {
+    planned_date: '',
+    site_id: client.value?.sites?.length === 1 ? client.value.sites[0].id : '',
+    assigned_user_id: '',
+    visit_type: 'maintenance',
+    work_summary: '',
+    defects_present: false,
+  }
+  historicalVisitErrors.value = {}
+  historicalVisitModalOpen.value = true
+}
+
+async function handleHistoricalVisitSave() {
+  const e = {}
+  if (!historicalVisitForm.value.planned_date) e.planned_date = 'Укажите дату'
+  if (!historicalVisitForm.value.site_id) e.site_id = 'Выберите объект'
+  if (!historicalVisitForm.value.assigned_user_id) e.assigned_user_id = 'Выберите мастера'
+  historicalVisitErrors.value = e
+  if (Object.keys(e).length) return
+  historicalVisitSaving.value = true
+  try {
+    await visitsAPI.create({
+      planned_date: historicalVisitForm.value.planned_date,
+      site_id: historicalVisitForm.value.site_id,
+      assigned_user_id: historicalVisitForm.value.assigned_user_id,
+      visit_type: historicalVisitForm.value.visit_type || 'maintenance',
+      status: 'done',
+      work_summary: historicalVisitForm.value.work_summary || null,
+      defects_present: historicalVisitForm.value.defects_present,
+      priority: 'medium',
+    })
+    historicalVisitModalOpen.value = false
+    await loadClient()
+  } catch (err) {
+    alert('Ошибка: ' + (err.response?.data?.detail || err.message))
+  } finally {
+    historicalVisitSaving.value = false
+  }
+}
+
 // Contacts
 const contactModalOpen = ref(false)
 const editingContact = ref(null)
@@ -493,13 +606,14 @@ const contactDeleteConfirm = ref(null)
 const contactForm = ref({ full_name: '', position: '', phone: '', email: '', is_primary: false })
 
 useEscClose([
-  { isOpen: () => editModalOpen.value,              close: () => { editModalOpen.value = false } },
-  { isOpen: () => legalModalOpen.value,             close: () => { legalModalOpen.value = false } },
-  { isOpen: () => siteModalOpen.value,              close: () => { siteModalOpen.value = false } },
-  { isOpen: () => contractCreateModalOpen.value,    close: () => { contractCreateModalOpen.value = false } },
-  { isOpen: () => contactModalOpen.value,           close: () => { contactModalOpen.value = false } },
-  { isOpen: () => !!contactDeleteConfirm.value,     close: () => { contactDeleteConfirm.value = null } },
-  { isOpen: () => !!detailVisit.value,              close: () => { detailVisit.value = null } },
+  { isOpen: () => editModalOpen.value,                 close: () => { editModalOpen.value = false } },
+  { isOpen: () => legalModalOpen.value,                close: () => { legalModalOpen.value = false } },
+  { isOpen: () => siteModalOpen.value,                 close: () => { siteModalOpen.value = false } },
+  { isOpen: () => contractCreateModalOpen.value,       close: () => { contractCreateModalOpen.value = false } },
+  { isOpen: () => contactModalOpen.value,              close: () => { contactModalOpen.value = false } },
+  { isOpen: () => !!contactDeleteConfirm.value,        close: () => { contactDeleteConfirm.value = null } },
+  { isOpen: () => historicalVisitModalOpen.value,      close: () => { historicalVisitModalOpen.value = false } },
+  { isOpen: () => !!detailVisit.value,                 close: () => { detailVisit.value = null } },
 ])
 
 const tabs = computed(() => [
@@ -701,8 +815,12 @@ function priorityClass(p) {
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(() => {
+onMounted(async () => {
   if (route.query.tab) activeTab.value = route.query.tab
   loadClient(); loadContracts()
+  try {
+    const res = await usersAPI.getMasters()
+    masters.value = res.data
+  } catch { /* ignore */ }
 })
 </script>
