@@ -374,7 +374,7 @@ async def unarchive_visit(
 async def delete_visit(
     visit_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_groups("admin_group")),
+    current_user=Depends(require_groups("admin_group", "office_group")),
 ):
     result = await db.execute(select(Visit).where(Visit.id == visit_id))
     visit = result.scalar_one_or_none()

@@ -215,7 +215,7 @@
                 <span>{{ formatDate(v.planned_date) }}</span>
                 <span v-if="v.master_name">{{ v.master_name }}</span>
                 <button
-                  v-if="auth.hasGroup('admin_group')"
+                  v-if="auth.hasGroup('admin_group') || auth.hasGroup('office_group')"
                   @click.stop="visitDeleteConfirm = v"
                   class="p-1 text-gray-400 hover:text-red-600 transition-colors"
                   title="Удалить выезд"
@@ -501,7 +501,7 @@
         </div>
         <div class="flex justify-between p-6 border-t flex-shrink-0">
           <button
-            v-if="auth.hasGroup('admin_group')"
+            v-if="auth.hasGroup('admin_group') || auth.hasGroup('office_group')"
             @click="visitDeleteConfirm = detailVisit; detailVisit = null"
             class="btn bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1.5"
           >

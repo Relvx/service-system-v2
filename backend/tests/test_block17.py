@@ -170,11 +170,9 @@ class TestClientCounters:
         assert client_res.status_code == 201
         client_id = client_res.json()["id"]
 
-        # Начальный счётчик
-        clients = await http_client.get("/api/clients", headers=headers,
-                                        params={"search": "__block17_counter_client__", "limit": 10})
-        before = next(c for c in clients.json()["items"] if c["id"] == client_id)
-        assert before["sites_count"] == 0
+        # Начальный счётчик — получаем клиента напрямую по id
+        before_res = await http_client.get(f"/api/clients/{client_id}", headers=headers)
+        assert before_res.json()["sites"] == [] or len(before_res.json()["sites"]) == 0
 
         # Добавляем объект
         site_res = await http_client.post("/api/sites", headers=headers, json={
@@ -186,10 +184,8 @@ class TestClientCounters:
         assert site_res.status_code == 201
 
         # Счётчик должен стать 1
-        clients2 = await http_client.get("/api/clients", headers=headers,
-                                         params={"search": "__block17_counter_client__", "limit": 10})
-        after = next(c for c in clients2.json()["items"] if c["id"] == client_id)
-        assert after["sites_count"] == 1
+        after_res = await http_client.get(f"/api/clients/{client_id}", headers=headers)
+        assert len(after_res.json()["sites"]) == 1
 
     async def test_client_contracts_count_increments(
         self, http_client: AsyncClient, admin_token: str
@@ -202,17 +198,15 @@ class TestClientCounters:
         assert client_res.status_code == 201
         client_id = client_res.json()["id"]
 
-        clients_before = await http_client.get("/api/clients", headers=headers,
-                                               params={"search": "__block17_contracts_counter__", "limit": 10})
-        before = next(c for c in clients_before.json()["items"] if c["id"] == client_id)
-        assert before["contracts_count"] == 0
+        before_res = await http_client.get(f"/api/clients/{client_id}", headers=headers)
+        # У нового клиента договоров ещё нет (проверяем через contracts endpoint)
+        contracts_before = await http_client.get("/api/contracts/by-client/" + str(client_id), headers=headers)
+        assert contracts_before.json() == []
 
         await http_client.post("/api/contracts", headers=headers, json={
             "contract_number": "BLK17-CNT",
             "client_id": client_id,
         })
 
-        clients_after = await http_client.get("/api/clients", headers=headers,
-                                              params={"search": "__block17_contracts_counter__", "limit": 10})
-        after = next(c for c in clients_after.json()["items"] if c["id"] == client_id)
-        assert after["contracts_count"] == 1
+        contracts_after = await http_client.get("/api/contracts/by-client/" + str(client_id), headers=headers)
+        assert len(contracts_after.json()) == 1

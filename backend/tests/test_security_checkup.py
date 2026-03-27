@@ -169,17 +169,17 @@ class TestDeleteAuthorization:
         assert res.status_code == 403
         await http_client.delete(f"/api/visits/{vid}", headers=auth_headers(admin_token))
 
-    async def test_office_cannot_delete_visit(
+    async def test_office_can_delete_visit(
         self, http_client: AsyncClient, admin_token: str, office_token: str, site_id: int
     ):
+        # office_group теперь может удалять выезды
         vr = await http_client.post("/api/visits", headers=auth_headers(admin_token), json={
             "site_id": site_id, "assigned_user_id": 2, "planned_date": "2026-10-02",
             "visit_type": "maintenance", "priority": "medium",
         })
         vid = vr.json()["id"]
         res = await http_client.delete(f"/api/visits/{vid}", headers=auth_headers(office_token))
-        assert res.status_code == 403
-        await http_client.delete(f"/api/visits/{vid}", headers=auth_headers(admin_token))
+        assert res.status_code == 204
 
 
 # ─── Business logic edge cases ────────────────────────────────────────────────
