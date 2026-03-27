@@ -390,10 +390,20 @@
             <p v-if="historicalVisitErrors.planned_date" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.planned_date }}</p>
           </div>
           <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Договор</label>
+            <select v-model="historicalVisitForm.contract_id" class="input" @change="onHistoricalContractChange">
+              <option value="">— Без договора (все объекты) —</option>
+              <option v-for="c in contracts" :key="c.id" :value="c.id">
+                {{ c.contract_number || 'Без номера' }}{{ c.subject ? ' — ' + c.subject : '' }}
+              </option>
+            </select>
+            <p v-if="historicalVisitSitesLoading" class="text-xs text-gray-400 mt-1">Загрузка объектов...</p>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
             <select v-model="historicalVisitForm.site_id" required class="input" :class="{ 'border-red-400': historicalVisitErrors.site_id }" @change="delete historicalVisitErrors.site_id">
               <option value="">— Выберите объект —</option>
-              <option v-for="s in client.sites" :key="s.id" :value="s.id">{{ s.title }}</option>
+              <option v-for="s in historicalVisitSites" :key="s.id" :value="s.id">{{ s.title }}</option>
             </select>
             <p v-if="historicalVisitErrors.site_id" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.site_id }}</p>
           </div>
@@ -547,8 +557,10 @@ async function openVisitDetail(v) {
 // Historical visit
 const historicalVisitModalOpen = ref(false)
 const historicalVisitSaving = ref(false)
+const historicalVisitSitesLoading = ref(false)
 const historicalVisitForm = ref({
   planned_date: '',
+  contract_id: '',
   site_id: '',
   assigned_user_id: '',
   visit_type: 'maintenance',
@@ -556,19 +568,49 @@ const historicalVisitForm = ref({
   defects_present: false,
 })
 const historicalVisitErrors = ref({})
+const historicalVisitSites = ref([])  // объекты для выбора (всё или по договору)
 const masters = ref([])
 
 function openHistoricalVisitModal() {
+  // Если 1 договор — подставляем автоматически
+  const autoContract = contracts.value.length === 1 ? contracts.value[0].id : ''
   historicalVisitForm.value = {
     planned_date: '',
-    site_id: client.value?.sites?.length === 1 ? client.value.sites[0].id : '',
+    contract_id: autoContract,
+    site_id: '',
     assigned_user_id: '',
     visit_type: 'maintenance',
     work_summary: '',
     defects_present: false,
   }
   historicalVisitErrors.value = {}
+  historicalVisitSites.value = client.value?.sites || []
   historicalVisitModalOpen.value = true
+  // Если автоматически подставили договор — загрузим его объекты
+  if (autoContract) loadContractSites(autoContract)
+}
+
+async function onHistoricalContractChange() {
+  historicalVisitForm.value.site_id = ''
+  delete historicalVisitErrors.value.site_id
+  const cid = historicalVisitForm.value.contract_id
+  if (!cid) {
+    historicalVisitSites.value = client.value?.sites || []
+    return
+  }
+  await loadContractSites(cid)
+}
+
+async function loadContractSites(contractId) {
+  historicalVisitSitesLoading.value = true
+  try {
+    const res = await contractsAPI.getById(contractId)
+    historicalVisitSites.value = res.data.sites || []
+  } catch {
+    historicalVisitSites.value = client.value?.sites || []
+  } finally {
+    historicalVisitSitesLoading.value = false
+  }
 }
 
 async function handleHistoricalVisitSave() {
