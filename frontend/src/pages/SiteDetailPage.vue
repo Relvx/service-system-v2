@@ -407,6 +407,7 @@ import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { sitesAPI, visitsAPI, usersAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const detailVisit = ref(null)
 const detailTab = ref('info')
@@ -414,6 +415,13 @@ const detailTab = ref('info')
 const editVisitModalOpen = ref(false)
 const editVisitSaving = ref(false)
 const editVisitForm = ref({})
+
+useEscClose([
+  { isOpen: () => !!detailVisit.value,        close: () => { detailVisit.value = null } },
+  { isOpen: () => editVisitModalOpen.value,   close: () => { editVisitModalOpen.value = false } },
+  { isOpen: () => visitModalOpen.value,       close: () => { visitModalOpen.value = false } },
+  { isOpen: () => modalOpen.value,            close: () => { modalOpen.value = false } },
+])
 
 async function openDetail(v) {
   detailTab.value = 'info'
@@ -624,5 +632,8 @@ function visitStatusClass(s) {
   }[s] || 'bg-gray-50 text-gray-500'
 }
 
-onMounted(loadSite)
+onMounted(() => {
+  if (route.query.tab) activeTab.value = route.query.tab
+  loadSite()
+})
 </script>

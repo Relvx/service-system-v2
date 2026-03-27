@@ -67,7 +67,11 @@
 
           <!-- Клиент -->
           <template #client_name="{ row }">
-            <span v-if="row.client_name" class="truncate block text-gray-700">{{ row.client_name }}</span>
+            <span
+              v-if="row.client_name"
+              class="truncate block text-gray-700 cursor-pointer hover:text-primary-600 hover:underline"
+              @click.stop="row.client_id && router.push(`/clients/${row.client_id}`)"
+            >{{ row.client_name }}</span>
             <span v-else class="text-gray-300">—</span>
           </template>
 
@@ -91,8 +95,9 @@
           <!-- Объекты -->
           <template #sites_count="{ row }">
             <span
-              class="inline-flex items-center gap-1 text-sm font-medium"
+              class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="(row.sites_count || 0) > 0 ? 'text-green-700' : 'text-gray-400'"
+              @click.stop="(row.sites_count || 0) > 0 && router.push(`/contracts/${row.id}`)"
             >
               <MapPin class="w-3.5 h-3.5" />{{ row.sites_count ?? 0 }}
             </span>
@@ -141,8 +146,9 @@
           </div>
           <form @submit.prevent="handleCreate" class="p-6 space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Номер договора</label>
-              <input v-model="form.contract_number" class="input" placeholder="0817/2 от 17.08.2006" />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Номер договора *</label>
+              <input v-model="form.contract_number" class="input" :class="{ 'border-red-400': createErrors.contract_number }" placeholder="0817/2 от 17.08.2006" @input="delete createErrors.contract_number" />
+              <p v-if="createErrors.contract_number" class="text-red-600 text-xs mt-1">{{ createErrors.contract_number }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Дата договора</label>
@@ -186,6 +192,7 @@ import { Plus, FileText, X, Search, MapPin, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { contractsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const router = useRouter()
 const contracts = ref([])
@@ -195,6 +202,11 @@ const loadingMore = ref(false)
 const createModalOpen = ref(false)
 const saving = ref(false)
 const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
+const createErrors = ref({})
+
+useEscClose([
+  { isOpen: () => createModalOpen.value, close: () => { createModalOpen.value = false } },
+])
 
 const filters = ref({ search: '', status: '' })
 const hasActiveFilters = computed(() => filters.value.search || filters.value.status)
@@ -269,10 +281,15 @@ function setupObserver() {
 
 function openCreate() {
   form.value = { contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' }
+  createErrors.value = {}
   createModalOpen.value = true
 }
 
 async function handleCreate() {
+  const e = {}
+  if (!form.value.contract_number.trim()) e.contract_number = 'Введите номер договора'
+  createErrors.value = e
+  if (Object.keys(e).length) return
   saving.value = true
   try {
     const payload = { ...form.value }

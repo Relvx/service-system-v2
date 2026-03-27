@@ -281,6 +281,7 @@ import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { defectsAPI, purchasesAPI, sitesAPI, attachmentsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const cfg = useConfigStore()
 const auth = useAuthStore()
@@ -322,6 +323,12 @@ const showCreateModal = ref(false)
 const sites = ref([])
 const createForm = ref({ site_id: null, title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '' })
 const createErrors = ref({})
+
+useEscClose([
+  { isOpen: () => !!selectedDefect.value,   close: () => { closeDetail() } },
+  { isOpen: () => showCreateModal.value,     close: () => { showCreateModal.value = false } },
+  { isOpen: () => showCreatePurchase.value,  close: () => { showCreatePurchase.value = false } },
+])
 
 const columns = [
   { key: 'title',       label: 'Дефект',       width: 220 },

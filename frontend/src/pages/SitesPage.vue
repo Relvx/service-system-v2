@@ -76,7 +76,11 @@
 
           <!-- Клиент -->
           <template #client_name="{ row }">
-            <span v-if="row.client_name" class="truncate block text-gray-700">{{ row.client_name }}</span>
+            <span
+              v-if="row.client_name"
+              class="truncate block text-gray-700 cursor-pointer hover:text-primary-600 hover:underline"
+              @click.stop="row.client_id && router.push(`/clients/${row.client_id}`)"
+            >{{ row.client_name }}</span>
             <span v-else class="text-gray-300">—</span>
           </template>
 
@@ -95,8 +99,9 @@
           <!-- Выезды -->
           <template #total_visits="{ row }">
             <span
-              class="inline-flex items-center gap-1 text-sm font-medium"
+              class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="(row.total_visits || 0) > 0 ? 'text-green-700' : 'text-gray-400'"
+              @click.stop="(row.total_visits || 0) > 0 && router.push(`/sites/${row.id}?tab=visits`)"
             >
               <CalendarCheck class="w-3.5 h-3.5" />{{ row.total_visits || 0 }}
             </span>
@@ -282,6 +287,7 @@ import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { sitesAPI, clientsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const cfg = useConfigStore()
 const auth = useAuthStore()
@@ -306,6 +312,11 @@ const clientSearch = ref('')
 const clientDropdownOpen = ref(false)
 const geocoding = ref(false)
 const geocodeError = ref('')
+
+useEscClose([
+  { isOpen: () => modalOpen.value,        close: () => { modalOpen.value = false } },
+  { isOpen: () => !!archiveConfirm.value, close: () => { archiveConfirm.value = null } },
+])
 
 const filters = ref({
   search: '',

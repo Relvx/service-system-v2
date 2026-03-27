@@ -265,6 +265,7 @@ import { useRoute } from 'vue-router'
 import { ArrowLeft, Edit, Plus, X, Building2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { contractsAPI, sitesAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
 const contract = ref(null)
@@ -278,6 +279,12 @@ const addSiteModalOpen = ref(false)
 const siteSearch = ref('')
 const siteResults = ref([])
 const removeSiteConfirm = ref(null)
+
+useEscClose([
+  { isOpen: () => editModalOpen.value,          close: () => { editModalOpen.value = false } },
+  { isOpen: () => addSiteModalOpen.value,       close: () => { addSiteModalOpen.value = false; siteSearch.value = ''; siteResults.value = [] } },
+  { isOpen: () => !!removeSiteConfirm.value,    close: () => { removeSiteConfirm.value = null } },
+])
 
 const statuses = [
   { value: 'active',    label: 'Активен',  activeClass: 'bg-green-100 text-green-700 font-medium' },

@@ -440,6 +440,7 @@ import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { clientsAPI, sitesAPI, contractsAPI, visitsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
@@ -489,6 +490,16 @@ const contactModalOpen = ref(false)
 const editingContact = ref(null)
 const contactDeleteConfirm = ref(null)
 const contactForm = ref({ full_name: '', position: '', phone: '', email: '', is_primary: false })
+
+useEscClose([
+  { isOpen: () => editModalOpen.value,              close: () => { editModalOpen.value = false } },
+  { isOpen: () => legalModalOpen.value,             close: () => { legalModalOpen.value = false } },
+  { isOpen: () => siteModalOpen.value,              close: () => { siteModalOpen.value = false } },
+  { isOpen: () => contractCreateModalOpen.value,    close: () => { contractCreateModalOpen.value = false } },
+  { isOpen: () => contactModalOpen.value,           close: () => { contactModalOpen.value = false } },
+  { isOpen: () => !!contactDeleteConfirm.value,     close: () => { contactDeleteConfirm.value = null } },
+  { isOpen: () => !!detailVisit.value,              close: () => { detailVisit.value = null } },
+])
 
 const tabs = computed(() => [
   { key: 'main', label: 'Основное' },
@@ -684,5 +695,8 @@ function priorityClass(p) {
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(() => { loadClient(); loadContracts() })
+onMounted(() => {
+  if (route.query.tab) activeTab.value = route.query.tab
+  loadClient(); loadContracts()
+})
 </script>

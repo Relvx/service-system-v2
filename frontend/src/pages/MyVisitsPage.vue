@@ -226,6 +226,7 @@ import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import { visitsAPI, attachmentsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const auth = useAuthStore()
 const cfg = useConfigStore()
@@ -239,6 +240,11 @@ const detailVisit = ref(null)
 const saving = ref(false)
 const activeTab = ref('active')
 const photos = ref([])
+
+useEscClose([
+  { isOpen: () => !!detailVisit.value,    close: () => { detailVisit.value = null } },
+  { isOpen: () => !!completeModal.value,  close: () => { completeModal.value = null } },
+])
 
 const completeForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
 

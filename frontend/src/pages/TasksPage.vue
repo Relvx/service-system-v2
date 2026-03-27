@@ -144,6 +144,7 @@ import { Plus, X, Check, CheckSquare, Pencil, Trash2, Paperclip, Calendar as Cal
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { tasksAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const tasks = ref([])
 const loading = ref(true)
@@ -155,6 +156,12 @@ const deleteConfirm = ref(null)
 const filesTask = ref(null)
 const form = ref({ title: '', description: '', deadline: '' })
 const errors = ref({})
+
+useEscClose([
+  { isOpen: () => modalOpen.value,        close: () => { modalOpen.value = false } },
+  { isOpen: () => !!filesTask.value,      close: () => { filesTask.value = null } },
+  { isOpen: () => !!deleteConfirm.value,  close: () => { deleteConfirm.value = null } },
+])
 
 const filters = [
   { key: '',       label: 'Все' },

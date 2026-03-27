@@ -145,6 +145,7 @@ import Layout from '../components/Layout.vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import { visitsAPI, usersAPI, calendarNotesAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const auth = useAuthStore()
 const cfg = useConfigStore()
@@ -172,6 +173,12 @@ const noteModal = ref({
   text: '',
   saving: false,
 })
+
+useEscClose([
+  { isOpen: () => !!selectedVisit.value,   close: () => { selectedVisit.value = null } },
+  { isOpen: () => !!dayChoiceDate.value,   close: () => { dayChoiceDate.value = null } },
+  { isOpen: () => noteModal.value.open,    close: () => { noteModal.value.open = false } },
+])
 
 const canEditNotes = computed(
   () => auth.hasGroup('office_group') || auth.hasGroup('admin_group')

@@ -280,6 +280,7 @@ import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { purchasesAPI, sitesAPI, defectsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const cfg = useConfigStore()
 const auth = useAuthStore()
@@ -305,6 +306,11 @@ const detailPurchase = ref(null)
 const editForm = ref({})
 const editErrors = ref({})
 const editSaving = ref(false)
+
+useEscClose([
+  { isOpen: () => modalOpen.value,           close: () => { modalOpen.value = false } },
+  { isOpen: () => !!detailPurchase.value,    close: () => { detailPurchase.value = null } },
+])
 
 // Только не-архивные объекты для фильтра
 const activeSites = computed(() => sites.value.filter(s => !s.is_archived))

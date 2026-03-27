@@ -453,6 +453,7 @@ import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { visitsAPI, sitesAPI, usersAPI, clientsAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
@@ -493,6 +494,14 @@ const attachments = ref([])
 const errors = ref({})
 const visitPhotos = ref([])
 const selectedPhotos = ref([])
+
+useEscClose([
+  { isOpen: () => !!detailVisit.value,     close: () => { detailVisit.value = null } },
+  { isOpen: () => modalOpen.value,         close: () => { closeModal() } },
+  { isOpen: () => !!archiveConfirm.value,  close: () => { archiveConfirm.value = null } },
+  { isOpen: () => !!cancelConfirm.value,   close: () => { cancelConfirm.value = null } },
+  { isOpen: () => defectModalOpen.value,   close: () => { defectModalOpen.value = false } },
+])
 
 // Create form: client search + multi-site
 const allClients = ref([])
@@ -786,6 +795,15 @@ onMounted(async () => {
   setupObserver()
   usersAPI.getMasters().then(r => { masters.value = r.data })
   if (route.query.open_create) openCreate()
+  if (route.query.open_visit) {
+    try {
+      const vr = await visitsAPI.getById(Number(route.query.open_visit))
+      detailTab.value = 'info'
+      detailVisit.value = vr.data
+    } catch (e) {
+      console.error('Could not open visit', e)
+    }
+  }
 })
 onUnmounted(() => { if (observer) observer.disconnect() })
 </script>

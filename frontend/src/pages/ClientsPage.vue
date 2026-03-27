@@ -90,8 +90,9 @@
           <!-- Объекты -->
           <template #sites_count="{ row }">
             <span
-              class="inline-flex items-center gap-1 text-sm font-medium"
+              class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="row.sites_count > 0 ? 'text-blue-700' : 'text-gray-400'"
+              @click.stop="row.sites_count > 0 && router.push(`/clients/${row.id}?tab=sites`)"
             >
               <MapPin class="w-3.5 h-3.5" />{{ row.sites_count ?? 0 }}
             </span>
@@ -100,8 +101,9 @@
           <!-- Договоры -->
           <template #contracts_count="{ row }">
             <span
-              class="inline-flex items-center gap-1 text-sm font-medium"
+              class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="row.contracts_count > 0 ? 'text-violet-700' : 'text-gray-400'"
+              @click.stop="row.contracts_count > 0 && router.push(`/clients/${row.id}?tab=contracts`)"
             >
               <FileText class="w-3.5 h-3.5" />{{ row.contracts_count ?? 0 }}
             </span>
@@ -110,8 +112,9 @@
           <!-- Выезды -->
           <template #visits_count="{ row }">
             <span
-              class="inline-flex items-center gap-1 text-sm font-medium"
+              class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="row.visits_count > 0 ? 'text-green-700' : 'text-gray-400'"
+              @click.stop="row.visits_count > 0 && router.push(`/clients/${row.id}?tab=visits`)"
             >
               <CalendarCheck class="w-3.5 h-3.5" />{{ row.visits_count ?? 0 }}
             </span>
@@ -245,6 +248,7 @@ import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { clientsAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -259,6 +263,11 @@ const archiveConfirm = ref(null)
 const saving = ref(false)
 const form = ref({ name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' })
 const errors = ref({})
+
+useEscClose([
+  { isOpen: () => modalOpen.value,        close: () => { modalOpen.value = false } },
+  { isOpen: () => !!archiveConfirm.value, close: () => { archiveConfirm.value = null } },
+])
 
 const filters = ref({
   search: '',
