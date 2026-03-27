@@ -54,12 +54,15 @@
         >
           <!-- Номер -->
           <template #contract_number="{ row }">
-            <div class="flex items-center gap-2 min-w-0">
+            <div
+              class="flex items-center gap-2 min-w-0 cursor-pointer"
+              @click.stop="openContractQuick(row)"
+            >
               <div class="w-7 h-7 bg-blue-100 rounded-md flex-shrink-0 flex items-center justify-center">
                 <FileText class="w-4 h-4 text-blue-600" />
               </div>
               <div class="min-w-0">
-                <div class="font-medium text-gray-900 truncate">{{ row.contract_number || 'Без номера' }}</div>
+                <div class="font-medium text-gray-900 truncate hover:text-blue-700 hover:underline">{{ row.contract_number || 'Без номера' }}</div>
                 <div v-if="row.subject" class="text-xs text-gray-400 truncate">{{ row.subject }}</div>
               </div>
             </div>
@@ -70,7 +73,7 @@
             <span
               v-if="row.client_name"
               class="truncate block text-gray-700 cursor-pointer hover:text-primary-600 hover:underline"
-              @click.stop="row.client_id && router.push(`/clients/${row.client_id}`)"
+              @click.stop="row.client_id && openClientQuick(row.client_id)"
             >{{ row.client_name }}</span>
             <span v-else class="text-gray-300">—</span>
           </template>
@@ -97,7 +100,7 @@
             <span
               class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="(row.sites_count || 0) > 0 ? 'text-green-700' : 'text-gray-400'"
-              @click.stop="(row.sites_count || 0) > 0 && router.push(`/contracts/${row.id}`)"
+              @click.stop="(row.sites_count || 0) > 0 && openContractQuick(row)"
             >
               <MapPin class="w-3.5 h-3.5" />{{ row.sites_count ?? 0 }}
             </span>
@@ -136,6 +139,33 @@
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       </template>
+
+      <!-- Quick: Договор -->
+      <ContractQuickModal
+        v-if="quickContract"
+        :contract="quickContract"
+        @close="quickContract = null"
+        @open-page="router.push(`/contracts/${quickContract.id}`); quickContract = null"
+        @open-client="quickContract.client_id && openClientQuick(quickContract.client_id); quickContract = null"
+        @open-site="(s) => { quickContract = null; openSiteQuick(s) }"
+      />
+
+      <!-- Quick: Объект -->
+      <SiteQuickModal
+        v-if="quickSite"
+        :site="quickSite"
+        @close="quickSite = null"
+        @open-page="router.push(`/sites/${quickSite.id}`); quickSite = null"
+        @open-client="quickSite.client_id && openClientQuick(quickSite.client_id); quickSite = null"
+      />
+
+      <!-- Quick: Клиент -->
+      <ClientQuickModal
+        v-if="quickClient"
+        :client="quickClient"
+        @close="quickClient = null"
+        @open-page="router.push(`/clients/${quickClient.id}`); quickClient = null"
+      />
 
       <!-- Модал создания -->
       <div v-if="createModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -191,7 +221,10 @@ import { useRouter } from 'vue-router'
 import { Plus, FileText, X, Search, MapPin, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
-import { contractsAPI } from '../services/api.js'
+import ContractQuickModal from '../components/modals/ContractQuickModal.vue'
+import SiteQuickModal from '../components/modals/SiteQuickModal.vue'
+import ClientQuickModal from '../components/modals/ClientQuickModal.vue'
+import { contractsAPI, sitesAPI, clientsAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const router = useRouter()
@@ -204,7 +237,36 @@ const saving = ref(false)
 const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
 const createErrors = ref({})
 
+// Quick modals
+const quickContract = ref(null)
+const quickSite = ref(null)
+const quickClient = ref(null)
+
+async function openContractQuick(row) {
+  try {
+    const detail = await contractsAPI.getById(row.id)
+    quickContract.value = detail.data
+  } catch { /* ignore */ }
+}
+
+async function openSiteQuick(site) {
+  try {
+    const detail = await sitesAPI.getById(site.id)
+    quickSite.value = detail.data
+  } catch { /* ignore */ }
+}
+
+async function openClientQuick(clientId) {
+  try {
+    const detail = await clientsAPI.getById(clientId)
+    quickClient.value = detail.data
+  } catch { /* ignore */ }
+}
+
 useEscClose([
+  { isOpen: () => !!quickSite.value,     close: () => { quickSite.value = null } },
+  { isOpen: () => !!quickClient.value,   close: () => { quickClient.value = null } },
+  { isOpen: () => !!quickContract.value, close: () => { quickContract.value = null } },
   { isOpen: () => createModalOpen.value, close: () => { createModalOpen.value = false } },
 ])
 
@@ -226,8 +288,8 @@ const columns = [
   { key: 'actions',         label: '',           width: 60,  sortable: false },
 ]
 
-function onRowClick(row) {
-  router.push(`/contracts/${row.id}`)
+function onRowClick(_row) {
+  // клики обрабатываются в ячейках
 }
 
 function buildParams(offset = 0) {

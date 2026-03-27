@@ -63,12 +63,15 @@
         >
           <!-- Название / адрес -->
           <template #title="{ row }">
-            <div class="flex items-center gap-2 min-w-0">
+            <div
+              class="flex items-center gap-2 min-w-0 cursor-pointer"
+              @click.stop="openSiteQuick(row)"
+            >
               <div class="w-7 h-7 bg-green-100 rounded-md flex-shrink-0 flex items-center justify-center">
                 <Building2 class="w-4 h-4 text-green-600" />
               </div>
               <div class="min-w-0">
-                <div class="font-medium text-gray-900 truncate">{{ row.title }}</div>
+                <div class="font-medium text-gray-900 truncate hover:text-green-700 hover:underline">{{ row.title }}</div>
                 <div class="text-xs text-gray-400 truncate">{{ row.address }}</div>
               </div>
             </div>
@@ -79,7 +82,7 @@
             <span
               v-if="row.client_name"
               class="truncate block text-gray-700 cursor-pointer hover:text-primary-600 hover:underline"
-              @click.stop="row.client_id && router.push(`/clients/${row.client_id}`)"
+              @click.stop="row.client_id && openClientQuick(row.client_id)"
             >{{ row.client_name }}</span>
             <span v-else class="text-gray-300">—</span>
           </template>
@@ -262,6 +265,23 @@
         </div>
       </div>
 
+      <!-- Quick: Объект -->
+      <SiteQuickModal
+        v-if="quickSite"
+        :site="quickSite"
+        @close="quickSite = null"
+        @open-page="router.push(`/sites/${quickSite.id}`); quickSite = null"
+        @open-client="quickSite.client_id && openClientQuick(quickSite.client_id); quickSite = null"
+      />
+
+      <!-- Quick: Клиент -->
+      <ClientQuickModal
+        v-if="quickClient"
+        :client="quickClient"
+        @close="quickClient = null"
+        @open-page="router.push(`/clients/${quickClient.id}`); quickClient = null"
+      />
+
       <!-- Archive Confirm -->
       <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
@@ -284,6 +304,8 @@ import { useRouter } from 'vue-router'
 import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
+import SiteQuickModal from '../components/modals/SiteQuickModal.vue'
+import ClientQuickModal from '../components/modals/ClientQuickModal.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
 import { sitesAPI, clientsAPI } from '../services/api.js'
@@ -314,7 +336,27 @@ const clientDropdownOpen = ref(false)
 const geocoding = ref(false)
 const geocodeError = ref('')
 
+// Quick modals
+const quickSite = ref(null)
+const quickClient = ref(null)
+
+async function openSiteQuick(row) {
+  try {
+    const detail = await sitesAPI.getById(row.id)
+    quickSite.value = detail.data
+  } catch { /* ignore */ }
+}
+
+async function openClientQuick(clientId) {
+  try {
+    const detail = await clientsAPI.getById(clientId)
+    quickClient.value = detail.data
+  } catch { /* ignore */ }
+}
+
 useEscClose([
+  { isOpen: () => !!quickSite.value,      close: () => { quickSite.value = null } },
+  { isOpen: () => !!quickClient.value,    close: () => { quickClient.value = null } },
   { isOpen: () => modalOpen.value,        close: () => { modalOpen.value = false } },
   { isOpen: () => !!archiveConfirm.value, close: () => { archiveConfirm.value = null } },
 ])
@@ -349,8 +391,8 @@ function rowClass(row) {
   return row.is_archived ? 'opacity-60 bg-gray-50' : ''
 }
 
-function onRowClick(row) {
-  if (!row.is_archived) router.push(`/sites/${row.id}`)
+function onRowClick(_row) {
+  // клики обрабатываются в ячейках
 }
 
 const filteredClients = computed(() => {

@@ -67,12 +67,15 @@
         >
           <!-- Название -->
           <template #name="{ row }">
-            <div class="flex items-center gap-2 min-w-0">
+            <div
+              class="flex items-center gap-2 min-w-0 cursor-pointer"
+              @click.stop="openClientQuick(row)"
+            >
               <div class="w-7 h-7 bg-primary-100 rounded-md flex-shrink-0 flex items-center justify-center">
                 <Building2 class="w-4 h-4 text-primary-600" />
               </div>
               <div class="min-w-0">
-                <div class="font-medium text-gray-900 truncate">{{ row.name }}</div>
+                <div class="font-medium text-gray-900 truncate hover:text-primary-600 hover:underline">{{ row.name }}</div>
                 <div v-if="row.inn" class="text-xs text-gray-400 truncate">ИНН: {{ row.inn }}</div>
               </div>
             </div>
@@ -80,8 +83,8 @@
 
           <!-- Контакт -->
           <template #contacts="{ row }">
-            <div class="min-w-0">
-              <div v-if="row.contact_person" class="truncate text-gray-800">{{ row.contact_person }}</div>
+            <div class="min-w-0 cursor-pointer" @click.stop="openClientQuick(row)">
+              <div v-if="row.contact_person" class="truncate text-gray-800 hover:text-primary-600">{{ row.contact_person }}</div>
               <div v-if="row.contacts" class="text-xs text-gray-500 truncate">{{ row.contacts.split(',')[0] }}</div>
               <span v-if="!row.contact_person && !row.contacts" class="text-gray-300">—</span>
             </div>
@@ -92,7 +95,7 @@
             <span
               class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="row.sites_count > 0 ? 'text-blue-700' : 'text-gray-400'"
-              @click.stop="row.sites_count > 0 && router.push(`/clients/${row.id}?tab=sites`)"
+              @click.stop="row.sites_count > 0 && openSitesQuick(row)"
             >
               <MapPin class="w-3.5 h-3.5" />{{ row.sites_count ?? 0 }}
             </span>
@@ -103,7 +106,7 @@
             <span
               class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
               :class="row.contracts_count > 0 ? 'text-violet-700' : 'text-gray-400'"
-              @click.stop="row.contracts_count > 0 && router.push(`/clients/${row.id}?tab=contracts`)"
+              @click.stop="row.contracts_count > 0 && openContractsQuick(row)"
             >
               <FileText class="w-3.5 h-3.5" />{{ row.contracts_count ?? 0 }}
             </span>
@@ -221,6 +224,49 @@
         </div>
       </div>
 
+      <!-- Quick: Клиент -->
+      <ClientQuickModal
+        v-if="quickClient"
+        :client="quickClient"
+        @close="quickClient = null"
+        @open-page="router.push(`/clients/${quickClient.id}`); quickClient = null"
+      />
+
+      <!-- Quick: Список объектов клиента -->
+      <SiteListModal
+        v-if="quickSitesList"
+        :sites="quickSitesList"
+        @close="quickSitesList = null"
+        @select="onSiteSelect"
+      />
+
+      <!-- Quick: Объект -->
+      <SiteQuickModal
+        v-if="quickSite"
+        :site="quickSite"
+        @close="quickSite = null"
+        @open-page="router.push(`/sites/${quickSite.id}`); quickSite = null"
+        @open-client="quickSite.client_id && router.push(`/clients/${quickSite.client_id}`); quickSite = null"
+      />
+
+      <!-- Quick: Список договоров клиента -->
+      <ContractListModal
+        v-if="quickContractsList"
+        :contracts="quickContractsList"
+        @close="quickContractsList = null"
+        @select="onContractSelect"
+      />
+
+      <!-- Quick: Договор -->
+      <ContractQuickModal
+        v-if="quickContract"
+        :contract="quickContract"
+        @close="quickContract = null"
+        @open-page="router.push(`/contracts/${quickContract.id}`); quickContract = null"
+        @open-client="quickContract.client_id && router.push(`/clients/${quickContract.client_id}`); quickContract = null"
+        @open-site="(s) => { quickContract = null; onSiteSelect(s) }"
+      />
+
       <!-- Archive Confirm -->
       <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
@@ -246,7 +292,12 @@ import {
 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
-import { clientsAPI } from '../services/api.js'
+import ClientQuickModal from '../components/modals/ClientQuickModal.vue'
+import SiteQuickModal from '../components/modals/SiteQuickModal.vue'
+import SiteListModal from '../components/modals/SiteListModal.vue'
+import ContractQuickModal from '../components/modals/ContractQuickModal.vue'
+import ContractListModal from '../components/modals/ContractListModal.vue'
+import { clientsAPI, sitesAPI, contractsAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
@@ -265,9 +316,74 @@ const form = ref({ name: '', inn: '', kpp: '', contact_person: '', contacts: '',
 const originalForm = ref(null)
 const errors = ref({})
 
+// Quick modals
+const quickClient = ref(null)
+const quickSitesList = ref(null)
+const quickSite = ref(null)
+const quickContractsList = ref(null)
+const quickContract = ref(null)
+
+async function openClientQuick(row) {
+  quickClient.value = row
+}
+
+async function openSitesQuick(row) {
+  if (row.sites_count === 1) {
+    // 1 объект — сразу открываем модалку объекта
+    try {
+      const res = await sitesAPI.getAll({ client_id: row.id, limit: 1 })
+      const site = res.data.items?.[0]
+      if (site) {
+        const detail = await sitesAPI.getById(site.id)
+        quickSite.value = detail.data
+      }
+    } catch { /* ignore */ }
+  } else {
+    // несколько — список
+    try {
+      const res = await sitesAPI.getAll({ client_id: row.id, limit: 200 })
+      quickSitesList.value = res.data.items || []
+    } catch { /* ignore */ }
+  }
+}
+
+async function onSiteSelect(site) {
+  quickSitesList.value = null
+  try {
+    const detail = await sitesAPI.getById(site.id)
+    quickSite.value = detail.data
+  } catch { /* ignore */ }
+}
+
+async function openContractsQuick(row) {
+  try {
+    const res = await contractsAPI.getByClient(row.id)
+    const list = Array.isArray(res.data) ? res.data : (res.data?.items || [])
+    if (list.length === 1) {
+      const detail = await contractsAPI.getById(list[0].id)
+      quickContract.value = detail.data
+    } else {
+      quickContractsList.value = list
+    }
+  } catch { /* ignore */ }
+}
+
+async function onContractSelect(contract) {
+  quickContractsList.value = null
+  try {
+    const detail = await contractsAPI.getById(contract.id)
+    quickContract.value = detail.data
+  } catch { /* ignore */ }
+}
+
 useEscClose([
-  { isOpen: () => modalOpen.value,        close: () => { modalOpen.value = false } },
-  { isOpen: () => !!archiveConfirm.value, close: () => { archiveConfirm.value = null } },
+  { isOpen: () => !!quickContract.value,      close: () => { quickContract.value = null } },
+  { isOpen: () => !!quickContractsList.value, close: () => { quickContractsList.value = null } },
+  { isOpen: () => !!quickSite.value,          close: () => { quickSite.value = null } },
+  { isOpen: () => !!quickSitesList.value,     close: () => { quickSitesList.value = null } },
+  { isOpen: () => !!quickClient.value,        close: () => { quickClient.value = null } },
+  { isOpen: () => modalOpen.value,            close: () => { modalOpen.value = false } },
+  { isOpen: () => !!archiveConfirm.value,     close: () => { archiveConfirm.value = null } },
 ])
 
 const filters = ref({
@@ -294,8 +410,8 @@ function rowClass(row) {
   return row.is_archived ? 'opacity-60 bg-gray-50' : ''
 }
 
-function onRowClick(row) {
-  if (!row.is_archived) router.push(`/clients/${row.id}`)
+function onRowClick(_row) {
+  // клики обрабатываются в ячейках через openClientQuick / openSitesQuick / openContractsQuick
 }
 
 const LIMIT = 50
