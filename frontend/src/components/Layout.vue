@@ -41,12 +41,14 @@
 
         <!-- Выпадающие результаты -->
         <div
-          v-if="searchFocused && searchQuery.length >= 2"
-          class="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50"
+          v-if="searchFocused && searchQuery.length >= 1"
+          class="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 flex flex-col"
+          style="max-height: 420px"
         >
           <div v-if="searchLoading" class="px-4 py-3 text-sm text-gray-500 text-center">Поиск...</div>
           <div v-else-if="searchResults.length === 0" class="px-4 py-3 text-sm text-gray-500 text-center">Ничего не найдено</div>
-          <div v-else>
+          <div v-else class="flex flex-col min-h-0">
+            <div class="overflow-y-auto" style="max-height: 360px">
             <RouterLink
               v-for="r in searchResults" :key="`${r.type}-${r.id}`"
               :to="r.url"
@@ -72,7 +74,8 @@
                 {{ r.type === 'client' ? 'Клиент' : r.type === 'site' ? 'Объект' : 'Договор' }}
               </span>
             </RouterLink>
-            <div v-if="hasMoreResults" class="border-t border-gray-100">
+            </div>
+            <div v-if="hasMoreResults" class="border-t border-gray-100 flex-shrink-0">
               <button
                 @click="loadMoreSearch"
                 :disabled="searchLoadingMore"
@@ -308,7 +311,7 @@ let searchTimeout = null
 
 function onSearchInput() {
   clearTimeout(searchTimeout)
-  if (searchQuery.value.length < 2) {
+  if (searchQuery.value.length < 1) {
     searchResults.value = []
     searchTotal.value = 0
     return
