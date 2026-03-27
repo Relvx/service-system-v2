@@ -29,6 +29,7 @@ class ContractPage(BaseModel):
 @router.get("", response_model=ContractPage)
 async def get_contracts(
     client_id: Optional[int] = None,
+    site_id: Optional[int] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
     show_archived: bool = False,
@@ -50,6 +51,12 @@ async def get_contracts(
         stmt = stmt.where(Contract.is_archived == False)
     if client_id:
         stmt = stmt.where(Contract.client_id == client_id)
+    if site_id:
+        stmt = stmt.where(
+            Contract.id.in_(
+                select(ContractSite.contract_id).where(ContractSite.site_id == site_id)
+            )
+        )
     if status:
         stmt = stmt.where(Contract.status == status)
     if search:

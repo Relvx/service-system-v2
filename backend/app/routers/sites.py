@@ -11,6 +11,7 @@ from app.models.visit import Visit
 from app.models.defect import Defect
 from app.models.user import User
 from app.models.history import SiteHistory
+from app.models.contract import ContractSite
 from app.schemas.site import SiteOut, SiteDetailOut, SiteCreate, SiteUpdate
 from app.utils.audit import save_history, save_log
 from app.utils.geocoding import geocode_address
@@ -54,9 +55,12 @@ async def get_sites(
     visit_count = (
         select(func.count()).where(Visit.site_id == Site.id).correlate(Site).scalar_subquery()
     )
+    contract_count = (
+        select(func.count()).where(ContractSite.site_id == Site.id).correlate(Site).scalar_subquery()
+    )
 
     stmt = (
-        select(Site, Client.name.label("client_name"), visit_count.label("total_visits"))
+        select(Site, Client.name.label("client_name"), visit_count.label("total_visits"), contract_count.label("contracts_count"))
         .outerjoin(Client, Site.client_id == Client.id)
     )
 
@@ -85,6 +89,7 @@ async def get_sites(
         obj = SiteOut.model_validate(site)
         obj.client_name = row[1]
         obj.total_visits = row[2]
+        obj.contracts_count = row[3]
         out.append(obj)
     return SitePage(items=out, total=total, limit=limit, offset=offset)
 
@@ -111,6 +116,12 @@ async def get_site(site_id: int, db: AsyncSession = Depends(get_db), _=Depends(g
         select(func.count()).where(Visit.site_id == site_id)
     )
     obj.total_visits = visit_count_res.scalar()
+
+    # Contracts count
+    contract_count_res = await db.execute(
+        select(func.count()).where(ContractSite.site_id == site_id)
+    )
+    obj.contracts_count = contract_count_res.scalar()
 
     # Active defects (not fixed/cancelled)
     defects_stmt = (

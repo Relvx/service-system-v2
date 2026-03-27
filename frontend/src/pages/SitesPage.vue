@@ -99,6 +99,17 @@
             <span v-else class="text-gray-300">—</span>
           </template>
 
+          <!-- Договоры -->
+          <template #contracts_count="{ row }">
+            <span
+              class="inline-flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline"
+              :class="(row.contracts_count || 0) > 0 ? 'text-violet-700' : 'text-gray-400'"
+              @click.stop="(row.contracts_count || 0) > 0 && openContractsQuick(row)"
+            >
+              <FileText class="w-3.5 h-3.5" />{{ row.contracts_count ?? 0 }}
+            </span>
+          </template>
+
           <!-- Выезды -->
           <template #total_visits="{ row }">
             <span
@@ -282,6 +293,24 @@
         @open-page="router.push(`/clients/${quickClient.id}`); quickClient = null"
       />
 
+      <!-- Quick: Список договоров объекта -->
+      <ContractListModal
+        v-if="quickContractsList"
+        :contracts="quickContractsList"
+        @close="quickContractsList = null"
+        @select="onContractSelect"
+      />
+
+      <!-- Quick: Договор -->
+      <ContractQuickModal
+        v-if="quickContract"
+        :contract="quickContract"
+        @close="quickContract = null"
+        @open-page="router.push(`/contracts/${quickContract.id}`); quickContract = null"
+        @open-client="quickContract.client_id && openClientQuick(quickContract.client_id); quickContract = null"
+        @open-site="(s) => { quickContract = null; openSiteQuick(s) }"
+      />
+
       <!-- Archive Confirm -->
       <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
@@ -301,14 +330,16 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck } from 'lucide-vue-next'
+import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck, FileText } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import SiteQuickModal from '../components/modals/SiteQuickModal.vue'
 import ClientQuickModal from '../components/modals/ClientQuickModal.vue'
+import ContractQuickModal from '../components/modals/ContractQuickModal.vue'
+import ContractListModal from '../components/modals/ContractListModal.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
-import { sitesAPI, clientsAPI } from '../services/api.js'
+import { sitesAPI, clientsAPI, contractsAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const cfg = useConfigStore()
@@ -339,6 +370,8 @@ const geocodeError = ref('')
 // Quick modals
 const quickSite = ref(null)
 const quickClient = ref(null)
+const quickContractsList = ref(null)
+const quickContract = ref(null)
 
 async function openSiteQuick(row) {
   try {
@@ -354,11 +387,34 @@ async function openClientQuick(clientId) {
   } catch { /* ignore */ }
 }
 
+async function openContractsQuick(row) {
+  try {
+    const res = await contractsAPI.getAll({ site_id: row.id, limit: 200 })
+    const list = res.data?.items || []
+    if (list.length === 1) {
+      const detail = await contractsAPI.getById(list[0].id)
+      quickContract.value = detail.data
+    } else if (list.length > 1) {
+      quickContractsList.value = list
+    }
+  } catch { /* ignore */ }
+}
+
+async function onContractSelect(contract) {
+  quickContractsList.value = null
+  try {
+    const detail = await contractsAPI.getById(contract.id)
+    quickContract.value = detail.data
+  } catch { /* ignore */ }
+}
+
 useEscClose([
-  { isOpen: () => !!quickSite.value,      close: () => { quickSite.value = null } },
-  { isOpen: () => !!quickClient.value,    close: () => { quickClient.value = null } },
-  { isOpen: () => modalOpen.value,        close: () => { modalOpen.value = false } },
-  { isOpen: () => !!archiveConfirm.value, close: () => { archiveConfirm.value = null } },
+  { isOpen: () => !!quickContract.value,      close: () => { quickContract.value = null } },
+  { isOpen: () => !!quickContractsList.value, close: () => { quickContractsList.value = null } },
+  { isOpen: () => !!quickSite.value,          close: () => { quickSite.value = null } },
+  { isOpen: () => !!quickClient.value,        close: () => { quickClient.value = null } },
+  { isOpen: () => modalOpen.value,            close: () => { modalOpen.value = false } },
+  { isOpen: () => !!archiveConfirm.value,     close: () => { archiveConfirm.value = null } },
 ])
 
 const filters = ref({
@@ -382,6 +438,7 @@ const columns = [
   { key: 'client_name',       label: 'Клиент',          width: 180, sortable: true },
   { key: 'onsite_contact',    label: 'Контакт на месте', width: 180, sortable: false },
   { key: 'service_frequency', label: 'Частота',         width: 150, sortable: true },
+  { key: 'contracts_count',   label: 'Договоры',        width: 110, sortable: true },
   { key: 'total_visits',      label: 'Выезды',          width: 100, sortable: true },
   { key: 'status',            label: 'Статус',          width: 110, sortable: false },
   { key: 'actions',           label: '',               width: 90,  sortable: false },

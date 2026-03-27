@@ -25,6 +25,7 @@ class SiteOut(BaseModel):
     # joined fields
     client_name: Optional[str] = None
     total_visits: Optional[int] = None
+    contracts_count: Optional[int] = None
 
 
 class SiteDetailOut(SiteOut):
