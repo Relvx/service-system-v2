@@ -211,9 +211,17 @@
                   {{ cfg.priorityLabel(v.priority) }}
                 </span>
               </div>
-              <div class="flex items-center gap-4 text-sm text-gray-500 flex-shrink-0">
+              <div class="flex items-center gap-3 text-sm text-gray-500 flex-shrink-0">
                 <span>{{ formatDate(v.planned_date) }}</span>
                 <span v-if="v.master_name">{{ v.master_name }}</span>
+                <button
+                  v-if="auth.hasGroup('admin_group')"
+                  @click.stop="visitDeleteConfirm = v"
+                  class="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                  title="Удалить выезд"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -491,8 +499,33 @@
             <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
           </div>
         </div>
-        <div class="flex justify-end p-6 border-t flex-shrink-0">
-          <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+        <div class="flex justify-between p-6 border-t flex-shrink-0">
+          <button
+            v-if="auth.hasGroup('admin_group')"
+            @click="visitDeleteConfirm = detailVisit; detailVisit = null"
+            class="btn bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-1.5"
+          >
+            <Trash2 class="w-4 h-4" />Удалить
+          </button>
+          <button @click="detailVisit = null" class="btn btn-primary ml-auto">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visit Delete Confirm -->
+    <div v-if="visitDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">Удалить выезд?</h2>
+        <p class="text-gray-600 mb-1">
+          <span class="font-medium">{{ visitDeleteConfirm.site_title }}</span>
+        </p>
+        <p class="text-gray-500 text-sm mb-6">{{ formatDate(visitDeleteConfirm.planned_date) }}<span v-if="visitDeleteConfirm.master_name"> · {{ visitDeleteConfirm.master_name }}</span></p>
+        <p class="text-red-600 text-sm mb-6">Это действие нельзя отменить.</p>
+        <div class="flex justify-end gap-3">
+          <button @click="visitDeleteConfirm = null" class="btn btn-secondary">Отмена</button>
+          <button @click="handleVisitDelete" :disabled="visitDeleting" class="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+            {{ visitDeleting ? 'Удаление...' : 'Удалить' }}
+          </button>
         </div>
       </div>
     </div>
@@ -507,11 +540,13 @@ import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, Use
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
+import { useAuthStore } from '../stores/auth.js'
 import { clientsAPI, sitesAPI, contractsAPI, visitsAPI, usersAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
 const cfg = useConfigStore()
+const auth = useAuthStore()
 
 const client = ref(null)
 const loading = ref(true)
@@ -641,6 +676,23 @@ async function handleHistoricalVisitSave() {
   }
 }
 
+// Visit delete
+const visitDeleteConfirm = ref(null)
+const visitDeleting = ref(false)
+
+async function handleVisitDelete() {
+  visitDeleting.value = true
+  try {
+    await visitsAPI.delete(visitDeleteConfirm.value.id)
+    visitDeleteConfirm.value = null
+    await loadClient()
+  } catch (err) {
+    alert('Ошибка: ' + (err.response?.data?.detail || err.message))
+  } finally {
+    visitDeleting.value = false
+  }
+}
+
 // Contacts
 const contactModalOpen = ref(false)
 const editingContact = ref(null)
@@ -656,6 +708,7 @@ useEscClose([
   { isOpen: () => !!contactDeleteConfirm.value,        close: () => { contactDeleteConfirm.value = null } },
   { isOpen: () => historicalVisitModalOpen.value,      close: () => { historicalVisitModalOpen.value = false } },
   { isOpen: () => !!detailVisit.value,                 close: () => { detailVisit.value = null } },
+  { isOpen: () => !!visitDeleteConfirm.value,          close: () => { visitDeleteConfirm.value = null } },
 ])
 
 const tabs = computed(() => [
