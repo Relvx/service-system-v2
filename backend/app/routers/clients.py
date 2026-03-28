@@ -33,6 +33,42 @@ class ClientPage(BaseModel):
     limit: int
     offset: int
 
+# ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────
+
+async def _get_client(db: AsyncSession, client_id: int) -> Client:
+    """Получить клиента с проверкой существования."""
+    result = await db.execute(select(Client).where(Client.id == client_id))
+    client = result.scalar_one_or_none()
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return client
+
+
+async def _get_client_contact(
+    db: AsyncSession, client_id: int, contact_id: int
+) -> ClientContact:
+    """Получить контакт клиента с проверкой."""
+    result = await db.execute(
+        select(ClientContact).where(
+            ClientContact.id == contact_id,
+            ClientContact.client_id == client_id,
+        )
+    )
+    contact = result.scalar_one_or_none()
+    if contact is None:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    return contact
+
+
+def _client_out_with_counts(client: Client, sites_count: int, visits_count: int, contracts_count: int) -> ClientOut:
+    """Создать ClientOut с дополнительными счетчиками."""
+    obj = ClientOut.model_validate(client)
+    obj.sites_count = sites_count
+    obj.visits_count = visits_count
+    obj.contracts_count = contracts_count
+    return obj
+
+
 
 @router.get("", response_model=ClientPage)
 async def get_clients(
@@ -45,19 +81,24 @@ async def get_clients(
     _=Depends(get_current_user),
 ):
     sites_count_sq = (
-        select(func.count()).where(Site.client_id == Client.id, Site.is_archived == False)
-        .correlate(Client).scalar_subquery()
+        select(func.count())
+        .where(Site.client_id == Client.id, Site.is_archived == False)
+        .correlate(Client)
+        .scalar_subquery()
     )
     visits_count_sq = (
         select(func.count())
         .select_from(Visit)
         .join(Site, Visit.site_id == Site.id)
         .where(Site.client_id == Client.id, Visit.is_archived == False)
-        .correlate(Client).scalar_subquery()
+        .correlate(Client)
+        .scalar_subquery()
     )
     contracts_count_sq = (
-        select(func.count()).where(Contract.client_id == Client.id, Contract.is_archived == False)
-        .correlate(Client).scalar_subquery()
+        select(func.count())
+        .where(Contract.client_id == Client.id, Contract.is_archived == False)
+        .correlate(Client)
+        .scalar_subquery()
     )
 
     stmt = select(
@@ -78,28 +119,25 @@ async def get_clients(
         )
     stmt = stmt.order_by(Client.name)
 
-    total_res = await db.execute(select(func.count()).select_from(stmt.subquery()))
-    total = total_res.scalar() or 0
+    total_stmt = select(func.count()).select_from(stmt.subquery())
+    total_result = await db.execute(total_stmt)
+    total = total_result.scalar() or 0
 
-    result = await db.execute(stmt.offset(offset).limit(limit))
-    out = []
-    for row in result.all():
-        client, s_cnt, v_cnt, c_cnt = row[0], row[1], row[2], row[3]
-        obj = ClientOut.model_validate(client)
-        obj.sites_count = s_cnt
-        obj.visits_count = v_cnt
-        obj.contracts_count = c_cnt
-        out.append(obj)
-    return ClientPage(items=out, total=total, limit=limit, offset=offset)
+    paginated_stmt = stmt.offset(offset).limit(limit)
+    result = await db.execute(paginated_stmt)
+    
+    items = [
+        _client_out_with_counts(client, s_cnt, v_cnt, c_cnt)
+        for client, s_cnt, v_cnt, c_cnt in result.all()
+    ]
+    return ClientPage(items=items, total=total, limit=limit, offset=offset)
+
 
 
 @router.get("/{client_id}", response_model=ClientDetailOut)
 async def get_client(client_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
     # Клиент
-    result = await db.execute(select(Client).where(Client.id == client_id))
-    client = result.scalar_one_or_none()
-    if client is None:
-        raise HTTPException(status_code=404, detail="Client not found")
+    client = await _get_client(db, client_id)
 
     # Контакты
     contacts_res = await db.execute(
@@ -107,13 +145,13 @@ async def get_client(client_id: int, db: AsyncSession = Depends(get_db), _=Depen
         .where(ClientContact.client_id == client_id)
         .order_by(ClientContact.is_primary.desc(), ClientContact.created_at)
     )
-    contacts = contacts_res.scalars().all()
-
+    contacts = [ClientContactOut.model_validate(c) for c in contacts_res.scalars().all()]
+    
     # Реквизиты
     legal_res = await db.execute(
         select(ClientLegal).where(ClientLegal.client_id == client_id)
     )
-    legal = legal_res.scalar_one_or_none()
+    legal = ClientLegalOut.model_validate(legal_res.scalar_one_or_none()) if legal_res.scalar_one_or_none() else None
 
     # Объекты клиента (не архивные)
     sites_res = await db.execute(
@@ -121,37 +159,40 @@ async def get_client(client_id: int, db: AsyncSession = Depends(get_db), _=Depen
         .where(Site.client_id == client_id, Site.is_archived == False)
         .order_by(Site.title)
     )
-    sites = sites_res.scalars().all()
+    sites = [ClientSiteShort.model_validate(s) for s in sites_res.scalars().all()]
 
     # История выездов по всем объектам клиента (последние 20)
     site_ids = [s.id for s in sites]
     recent_visits = []
-    if site_ids:
-        visits_res = await db.execute(
+    if sites:
+        site_ids = [s.id for s in sites]
+        visits_result = await db.execute(
             select(Visit, Site, User)
-            .join(Site, Visit.site_id == Site.id, isouter=True)
+            .join(Site, Visit.site_id == Site.id)
             .join(User, Visit.assigned_user_id == User.id, isouter=True)
             .where(Visit.site_id.in_(site_ids), Visit.is_archived == False)
             .order_by(Visit.planned_date.desc())
             .limit(20)
         )
-        for visit, site, user in visits_res.all():
-            recent_visits.append(ClientVisitShort(
+        recent_visits = [
+            ClientVisitShort(
                 id=visit.id,
                 site_id=visit.site_id,
-                site_title=site.title if site else None,
+                site_title=site.title,
                 planned_date=visit.planned_date,
                 status=visit.status,
                 visit_type=visit.visit_type,
                 priority=visit.priority,
                 master_name=user.full_name if user else None,
-            ))
+            )
+            for visit, site, user in visits_result.all()
+        ]
 
     return ClientDetailOut(
         **ClientOut.model_validate(client).model_dump(),
-        contact_persons=[ClientContactOut.model_validate(c) for c in contacts],
-        legal=ClientLegalOut.model_validate(legal) if legal else None,
-        sites=[ClientSiteShort.model_validate(s) for s in sites],
+        contact_persons=contacts,
+        legal=legal,
+        sites=sites,
         recent_visits=recent_visits,
     )
 
@@ -285,22 +326,18 @@ async def update_contact(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(ClientContact).where(
-            ClientContact.id == contact_id,
-            ClientContact.client_id == client_id,
-        )
-    )
-    contact = result.scalar_one_or_none()
-    if contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
-
-    for field, value in body.model_dump(exclude_none=True).items():
+    contact = await _get_client_contact(db, client_id, contact_id)
+    
+    changed = body.model_dump(exclude_none=True)
+    if not changed:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    for field, value in changed.items():
         setattr(contact, field, value)
-
+    
     await db.commit()
     await db.refresh(contact)
-    return contact
+    return ClientContactOut.model_validate(contact)
 
 
 @router.delete("/{client_id}/contacts/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -310,16 +347,7 @@ async def delete_contact(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(ClientContact).where(
-            ClientContact.id == contact_id,
-            ClientContact.client_id == client_id,
-        )
-    )
-    contact = result.scalar_one_or_none()
-    if contact is None:
-        raise HTTPException(status_code=404, detail="Contact not found")
-
+    contact = await _get_client_contact(db, client_id, contact_id)
     await db.delete(contact)
     await db.commit()
 
@@ -333,22 +361,24 @@ async def upsert_legal(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    result = await db.execute(select(Client).where(Client.id == client_id))
-    if result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=404, detail="Client not found")
-
-    legal_res = await db.execute(
+    await _get_client(db, client_id)
+    
+    legal_result = await db.execute(
         select(ClientLegal).where(ClientLegal.client_id == client_id)
     )
-    legal = legal_res.scalar_one_or_none()
-
+    legal = legal_result.scalar_one_or_none()
+    
+    changed = body.model_dump(exclude_none=True)
+    if not changed:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
     if legal is None:
-        legal = ClientLegal(client_id=client_id, **body.model_dump(exclude_none=True))
+        legal = ClientLegal(client_id=client_id, **changed)
         db.add(legal)
     else:
-        for field, value in body.model_dump(exclude_none=True).items():
+        for field, value in changed.items():
             setattr(legal, field, value)
-
+    
     await db.commit()
     await db.refresh(legal)
-    return legal
+    return ClientLegalOut.model_validate(legal)

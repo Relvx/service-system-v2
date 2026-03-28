@@ -24,13 +24,13 @@ async def get_attachments(
     stmt = select(Attachment)
     if visit_id is not None:
         stmt = stmt.where(Attachment.visit_id == visit_id)
-    elif client_id is not None:
+    if client_id is not None:
         stmt = stmt.where(Attachment.client_id == client_id)
-    elif site_id is not None:
+    if site_id is not None:
         stmt = stmt.where(Attachment.site_id == site_id)
-    elif defect_id is not None:
+    if defect_id is not None:
         stmt = stmt.where(Attachment.defect_id == defect_id)
-    elif task_id is not None:
+    if task_id is not None:
         stmt = stmt.where(Attachment.task_id == task_id)
     stmt = stmt.order_by(Attachment.created_at)
     result = await db.execute(stmt)
