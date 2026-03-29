@@ -425,6 +425,7 @@ function buildParams() {
   }
   if (filters.value.search) p.search = filters.value.search
   if (filters.value.status === 'active') p.active_only = true
+  if (filters.value.status === 'inactive') p.inactive_only = true
   return p
 }
 
@@ -432,9 +433,7 @@ async function loadClients() {
   loading.value = true
   try {
     const res = await clientsAPI.getAll(buildParams())
-    let items = res.data.items
-    if (filters.value.status === 'inactive') items = items.filter(c => !c.is_active && !c.is_archived)
-    clients.value = items
+    clients.value = res.data.items
     total.value = res.data.total
   } finally {
     loading.value = false

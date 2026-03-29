@@ -16,10 +16,23 @@
             <p v-if="client.inn" class="text-gray-500 mt-0.5 text-sm">ИНН: {{ client.inn }}<span v-if="client.kpp"> / КПП: {{ client.kpp }}</span></p>
           </div>
           <span v-if="client.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
+          <span v-else-if="!client.is_active" class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Неактивен</span>
         </div>
-        <button v-if="!client.is_archived" @click="openEdit" class="btn btn-secondary flex items-center">
-          <Edit class="w-4 h-4 mr-2" />Редактировать
-        </button>
+        <div class="flex items-center gap-2">
+          <template v-if="canManage && !client.is_archived">
+            <button @click="toggleActive" :disabled="toggling" class="btn btn-secondary text-xs disabled:opacity-50">
+              {{ client.is_active ? 'Деактивировать' : 'Активировать' }}
+            </button>
+          </template>
+          <template v-if="auth.hasGroup('admin_group') && client.is_archived">
+            <button @click="handleUnarchive" :disabled="toggling" class="btn btn-secondary text-xs disabled:opacity-50">
+              Восстановить
+            </button>
+          </template>
+          <button v-if="!client.is_archived" @click="openEdit" class="btn btn-secondary flex items-center">
+            <Edit class="w-4 h-4 mr-2" />Редактировать
+          </button>
+        </div>
       </div>
 
       <!-- Вкладки -->
@@ -552,6 +565,9 @@ const client = ref(null)
 const loading = ref(true)
 const activeTab = ref('main')
 const saving = ref(false)
+const toggling = ref(false)
+
+const canManage = auth.hasGroup('admin_group') || auth.hasGroup('office_group')
 
 // Edit client
 const editModalOpen = ref(false)
@@ -776,6 +792,30 @@ function sitesWord(n) {
   return 'объектов'
 }
 function formatAmount(v) { return Number(v).toLocaleString('ru-RU') }
+
+async function toggleActive() {
+  toggling.value = true
+  try {
+    await clientsAPI.update(client.value.id, { is_active: !client.value.is_active })
+    await loadClient()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    toggling.value = false
+  }
+}
+
+async function handleUnarchive() {
+  toggling.value = true
+  try {
+    await clientsAPI.unarchive(client.value.id)
+    await loadClient()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    toggling.value = false
+  }
+}
 
 function openEdit() {
   editForm.value = {

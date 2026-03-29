@@ -74,6 +74,7 @@ def _client_out_with_counts(client: Client, sites_count: int, visits_count: int,
 async def get_clients(
     search: Optional[str] = None,
     active_only: Optional[bool] = None,
+    inactive_only: Optional[bool] = None,
     show_archived: bool = False,
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -107,10 +108,14 @@ async def get_clients(
         visits_count_sq.label("visits_count"),
         contracts_count_sq.label("contracts_count"),
     )
-    if not show_archived:
+    if show_archived:
+        stmt = stmt.where(Client.is_archived == True)
+    else:
         stmt = stmt.where(Client.is_archived == False)
     if active_only:
         stmt = stmt.where(Client.is_active == True)
+    if inactive_only:
+        stmt = stmt.where(Client.is_active == False)
     if search:
         stmt = stmt.where(
             Client.name.ilike(f"%{search}%")
