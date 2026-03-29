@@ -151,7 +151,8 @@ async def get_client(client_id: int, db: AsyncSession = Depends(get_db), _=Depen
     legal_res = await db.execute(
         select(ClientLegal).where(ClientLegal.client_id == client_id)
     )
-    legal = ClientLegalOut.model_validate(legal_res.scalar_one_or_none()) if legal_res.scalar_one_or_none() else None
+    _legal_obj = legal_res.scalar_one_or_none()
+    legal = ClientLegalOut.model_validate(_legal_obj) if _legal_obj else None
 
     # Объекты клиента (не архивные)
     sites_res = await db.execute(

@@ -56,7 +56,14 @@
         :rows="purchases"
         storage-key="purchases_table"
         :row-class="purchaseRowClass"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
         @row-click="openDetail"
+        @update:page="onPageChange"
+        @update:page-size="onPageSizeChange"
+        @reload="loadPurchases"
       >
         <template #status="{ row }">
           <div class="flex items-center gap-2" @click.stop>
@@ -105,12 +112,6 @@
           </div>
         </template>
       </DataTable>
-
-      <!-- Infinite scroll sentinel -->
-      <div ref="sentinelRef" class="h-4 mt-2"></div>
-      <div v-if="loadingMore" class="flex justify-center py-4">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
 
       <!-- Detail / Edit Modal -->
       <div v-if="detailPurchase" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -272,7 +273,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Plus, ShoppingCart, X } from 'lucide-vue-next'
 
 import Layout from '../components/Layout.vue'
@@ -287,10 +288,8 @@ const auth = useAuthStore()
 
 const purchases = ref([])
 const total = ref(0)
-const loadingMore = ref(false)
-const LIMIT = 50
-const sentinelRef = ref(null)
-let observer = null
+const page = ref(1)
+const pageSize = ref(50)
 const sites = ref([])
 const defects = ref([])
 const loading = ref(true)
@@ -320,6 +319,7 @@ function resetPurchaseFilters() {
   filterStatus.value = ''
   filterSiteId.value = ''
   showArchived.value = false
+  page.value = 1
   loadPurchases()
 }
 
@@ -433,7 +433,11 @@ function buildPurchaseParams() {
 async function loadPurchases() {
   loading.value = true
   try {
-    const res = await purchasesAPI.getAll({ ...buildPurchaseParams(), limit: LIMIT, offset: 0 })
+    const res = await purchasesAPI.getAll({
+      ...buildPurchaseParams(),
+      limit: pageSize.value,
+      offset: (page.value - 1) * pageSize.value,
+    })
     purchases.value = res.data.items.map((p) => ({ ...p, _newStatus: p.status }))
     total.value = res.data.total
   } finally {
@@ -441,25 +445,8 @@ async function loadPurchases() {
   }
 }
 
-async function loadMore() {
-  if (loadingMore.value || purchases.value.length >= total.value) return
-  loadingMore.value = true
-  try {
-    const res = await purchasesAPI.getAll({ ...buildPurchaseParams(), limit: LIMIT, offset: purchases.value.length })
-    purchases.value.push(...res.data.items.map((p) => ({ ...p, _newStatus: p.status })))
-    total.value = res.data.total
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-function setupObserver() {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) loadMore()
-  }, { threshold: 0.1 })
-  if (sentinelRef.value) observer.observe(sentinelRef.value)
-}
+function onPageChange(p) { page.value = p; loadPurchases() }
+function onPageSizeChange(s) { pageSize.value = s; page.value = 1; loadPurchases() }
 
 async function loadSites() {
   const res = await sitesAPI.getAll({ limit: 500 })
@@ -538,9 +525,5 @@ async function handleSave() {
 
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(async () => {
-  await Promise.all([loadPurchases(), loadSites(), loadDefects()])
-  setupObserver()
-})
-onUnmounted(() => { if (observer) observer.disconnect() })
+onMounted(() => Promise.all([loadPurchases(), loadSites(), loadDefects()]))
 </script>

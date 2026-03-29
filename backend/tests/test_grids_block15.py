@@ -177,11 +177,13 @@ class TestPurchaseFilters:
 class TestLogsFilters:
     """GET /logs — фильтрация по action_sysname и entity_type."""
 
-    async def test_logs_returns_list(self, http_client: AsyncClient, admin_token: str):
+    async def test_logs_returns_page(self, http_client: AsyncClient, admin_token: str):
         res = await http_client.get("/api/logs?limit=10", headers=auth_headers(admin_token))
         assert res.status_code == 200
         data = res.json()
-        assert isinstance(data, list)
+        assert "items" in data
+        assert "total" in data
+        assert isinstance(data["items"], list)
 
     async def test_filter_by_entity_type(self, http_client: AsyncClient, admin_token: str):
         # Создаём клиента, чтобы в логах был client_create
@@ -196,8 +198,7 @@ class TestLogsFilters:
                 headers=auth_headers(admin_token)
             )
             assert res.status_code == 200
-            logs = res.json()
-            # Все записи должны быть entity_type=client
+            logs = res.json()["items"]
             if logs:
                 assert all(log["entity_type"] == "client" for log in logs)
         finally:
@@ -217,7 +218,7 @@ class TestLogsFilters:
                 headers=auth_headers(admin_token)
             )
             assert res.status_code == 200
-            logs = res.json()
+            logs = res.json()["items"]
             if logs:
                 assert all(log["action_sysname"] == "purchase_create" for log in logs)
         finally:
@@ -229,8 +230,8 @@ class TestLogsFilters:
         res2 = await http_client.get("/api/logs?limit=5&offset=5", headers=auth_headers(admin_token))
         assert res1.status_code == 200
         assert res2.status_code == 200
-        ids1 = [l["id"] for l in res1.json()]
-        ids2 = [l["id"] for l in res2.json()]
+        ids1 = [l["id"] for l in res1.json()["items"]]
+        ids2 = [l["id"] for l in res2.json()["items"]]
         # Нет пересечений между страницами (если достаточно записей)
         if ids1 and ids2:
             assert not set(ids1) & set(ids2)

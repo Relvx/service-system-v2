@@ -117,16 +117,18 @@
       </div>
 
       <template v-else>
-        <!-- Счётчик -->
-        <p class="text-sm text-gray-500 mb-3">
-          Показано <span class="font-medium text-gray-700">{{ logs.length }}</span> записей
-        </p>
-
         <DataTable
           :columns="columns"
           :rows="logs"
           storage-key="logs-table-v1"
+          :total="total"
+          :page="page"
+          :page-size="pageSize"
+          :loading="loading"
           @row-click="openDetail"
+          @update:page="onPageChange"
+          @update:page-size="onPageSizeChange"
+          @reload="load"
         >
           <!-- Дата/Время -->
           <template #created_at="{ row }">
@@ -169,18 +171,6 @@
           </template>
         </DataTable>
 
-        <!-- Пагинация -->
-        <div class="flex justify-between items-center mt-4 text-sm text-gray-600">
-          <span class="text-xs text-gray-400">Страница {{ currentPage }}</span>
-          <div class="flex gap-2">
-            <button :disabled="offset === 0" @click="prevPage" class="btn disabled:opacity-40 flex items-center gap-1">
-              <ChevronLeft class="w-4 h-4" /> Назад
-            </button>
-            <button :disabled="logs.length < limit" @click="nextPage" class="btn disabled:opacity-40 flex items-center gap-1">
-              Вперёд <ChevronRight class="w-4 h-4" />
-            </button>
-          </div>
-        </div>
       </template>
     </div>
 
@@ -226,16 +216,17 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, User, X, ScrollText, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Search, User, X, ScrollText } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { logsAPI, configAPI } from '../services/api.js'
 
 const logs = ref([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(100)
 const entityTypes = ref([])
 const loading = ref(false)
-const limit = 100
-const offset = ref(0)
 const detail = ref(null)
 
 const filters = reactive({
@@ -250,8 +241,6 @@ const hasActiveFilters = computed(() =>
   filters.action_sysname || filters.entity_type
 )
 
-const currentPage = computed(() => Math.floor(offset.value / limit) + 1)
-
 const columns = [
   { key: 'created_at',     label: 'Дата/Время',      width: 150, sortable: false },
   { key: 'action_sysname', label: 'Действие',        width: 180, sortable: false },
@@ -264,20 +253,24 @@ const columns = [
 async function load() {
   loading.value = true
   try {
-    const params = { limit, offset: offset.value }
+    const params = {
+      limit: pageSize.value,
+      offset: (page.value - 1) * pageSize.value,
+    }
     if (filters.entity_type)      params.entity_type      = filters.entity_type
     if (filters.action_sysname)   params.action_sysname   = filters.action_sysname
     if (filters.entity_id_search) params.entity_id_search = filters.entity_id_search
     if (filters.user_name_search) params.user_name_search = filters.user_name_search
     const res = await logsAPI.getAll(params)
-    logs.value = res.data
+    logs.value = res.data.items
+    total.value = res.data.total
   } finally {
     loading.value = false
   }
 }
 
 function resetAndLoad() {
-  offset.value = 0
+  page.value = 1
   load()
 }
 
@@ -286,23 +279,17 @@ function reset() {
   filters.user_name_search = ''
   filters.action_sysname = ''
   filters.entity_type = ''
-  offset.value = 0
+  page.value = 1
   load()
 }
+
+function onPageChange(p) { page.value = p; load() }
+function onPageSizeChange(s) { pageSize.value = s; page.value = 1; load() }
 
 let debounceTimer = null
 function debouncedLoad() {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => resetAndLoad(), 400)
-}
-
-function prevPage() {
-  offset.value = Math.max(0, offset.value - limit)
-  load()
-}
-function nextPage() {
-  offset.value += limit
-  load()
 }
 
 function openDetail(log) {

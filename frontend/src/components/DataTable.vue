@@ -29,7 +29,7 @@
     </div>
 
     <!-- Table -->
-    <div class="overflow-x-auto border border-gray-200 rounded-lg">
+    <div class="overflow-x-auto border border-gray-200 rounded-lg rounded-b-none">
       <table class="text-sm text-left" style="table-layout: fixed; border-collapse: collapse; min-width: 100%">
         <colgroup>
           <col
@@ -102,21 +102,40 @@
       </table>
     </div>
   </div>
+
+  <!-- Paginator -->
+  <div v-if="total !== null" class="border border-t-0 border-gray-200 rounded-b-lg bg-gray-50 px-2">
+    <DataPaginator
+      :page="page"
+      :page-size="pageSize"
+      :total="total"
+      :loading="loading"
+      @update:page="$emit('update:page', $event)"
+      @update:page-size="$emit('update:pageSize', $event)"
+      @reload="$emit('reload')"
+    />
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { SlidersHorizontal, ChevronUp, ChevronDown, GripVertical } from 'lucide-vue-next'
+import DataPaginator from './DataPaginator.vue'
 
 const props = defineProps({
   // columns: [{ key, label, width?, defaultVisible?, sortable? }]
-  columns: { type: Array, required: true },
-  rows: { type: Array, default: () => [] },
+  columns:  { type: Array, required: true },
+  rows:     { type: Array, default: () => [] },
   storageKey: { type: String, default: null },
   rowClass: { type: Function, default: null },
+  // pagination (pass null to hide paginator)
+  total:    { type: Number, default: null },
+  page:     { type: Number, default: 1 },
+  pageSize: { type: Number, default: 50 },
+  loading:  { type: Boolean, default: false },
 })
 
-defineEmits(['row-click'])
+defineEmits(['row-click', 'update:page', 'update:pageSize', 'reload'])
 
 const columnState = ref([])
 

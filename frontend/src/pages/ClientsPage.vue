@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-4">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Клиенты</h1>
-          <p class="text-gray-600 mt-1">Показано: {{ clients.length }} из {{ total }}</p>
+          <p class="text-gray-600 mt-1">Всего: {{ total }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Добавить клиента
@@ -63,7 +63,14 @@
           :rows="clients"
           storage-key="clients-table-v1"
           :row-class="rowClass"
+          :total="total"
+          :page="page"
+          :page-size="pageSize"
+          :loading="loading"
           @row-click="onRowClick"
+          @update:page="onPageChange"
+          @update:page-size="onPageSizeChange"
+          @reload="loadClients"
         >
           <!-- Название -->
           <template #name="{ row }">
@@ -168,11 +175,6 @@
           </template>
         </DataTable>
 
-        <!-- Infinite scroll sentinel -->
-        <div ref="sentinelRef" class="h-4 mt-2"></div>
-        <div v-if="loadingMore" class="flex justify-center py-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        </div>
       </template>
 
       <!-- Create / Edit Modal -->
@@ -284,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Search, Plus, Building2, Edit, Archive, ArchiveRestore, X,
@@ -306,8 +308,9 @@ const auth = useAuthStore()
 
 const clients = ref([])
 const total = ref(0)
+const page = ref(1)
+const pageSize = ref(50)
 const loading = ref(true)
-const loadingMore = ref(false)
 const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)
@@ -414,22 +417,21 @@ function onRowClick(_row) {
   // клики обрабатываются в ячейках через openClientQuick / openSitesQuick / openContractsQuick
 }
 
-const LIMIT = 50
-const sentinelRef = ref(null)
-let observer = null
-
-function buildParams(offset = 0) {
-  const p = { limit: LIMIT, offset, show_archived: filters.value.showArchived || undefined }
+function buildParams() {
+  const p = {
+    limit: pageSize.value,
+    offset: (page.value - 1) * pageSize.value,
+    show_archived: filters.value.showArchived || undefined,
+  }
   if (filters.value.search) p.search = filters.value.search
   if (filters.value.status === 'active') p.active_only = true
-  // 'inactive' — нет серверного фильтра, фильтруем на клиенте
   return p
 }
 
 async function loadClients() {
   loading.value = true
   try {
-    const res = await clientsAPI.getAll(buildParams(0))
+    const res = await clientsAPI.getAll(buildParams())
     let items = res.data.items
     if (filters.value.status === 'inactive') items = items.filter(c => !c.is_active && !c.is_archived)
     clients.value = items
@@ -439,37 +441,27 @@ async function loadClients() {
   }
 }
 
-async function loadMore() {
-  if (loadingMore.value || clients.value.length >= total.value) return
-  loadingMore.value = true
-  try {
-    const res = await clientsAPI.getAll(buildParams(clients.value.length))
-    let items = res.data.items
-    if (filters.value.status === 'inactive') items = items.filter(c => !c.is_active && !c.is_archived)
-    clients.value.push(...items)
-    total.value = res.data.total
-  } finally {
-    loadingMore.value = false
-  }
+function onPageChange(p) {
+  page.value = p
+  loadClients()
+}
+
+function onPageSizeChange(s) {
+  pageSize.value = s
+  page.value = 1
+  loadClients()
 }
 
 let searchTimer = null
 function debouncedLoad() {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(loadClients, 300)
+  searchTimer = setTimeout(() => { page.value = 1; loadClients() }, 300)
 }
 
 function resetFilters() {
   filters.value = { search: '', status: '', showArchived: false }
+  page.value = 1
   loadClients()
-}
-
-function setupObserver() {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) loadMore()
-  }, { threshold: 0.1 })
-  if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
 
 function validate() {
@@ -538,9 +530,5 @@ async function handleUnarchive(c) {
   }
 }
 
-onMounted(async () => {
-  await loadClients()
-  setupObserver()
-})
-onUnmounted(() => { if (observer) observer.disconnect() })
+onMounted(loadClients)
 </script>

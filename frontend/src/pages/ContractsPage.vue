@@ -50,7 +50,14 @@
           :columns="columns"
           :rows="contracts"
           storage-key="contracts-table-v1"
+          :total="total"
+          :page="page"
+          :page-size="pageSize"
+          :loading="loading"
           @row-click="onRowClick"
+          @update:page="onPageChange"
+          @update:page-size="onPageSizeChange"
+          @reload="load"
         >
           <!-- Номер -->
           <template #contract_number="{ row }">
@@ -134,10 +141,6 @@
           </template>
         </DataTable>
 
-        <div ref="sentinelRef" class="h-4 mt-2"></div>
-        <div v-if="loadingMore" class="flex justify-center py-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        </div>
       </template>
 
       <!-- Quick: Договор -->
@@ -216,7 +219,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, FileText, X, Search, MapPin, Eye } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -230,8 +233,9 @@ import { useEscClose } from '../composables/useEscClose.js'
 const router = useRouter()
 const contracts = ref([])
 const total = ref(0)
+const page = ref(1)
+const pageSize = ref(50)
 const loading = ref(true)
-const loadingMore = ref(false)
 const createModalOpen = ref(false)
 const saving = ref(false)
 const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
@@ -273,10 +277,6 @@ useEscClose([
 const filters = ref({ search: '', status: '' })
 const hasActiveFilters = computed(() => filters.value.search || filters.value.status)
 
-const LIMIT = 50
-const sentinelRef = ref(null)
-let observer = null
-
 const columns = [
   { key: 'contract_number', label: 'Договор',    width: 260, sortable: true },
   { key: 'client_name',     label: 'Клиент',     width: 200, sortable: true },
@@ -292,8 +292,11 @@ function onRowClick(_row) {
   // клики обрабатываются в ячейках
 }
 
-function buildParams(offset = 0) {
-  const p = { limit: LIMIT, offset }
+function buildParams() {
+  const p = {
+    limit: pageSize.value,
+    offset: (page.value - 1) * pageSize.value,
+  }
   if (filters.value.search) p.search = filters.value.search
   if (filters.value.status) p.status = filters.value.status
   return p
@@ -302,13 +305,13 @@ function buildParams(offset = 0) {
 let searchTimer = null
 function debouncedLoad() {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(load, 300)
+  searchTimer = setTimeout(() => { page.value = 1; load() }, 300)
 }
 
 async function load() {
   loading.value = true
   try {
-    const res = await contractsAPI.getAll(buildParams(0))
+    const res = await contractsAPI.getAll(buildParams())
     contracts.value = res.data.items
     total.value = res.data.total
   } finally {
@@ -316,29 +319,13 @@ async function load() {
   }
 }
 
-async function loadMore() {
-  if (loadingMore.value || contracts.value.length >= total.value) return
-  loadingMore.value = true
-  try {
-    const res = await contractsAPI.getAll(buildParams(contracts.value.length))
-    contracts.value.push(...res.data.items)
-    total.value = res.data.total
-  } finally {
-    loadingMore.value = false
-  }
-}
+function onPageChange(p) { page.value = p; load() }
+function onPageSizeChange(s) { pageSize.value = s; page.value = 1; load() }
 
 function resetFilters() {
   filters.value = { search: '', status: '' }
+  page.value = 1
   load()
-}
-
-function setupObserver() {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) loadMore()
-  }, { threshold: 0.1 })
-  if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
 
 function openCreate() {
@@ -379,9 +366,5 @@ function statusLabel(s) {
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 function formatAmount(v) { return Number(v).toLocaleString('ru-RU') }
 
-onMounted(async () => {
-  await load()
-  setupObserver()
-})
-onUnmounted(() => { if (observer) observer.disconnect() })
+onMounted(load)
 </script>

@@ -105,8 +105,8 @@ class TestLogsPagination:
                                     params={"limit": 5, "offset": 0})
         assert res.status_code == 200
         data = res.json()
-        assert isinstance(data, list)
-        assert len(data) <= 5
+        assert "items" in data
+        assert len(data["items"]) <= 5
 
     async def test_logs_pagination_offset(self, http_client: AsyncClient, admin_token: str):
         """GET /logs с разными offset возвращает разные записи."""
@@ -116,8 +116,8 @@ class TestLogsPagination:
                                      params={"limit": 3, "offset": 3})
         assert res1.status_code == 200
         assert res2.status_code == 200
-        ids1 = {r["id"] for r in res1.json()}
-        ids2 = {r["id"] for r in res2.json()}
+        ids1 = {r["id"] for r in res1.json()["items"]}
+        ids2 = {r["id"] for r in res2.json()["items"]}
         # Если логов достаточно — записи не должны пересекаться
         if ids1 and ids2:
             assert ids1.isdisjoint(ids2)
@@ -126,7 +126,9 @@ class TestLogsPagination:
         """GET /logs без параметров возвращает не более 100 записей (default limit)."""
         res = await http_client.get("/api/logs", headers=auth_headers(admin_token))
         assert res.status_code == 200
-        assert len(res.json()) <= 100
+        data = res.json()
+        assert "items" in data
+        assert len(data["items"]) <= 100
 
 
 class TestContractSearchByClientName:

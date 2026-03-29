@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Выезды</h1>
-          <p class="text-gray-600 mt-1">Показано: {{ visits.length }} из {{ total }}</p>
+          <p class="text-gray-600 mt-1">Всего: {{ total }}</p>
         </div>
         <button @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Создать выезд
@@ -17,7 +17,7 @@
           <!-- Статус -->
           <div class="min-w-[150px]">
             <label class="block text-xs text-gray-400 mb-1">Статус</label>
-            <select v-model="filters.status" @change="loadVisits" class="input text-sm">
+            <select v-model="filters.status" @change="() => { page.value = 1; loadVisits() }" class="input text-sm">
               <option value="">Все статусы</option>
               <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
             </select>
@@ -25,7 +25,7 @@
           <!-- Приоритет -->
           <div class="min-w-[140px]">
             <label class="block text-xs text-gray-400 mb-1">Приоритет</label>
-            <select v-model="filters.priority" @change="loadVisits" class="input text-sm">
+            <select v-model="filters.priority" @change="() => { page.value = 1; loadVisits() }" class="input text-sm">
               <option value="">Все приоритеты</option>
               <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
             </select>
@@ -33,7 +33,7 @@
           <!-- Мастер -->
           <div class="min-w-[160px]">
             <label class="block text-xs text-gray-400 mb-1">Мастер</label>
-            <select v-model="filters.master_id" @change="loadVisits" class="input text-sm">
+            <select v-model="filters.master_id" @change="() => { page.value = 1; loadVisits() }" class="input text-sm">
               <option value="">Все мастера</option>
               <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
             </select>
@@ -41,16 +41,16 @@
           <!-- Дата с -->
           <div>
             <label class="block text-xs text-gray-400 mb-1">Дата с</label>
-            <input v-model="filters.date_from" @change="loadVisits" type="date" class="input text-sm" />
+            <input v-model="filters.date_from" @change="() => { page.value = 1; loadVisits() }" type="date" class="input text-sm" />
           </div>
           <!-- Дата по -->
           <div>
             <label class="block text-xs text-gray-400 mb-1">Дата по</label>
-            <input v-model="filters.date_to" @change="loadVisits" type="date" class="input text-sm" />
+            <input v-model="filters.date_to" @change="() => { page.value = 1; loadVisits() }" type="date" class="input text-sm" />
           </div>
           <!-- Архивные -->
           <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap pb-1">
-            <input type="checkbox" v-model="showArchived" @change="loadVisits" class="rounded" />
+            <input type="checkbox" v-model="showArchived" @change="() => { page.value = 1; loadVisits() }" class="rounded" />
             Архивные
           </label>
           <!-- Сброс -->
@@ -68,7 +68,21 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <DataTable v-else :columns="columns" :rows="visits" storage-key="visits_table" :row-class="() => 'cursor-pointer'" @row-click="openDetail">
+      <DataTable
+        v-else
+        :columns="columns"
+        :rows="visits"
+        storage-key="visits_table"
+        :row-class="() => 'cursor-pointer'"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
+        @row-click="openDetail"
+        @update:page="onPageChange"
+        @update:page-size="onPageSizeChange"
+        @reload="loadVisits"
+      >
         <template #planned_date="{ row }">
           <span class="whitespace-nowrap">{{ formatDate(row.planned_date) }}</span>
           <span v-if="row.planned_time_from" class="text-gray-500 text-xs block">{{ row.planned_time_from.slice(0,5) }}</span>
@@ -126,12 +140,6 @@
           </div>
         </template>
       </DataTable>
-
-      <!-- Infinite scroll sentinel -->
-      <div ref="sentinelRef" class="h-4 mt-2"></div>
-      <div v-if="loadingMore" class="flex justify-center py-4">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
 
       <!-- Detail Modal -->
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -233,7 +241,7 @@
                     :class="{ 'border-red-400': errors.client }"
                     placeholder="Начните вводить название..."
                     @focus="clientDropdownOpen = true"
-                    @input="clientDropdownOpen = true; selectedClient = null; clientSites = []; selectedSiteIds = []"
+                    @input="onClientQueryInput"
                     @keydown.escape="clientDropdownOpen = false"
                     autocomplete="off"
                   />
@@ -444,7 +452,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -461,11 +469,9 @@ const auth = useAuthStore()
 
 const visits = ref([])
 const total = ref(0)
+const page = ref(1)
+const pageSize = ref(50)
 const loading = ref(true)
-const loadingMore = ref(false)
-const LIMIT = 50
-const sentinelRef = ref(null)
-let observer = null
 const filters = ref({ status: '', priority: '', date_from: '', date_to: '', master_id: '' })
 const showArchived = ref(false)
 
@@ -477,6 +483,7 @@ const hasActiveFilters = computed(() =>
 function resetFilters() {
   filters.value = { status: '', priority: '', date_from: '', date_to: '', master_id: '' }
   showArchived.value = false
+  page.value = 1
   loadVisits()
 }
 const modalOpen = ref(false)
@@ -511,11 +518,21 @@ const selectedClient = ref(null)
 const clientSites = ref([])
 const selectedSiteIds = ref([])
 
-const filteredClients = computed(() => {
-  const q = clientQuery.value.toLowerCase().trim()
-  if (!q) return allClients.value.slice(0, 50)
-  return allClients.value.filter(c => c.name.toLowerCase().includes(q)).slice(0, 50)
-})
+const filteredClients = computed(() => allClients.value)
+
+let clientSearchTimer = null
+async function onClientQueryInput() {
+  clientDropdownOpen.value = true
+  selectedClient.value = null
+  clientSites.value = []
+  selectedSiteIds.value = []
+  clearTimeout(clientSearchTimer)
+  clientSearchTimer = setTimeout(async () => {
+    const q = clientQuery.value.trim()
+    const res = await clientsAPI.getAll({ active_only: true, limit: 50, search: q || undefined })
+    allClients.value = res.data.items
+  }, 250)
+}
 
 async function selectClient(client) {
   selectedClient.value = client
@@ -564,7 +581,11 @@ function buildVisitParams() {
 async function loadVisits() {
   loading.value = true
   try {
-    const res = await visitsAPI.getAll({ ...buildVisitParams(), limit: LIMIT, offset: 0 })
+    const res = await visitsAPI.getAll({
+      ...buildVisitParams(),
+      limit: pageSize.value,
+      offset: (page.value - 1) * pageSize.value,
+    })
     visits.value = res.data.items
     total.value = res.data.total
   } finally {
@@ -572,28 +593,11 @@ async function loadVisits() {
   }
 }
 
-async function loadMore() {
-  if (loadingMore.value || visits.value.length >= total.value) return
-  loadingMore.value = true
-  try {
-    const res = await visitsAPI.getAll({ ...buildVisitParams(), limit: LIMIT, offset: visits.value.length })
-    visits.value.push(...res.data.items)
-    total.value = res.data.total
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-function setupObserver() {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) loadMore()
-  }, { threshold: 0.1 })
-  if (sentinelRef.value) observer.observe(sentinelRef.value)
-}
+function onPageChange(p) { page.value = p; loadVisits() }
+function onPageSizeChange(s) { pageSize.value = s; page.value = 1; loadVisits() }
 
 async function loadFormData() {
-  const [cr, mr] = await Promise.all([clientsAPI.getAll({ active_only: true, limit: 500 }), usersAPI.getMasters()])
+  const [cr, mr] = await Promise.all([clientsAPI.getAll({ active_only: true, limit: 50 }), usersAPI.getMasters()])
   allClients.value = cr.data.items
   masters.value = mr.data
 }
@@ -798,7 +802,6 @@ onMounted(async () => {
   if (route.query.date_from) filters.value.date_from = route.query.date_from
   if (route.query.date_to) filters.value.date_to = route.query.date_to
   await loadVisits()
-  setupObserver()
   usersAPI.getMasters().then(r => { masters.value = r.data })
   if (route.query.open_create) openCreate()
   if (route.query.open_visit) {
@@ -811,5 +814,4 @@ onMounted(async () => {
     }
   }
 })
-onUnmounted(() => { if (observer) observer.disconnect() })
 </script>

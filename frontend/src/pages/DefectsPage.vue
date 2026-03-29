@@ -18,15 +18,15 @@
       <!-- Filters -->
       <div class="card mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select v-model="filterStatus" @change="loadDefects" class="input">
+          <select v-model="filterStatus" @change="resetAndLoad" class="input">
             <option value="">Все статусы</option>
             <option v-for="s in cfg.defectStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
           </select>
-          <select v-model="filterPriority" @change="loadDefects" class="input">
+          <select v-model="filterPriority" @change="resetAndLoad" class="input">
             <option value="">Все приоритеты</option>
             <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
           </select>
-          <button @click="loadDefects" class="btn btn-primary">Обновить</button>
+          <button @click="resetAndLoad" class="btn btn-primary">Обновить</button>
         </div>
       </div>
 
@@ -34,7 +34,20 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <DataTable v-else :columns="columns" :rows="defects" storage-key="defects_table" @row-click="openDetail($event)">
+      <DataTable
+        v-else
+        :columns="columns"
+        :rows="defects"
+        storage-key="defects_table"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
+        @row-click="openDetail($event)"
+        @update:page="onPageChange"
+        @update:page-size="onPageSizeChange"
+        @reload="loadDefects"
+      >
         <template #title="{ row }">
           <button @click="openDetail(row)" class="text-left hover:text-primary-600 font-medium truncate block w-full">
             {{ row.title }}
@@ -70,12 +83,6 @@
         </template>
       </DataTable>
 
-      <!-- Infinite scroll sentinel -->
-      <div ref="sentinelRef" class="h-4 mt-2"></div>
-      <div v-if="loadingMore" class="flex justify-center py-4">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-      </div>
-
       <!-- ─── Create Defect Modal ────────────────────────────────────────── -->
       <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
@@ -84,12 +91,30 @@
             <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <div class="p-6 space-y-4">
-            <div>
+            <div class="relative">
               <label class="block text-sm font-medium text-gray-700 mb-1">Объект <span class="text-red-500">*</span></label>
-              <select v-model="createForm.site_id" class="input" :class="{ 'border-red-500': createErrors.site_id }">
-                <option :value="null">— Выберите объект —</option>
-                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }}</option>
-              </select>
+              <input
+                v-model="siteQuery"
+                type="text"
+                class="input"
+                :class="{ 'border-red-500': createErrors.site_id }"
+                placeholder="Начните вводить название объекта..."
+                autocomplete="off"
+                @input="onSiteQueryInput"
+                @focus="siteDropdownOpen = true"
+                @blur="onSiteBlur"
+              />
+              <ul
+                v-if="siteDropdownOpen && filteredSites.length"
+                class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                <li
+                  v-for="s in filteredSites"
+                  :key="s.id"
+                  @mousedown.prevent="selectSite(s)"
+                  class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer truncate"
+                >{{ s.title }}</li>
+              </ul>
               <p v-if="createErrors.site_id" class="text-red-500 text-xs mt-1">{{ createErrors.site_id }}</p>
             </div>
             <div>
@@ -274,7 +299,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { AlertTriangle, X, Eye, Plus, Image as ImageIcon, Upload } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -290,10 +315,8 @@ const canManage = auth.hasGroup('office_group') || auth.hasGroup('admin_group')
 
 const defects = ref([])
 const total = ref(0)
-const loadingMore = ref(false)
-const LIMIT = 50
-const sentinelRef = ref(null)
-let observer = null
+const page = ref(1)
+const pageSize = ref(50)
 const loading = ref(true)
 const filterStatus = ref('')
 const filterPriority = ref('')
@@ -320,7 +343,9 @@ const savingPurchase = ref(false)
 
 // Create defect
 const showCreateModal = ref(false)
-const sites = ref([])
+const siteQuery = ref('')
+const filteredSites = ref([])
+const siteDropdownOpen = ref(false)
 const createForm = ref({ site_id: null, title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '' })
 const createErrors = ref({})
 
@@ -344,7 +369,10 @@ const columns = [
 watch(selectedDefect, (d) => { if (d) newStatus.value = d.status })
 
 function buildDefectParams() {
-  const params = {}
+  const params = {
+    limit: pageSize.value,
+    offset: (page.value - 1) * pageSize.value,
+  }
   if (filterStatus.value) params.status = filterStatus.value
   if (filterPriority.value) params.priority = filterPriority.value
   return params
@@ -353,7 +381,7 @@ function buildDefectParams() {
 async function loadDefects() {
   loading.value = true
   try {
-    const res = await defectsAPI.getAll({ ...buildDefectParams(), limit: LIMIT, offset: 0 })
+    const res = await defectsAPI.getAll(buildDefectParams())
     defects.value = res.data.items
     total.value = res.data.total
   } finally {
@@ -361,25 +389,13 @@ async function loadDefects() {
   }
 }
 
-async function loadMore() {
-  if (loadingMore.value || defects.value.length >= total.value) return
-  loadingMore.value = true
-  try {
-    const res = await defectsAPI.getAll({ ...buildDefectParams(), limit: LIMIT, offset: defects.value.length })
-    defects.value.push(...res.data.items)
-    total.value = res.data.total
-  } finally {
-    loadingMore.value = false
-  }
+function resetAndLoad() {
+  page.value = 1
+  loadDefects()
 }
 
-function setupObserver() {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) loadMore()
-  }, { threshold: 0.1 })
-  if (sentinelRef.value) observer.observe(sentinelRef.value)
-}
+function onPageChange(p) { page.value = p; loadDefects() }
+function onPageSizeChange(s) { pageSize.value = s; page.value = 1; loadDefects() }
 
 async function openDetail(defect) {
   selectedDefect.value = defect
@@ -468,14 +484,38 @@ async function updateStatus() {
   }
 }
 
+// Site autocomplete
+let siteSearchTimer = null
+async function onSiteQueryInput() {
+  siteDropdownOpen.value = true
+  createForm.value.site_id = null
+  clearTimeout(siteSearchTimer)
+  siteSearchTimer = setTimeout(async () => {
+    const q = siteQuery.value.trim()
+    const res = await sitesAPI.getAll({ show_archived: false, limit: 20, search: q || undefined })
+    filteredSites.value = res.data.items
+  }, 250)
+}
+function selectSite(s) {
+  createForm.value.site_id = s.id
+  siteQuery.value = s.title
+  siteDropdownOpen.value = false
+  filteredSites.value = []
+}
+function onSiteBlur() {
+  setTimeout(() => { siteDropdownOpen.value = false }, 150)
+}
+
 async function openCreateModal() {
   createForm.value = { site_id: null, title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '' }
   createErrors.value = {}
+  siteQuery.value = ''
+  filteredSites.value = []
+  siteDropdownOpen.value = false
   showCreateModal.value = true
-  if (sites.value.length === 0) {
-    const res = await sitesAPI.getAll({ show_archived: false, limit: 500 })
-    sites.value = res.data.items
-  }
+  // Preload initial list
+  const res = await sitesAPI.getAll({ show_archived: false, limit: 20 })
+  filteredSites.value = res.data.items
 }
 
 function validateCreate() {
@@ -555,9 +595,5 @@ function formatDate(d) {
   return new Date(d.includes('T') ? d : d + 'T00:00:00').toLocaleDateString('ru-RU')
 }
 
-onMounted(async () => {
-  await loadDefects()
-  setupObserver()
-})
-onUnmounted(() => { if (observer) observer.disconnect() })
+onMounted(loadDefects)
 </script>

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Any
+from typing import Optional, Any, List
 from pydantic import BaseModel, ConfigDict
 
 
@@ -15,3 +15,10 @@ class LogOut(BaseModel):
     created_at: datetime
     # Денормализованное имя пользователя (заполняется в роутере)
     user_name: Optional[str] = None
+
+
+class LogPage(BaseModel):
+    items: List[LogOut]
+    total: int
+    limit: int
+    offset: int

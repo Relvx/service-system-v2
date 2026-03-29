@@ -59,7 +59,14 @@
           :rows="filteredSites"
           storage-key="sites-table-v1"
           :row-class="rowClass"
+          :total="total"
+          :page="page"
+          :page-size="pageSize"
+          :loading="loading"
           @row-click="onRowClick"
+          @update:page="onPageChange"
+          @update:page-size="onPageSizeChange"
+          @reload="loadSites"
         >
           <!-- Название / адрес -->
           <template #title="{ row }">
@@ -165,10 +172,6 @@
           </template>
         </DataTable>
 
-        <div ref="sentinelRef" class="h-4 mt-2"></div>
-        <div v-if="loadingMore" class="flex justify-center py-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        </div>
       </template>
 
       <!-- Create/Edit Modal -->
@@ -328,7 +331,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck, FileText } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -348,12 +351,10 @@ const router = useRouter()
 
 const sites = ref([])
 const total = ref(0)
+const page = ref(1)
+const pageSize = ref(50)
 const clientsList = ref([])
 const loading = ref(true)
-const loadingMore = ref(false)
-const LIMIT = 50
-const sentinelRef = ref(null)
-let observer = null
 
 const modalOpen = ref(false)
 const editing = ref(null)
@@ -458,8 +459,12 @@ const filteredClients = computed(() => {
   return clientsList.value.filter(c => c.name.toLowerCase().includes(q))
 })
 
-function buildParams(offset = 0) {
-  const p = { limit: LIMIT, offset, show_archived: filters.value.showArchived || undefined }
+function buildParams() {
+  const p = {
+    limit: pageSize.value,
+    offset: (page.value - 1) * pageSize.value,
+    show_archived: filters.value.showArchived || undefined,
+  }
   if (filters.value.search) p.search = filters.value.search
   return p
 }
@@ -467,7 +472,7 @@ function buildParams(offset = 0) {
 async function loadSites() {
   loading.value = true
   try {
-    const res = await sitesAPI.getAll(buildParams(0))
+    const res = await sitesAPI.getAll(buildParams())
     sites.value = res.data.items
     total.value = res.data.total
   } finally {
@@ -475,35 +480,19 @@ async function loadSites() {
   }
 }
 
-async function loadMore() {
-  if (loadingMore.value || sites.value.length >= total.value) return
-  loadingMore.value = true
-  try {
-    const res = await sitesAPI.getAll(buildParams(sites.value.length))
-    sites.value.push(...res.data.items)
-    total.value = res.data.total
-  } finally {
-    loadingMore.value = false
-  }
-}
+function onPageChange(p) { page.value = p; loadSites() }
+function onPageSizeChange(s) { pageSize.value = s; page.value = 1; loadSites() }
 
 let searchTimer = null
 function debouncedLoad() {
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(loadSites, 300)
+  searchTimer = setTimeout(() => { page.value = 1; loadSites() }, 300)
 }
 
 function resetFilters() {
   filters.value = { search: '', serviceFrequency: '', showArchived: false }
+  page.value = 1
   loadSites()
-}
-
-function setupObserver() {
-  if (observer) observer.disconnect()
-  observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) loadMore()
-  }, { threshold: 0.1 })
-  if (sentinelRef.value) observer.observe(sentinelRef.value)
 }
 
 async function loadClients() {
@@ -602,9 +591,5 @@ async function handleUnarchive(s) {
   }
 }
 
-onMounted(async () => {
-  await Promise.all([loadSites(), loadClients()])
-  setupObserver()
-})
-onUnmounted(() => { if (observer) observer.disconnect() })
+onMounted(() => Promise.all([loadSites(), loadClients()]))
 </script>
