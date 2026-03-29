@@ -27,15 +27,21 @@
         </div>
       </div>
 
-      <div v-if="loading" class="flex items-center justify-center h-64">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-
-      <div class="card">
-        <FullCalendar
-          ref="calendarRef"
-          :options="calendarOptions"
-        />
+      <!-- Calendar wrapper: overlay spinner without layout shift -->
+      <div class="relative">
+        <div
+          v-if="loading"
+          class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10 rounded-lg"
+          style="min-height: 400px"
+        >
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+        <div class="card fc-no-transition" style="min-height: 400px">
+          <FullCalendar
+            ref="calendarRef"
+            :options="calendarOptions"
+          />
+        </div>
       </div>
 
       <!-- Visit Detail Modal -->
@@ -395,6 +401,8 @@ const calendarOptions = computed(() => ({
     }
   },
   height: 'auto',
+  // Отключаем встроенные CSS-анимации переходов между месяцами
+  viewDidMount: () => {},
 }))
 
 onMounted(async () => {
@@ -408,3 +416,20 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style>
+/* Отключаем анимации FullCalendar при смене месяца/вида */
+.fc-no-transition .fc-view-harness,
+.fc-no-transition .fc-daygrid-body,
+.fc-no-transition .fc-scrollgrid-sync-table,
+.fc-no-transition .fc-col-header,
+.fc-no-transition table,
+.fc-no-transition thead,
+.fc-no-transition tbody,
+.fc-no-transition tr,
+.fc-no-transition td,
+.fc-no-transition th {
+  transition: none !important;
+  animation: none !important;
+}
+</style>
