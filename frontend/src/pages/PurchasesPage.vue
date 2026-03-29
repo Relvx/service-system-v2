@@ -23,12 +23,33 @@
             </select>
           </div>
           <!-- Объект -->
-          <div class="min-w-[200px] flex-1 max-w-xs">
+          <div class="min-w-[200px] flex-1 max-w-xs relative">
             <label class="block text-xs text-gray-400 mb-1">Объект</label>
-            <select v-model="filterSiteId" @change="loadPurchases" class="input text-sm">
-              <option value="">Все объекты</option>
-              <option v-for="s in activeSites" :key="s.id" :value="s.id">{{ s.title }}</option>
-            </select>
+            <input
+              v-model="filterSiteQuery"
+              type="text"
+              class="input text-sm"
+              placeholder="Поиск объекта..."
+              autocomplete="off"
+              @input="onFilterSiteInput"
+              @focus="filterSiteDropdownOpen = true"
+              @blur="onFilterSiteBlur"
+            />
+            <ul
+              v-if="filterSiteDropdownOpen && filterSiteResults.length"
+              class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+            >
+              <li
+                @mousedown.prevent="clearFilterSite"
+                class="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer"
+              >— Все объекты —</li>
+              <li
+                v-for="s in filterSiteResults"
+                :key="s.id"
+                @mousedown.prevent="selectFilterSite(s)"
+                class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer truncate"
+              >{{ s.title }}</li>
+            </ul>
           </div>
           <!-- Архивные -->
           <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none whitespace-nowrap pb-1">
@@ -161,12 +182,34 @@
                 <option v-for="s in cfg.purchaseStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
               </select>
             </div>
-            <div>
+            <div class="relative">
               <label class="block text-sm font-medium text-gray-700 mb-1">Объект</label>
-              <select v-model="editForm.site_id" class="input" :disabled="detailPurchase.is_archived" @change="editForm.defect_id = null">
-                <option :value="null">— не выбран —</option>
-                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }}</option>
-              </select>
+              <input
+                v-model="editSiteQuery"
+                type="text"
+                class="input"
+                placeholder="Начните вводить название объекта..."
+                autocomplete="off"
+                :disabled="detailPurchase.is_archived"
+                @input="onEditSiteInput"
+                @focus="editSiteDropdownOpen = true"
+                @blur="onEditSiteBlur"
+              />
+              <ul
+                v-if="editSiteDropdownOpen && editSiteResults.length"
+                class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                <li
+                  @mousedown.prevent="clearEditSite"
+                  class="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer"
+                >— не выбран —</li>
+                <li
+                  v-for="s in editSiteResults"
+                  :key="s.id"
+                  @mousedown.prevent="selectEditSite(s)"
+                  class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer truncate"
+                >{{ s.title }}</li>
+              </ul>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Дефект</label>
@@ -236,12 +279,33 @@
                 <input v-model="form.due_date" type="date" class="input" />
               </div>
             </div>
-            <div>
+            <div class="relative">
               <label class="block text-sm font-medium text-gray-700 mb-1">Объект</label>
-              <select v-model="form.site_id" class="input" @change="form.defect_id = null">
-                <option :value="null">— не выбран —</option>
-                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }}</option>
-              </select>
+              <input
+                v-model="createSiteQuery"
+                type="text"
+                class="input"
+                placeholder="Начните вводить название объекта..."
+                autocomplete="off"
+                @input="onCreateSiteInput"
+                @focus="createSiteDropdownOpen = true"
+                @blur="onCreateSiteBlur"
+              />
+              <ul
+                v-if="createSiteDropdownOpen && createSiteResults.length"
+                class="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                <li
+                  @mousedown.prevent="clearCreateSite"
+                  class="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer"
+                >— не выбран —</li>
+                <li
+                  v-for="s in createSiteResults"
+                  :key="s.id"
+                  @mousedown.prevent="selectCreateSite(s)"
+                  class="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer truncate"
+                >{{ s.title }}</li>
+              </ul>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Дефект</label>
@@ -290,12 +354,104 @@ const purchases = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(50)
-const sites = ref([])
 const defects = ref([])
 const loading = ref(true)
 const filterStatus = ref('')
 const filterSiteId = ref('')
 const showArchived = ref(false)
+
+// Autocomplete: фильтр по объекту (в шапке)
+const filterSiteQuery = ref('')
+const filterSiteResults = ref([])
+const filterSiteDropdownOpen = ref(false)
+let filterSiteTimer = null
+
+async function onFilterSiteInput() {
+  filterSiteDropdownOpen.value = true
+  clearTimeout(filterSiteTimer)
+  filterSiteTimer = setTimeout(async () => {
+    const q = filterSiteQuery.value.trim()
+    const res = await sitesAPI.getAll({ show_archived: false, limit: 20, search: q || undefined })
+    filterSiteResults.value = res.data.items
+  }, 250)
+}
+function selectFilterSite(s) {
+  filterSiteId.value = s.id
+  filterSiteQuery.value = s.title
+  filterSiteDropdownOpen.value = false
+  page.value = 1
+  loadPurchases()
+}
+function clearFilterSite() {
+  filterSiteId.value = ''
+  filterSiteQuery.value = ''
+  filterSiteDropdownOpen.value = false
+  page.value = 1
+  loadPurchases()
+}
+function onFilterSiteBlur() { setTimeout(() => { filterSiteDropdownOpen.value = false }, 150) }
+
+// Autocomplete: объект в модалке создания
+const createSiteQuery = ref('')
+const createSiteResults = ref([])
+const createSiteDropdownOpen = ref(false)
+let createSiteTimer = null
+
+async function onCreateSiteInput() {
+  createSiteDropdownOpen.value = true
+  form.value.site_id = null
+  form.value.defect_id = null
+  clearTimeout(createSiteTimer)
+  createSiteTimer = setTimeout(async () => {
+    const q = createSiteQuery.value.trim()
+    const res = await sitesAPI.getAll({ show_archived: false, limit: 20, search: q || undefined })
+    createSiteResults.value = res.data.items
+  }, 250)
+}
+function selectCreateSite(s) {
+  form.value.site_id = s.id
+  form.value.defect_id = null
+  createSiteQuery.value = s.title
+  createSiteDropdownOpen.value = false
+}
+function clearCreateSite() {
+  form.value.site_id = null
+  form.value.defect_id = null
+  createSiteQuery.value = ''
+  createSiteDropdownOpen.value = false
+}
+function onCreateSiteBlur() { setTimeout(() => { createSiteDropdownOpen.value = false }, 150) }
+
+// Autocomplete: объект в модалке редактирования
+const editSiteQuery = ref('')
+const editSiteResults = ref([])
+const editSiteDropdownOpen = ref(false)
+let editSiteTimer = null
+
+async function onEditSiteInput() {
+  editSiteDropdownOpen.value = true
+  editForm.value.site_id = null
+  editForm.value.defect_id = null
+  clearTimeout(editSiteTimer)
+  editSiteTimer = setTimeout(async () => {
+    const q = editSiteQuery.value.trim()
+    const res = await sitesAPI.getAll({ show_archived: false, limit: 20, search: q || undefined })
+    editSiteResults.value = res.data.items
+  }, 250)
+}
+function selectEditSite(s) {
+  editForm.value.site_id = s.id
+  editForm.value.defect_id = null
+  editSiteQuery.value = s.title
+  editSiteDropdownOpen.value = false
+}
+function clearEditSite() {
+  editForm.value.site_id = null
+  editForm.value.defect_id = null
+  editSiteQuery.value = ''
+  editSiteDropdownOpen.value = false
+}
+function onEditSiteBlur() { setTimeout(() => { editSiteDropdownOpen.value = false }, 150) }
 const modalOpen = ref(false)
 const saving = ref(false)
 const form = ref({ item: '', qty: 1, due_date: '', notes: '', site_id: null, defect_id: null })
@@ -312,8 +468,11 @@ useEscClose([
   { isOpen: () => !!detailPurchase.value,    close: () => { detailPurchase.value = null } },
 ])
 
-// Только не-архивные объекты для фильтра
-const activeSites = computed(() => sites.value.filter(s => !s.is_archived))
+// Preload site results при открытии дропдауна фильтра
+async function initFilterSites() {
+  const res = await sitesAPI.getAll({ show_archived: false, limit: 20 })
+  filterSiteResults.value = res.data.items
+}
 
 function resetPurchaseFilters() {
   filterStatus.value = ''
@@ -370,7 +529,7 @@ function statusBadgeClass(s) {
   return m[s] || 'bg-gray-100 text-gray-700'
 }
 
-function openDetail(row) {
+async function openDetail(row) {
   detailPurchase.value = row
   editForm.value = {
     item:      row.item,
@@ -383,6 +542,11 @@ function openDetail(row) {
   }
   originalEditForm.value = { ...editForm.value }
   editErrors.value = {}
+  // Инициализируем autocomplete объекта
+  editSiteQuery.value = row.site_title || ''
+  editSiteDropdownOpen.value = false
+  const res = await sitesAPI.getAll({ show_archived: false, limit: 20, search: row.site_title || undefined })
+  editSiteResults.value = res.data.items
 }
 
 function validateEdit() {
@@ -448,11 +612,6 @@ async function loadPurchases() {
 function onPageChange(p) { page.value = p; loadPurchases() }
 function onPageSizeChange(s) { pageSize.value = s; page.value = 1; loadPurchases() }
 
-async function loadSites() {
-  const res = await sitesAPI.getAll({ limit: 500 })
-  sites.value = res.data.items
-}
-
 async function loadDefects() {
   const res = await defectsAPI.getAll({ limit: 500 })
   defects.value = res.data.items
@@ -495,10 +654,14 @@ function validate() {
   return Object.keys(e).length === 0
 }
 
-function openCreate() {
+async function openCreate() {
   form.value = { item: '', qty: 1, due_date: '', notes: '', site_id: null, defect_id: null }
   errors.value = {}
+  createSiteQuery.value = ''
+  createSiteDropdownOpen.value = false
   modalOpen.value = true
+  const res = await sitesAPI.getAll({ show_archived: false, limit: 20 })
+  createSiteResults.value = res.data.items
 }
 
 async function handleSave() {
@@ -525,5 +688,5 @@ async function handleSave() {
 
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(() => Promise.all([loadPurchases(), loadSites(), loadDefects()]))
+onMounted(() => Promise.all([loadPurchases(), loadDefects(), initFilterSites()]))
 </script>

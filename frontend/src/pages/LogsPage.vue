@@ -176,7 +176,7 @@
 
     <!-- Модал деталей -->
     <div v-if="detail" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="detail = null">
-      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-start mb-4">
           <div>
             <span class="px-2 py-0.5 rounded-full text-xs font-medium mr-2" :class="actionClass(detail.action_sysname)">
@@ -205,7 +205,7 @@
           <div v-if="detail.details" class="flex gap-2">
             <dt class="text-gray-400 w-32 shrink-0">Детали</dt>
             <dd class="text-gray-700">
-              <pre class="bg-gray-50 rounded p-2 text-xs overflow-auto max-h-48">{{ JSON.stringify(detail.details, null, 2) }}</pre>
+              <pre class="bg-gray-50 rounded p-2 text-xs overflow-x-auto overflow-y-auto max-h-64 whitespace-pre-wrap break-all">{{ JSON.stringify(detail.details, null, 2) }}</pre>
             </dd>
           </div>
         </dl>
@@ -220,6 +220,7 @@ import { Search, User, X, ScrollText } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { logsAPI, configAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const logs = ref([])
 const total = ref(0)
@@ -228,6 +229,10 @@ const pageSize = ref(100)
 const entityTypes = ref([])
 const loading = ref(false)
 const detail = ref(null)
+
+useEscClose([
+  { isOpen: () => !!detail.value, close: () => { detail.value = null } },
+])
 
 const filters = reactive({
   entity_id_search: '',
