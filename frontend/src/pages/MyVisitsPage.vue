@@ -227,6 +227,9 @@ import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import { visitsAPI, attachmentsAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 
 const auth = useAuthStore()
 const cfg = useConfigStore()
@@ -333,10 +336,15 @@ function priorityClass(p) {
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
 watch(visits, (vl) => {
-  const id = window.history.state?.openVisitId
+  // Поддержка открытия выезда через history.state или query.open_visit
+  const id = window.history.state?.openVisitId || (route.query.open_visit ? Number(route.query.open_visit) : null)
   if (id && vl?.length) {
     const v = vl.find((x) => x.id === id)
     if (v) { activeTab.value = 'all'; detailVisit.value = v }
+    else {
+      // Если выезда нет в списке — загружаем напрямую
+      visitsAPI.getById(id).then(r => { detailVisit.value = r.data }).catch(() => {})
+    }
   }
 }, { once: true })
 

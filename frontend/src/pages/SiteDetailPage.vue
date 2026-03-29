@@ -400,7 +400,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Edit, X, ShieldCheck, Calendar, Plus, Pencil } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -638,8 +638,14 @@ function visitStatusClass(s) {
   }[s] || 'bg-gray-50 text-gray-500'
 }
 
-onMounted(() => {
+function initPage() {
   if (route.query.tab) activeTab.value = route.query.tab
   loadSite()
+}
+
+onMounted(initPage)
+
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId && newId !== oldId) initPage()
 })
 </script>

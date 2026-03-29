@@ -260,7 +260,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Edit, Plus, X, Building2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -396,4 +396,8 @@ function formatDateTime(dt) {
 function formatAmount(v) { return Number(v).toLocaleString('ru-RU') }
 
 onMounted(load)
+
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId && newId !== oldId) load()
+})
 </script>

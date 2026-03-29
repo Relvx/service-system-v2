@@ -42,8 +42,11 @@
       <div v-if="selectedVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
           <div class="flex items-center justify-between p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">{{ selectedVisit.site_title }}</h2>
-            <button @click="selectedVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <div class="min-w-0 pr-2">
+              <h2 class="text-lg font-semibold text-gray-900 leading-tight">{{ selectedVisit.client_name || selectedVisit.site_title }}</h2>
+              <p v-if="selectedVisit.client_name" class="text-sm text-gray-500 mt-0.5 truncate">{{ selectedVisit.site_address }}</p>
+            </div>
+            <button @click="selectedVisit = null" class="text-gray-400 hover:text-gray-600 flex-shrink-0"><X class="w-6 h-6" /></button>
           </div>
           <div class="p-6 space-y-3 text-sm">
             <div class="flex gap-2">
@@ -51,7 +54,7 @@
                 {{ cfg.visitStatusLabel(selectedVisit.status) }}
               </span>
             </div>
-            <div><p class="text-gray-500">Адрес</p><p class="text-gray-900">{{ selectedVisit.site_address }}</p></div>
+            <div v-if="!selectedVisit.client_name"><p class="text-gray-500">Адрес</p><p class="text-gray-900">{{ selectedVisit.site_address }}</p></div>
             <div><p class="text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(selectedVisit.planned_date) }}</p></div>
             <div v-if="selectedVisit.planned_time_from">
               <p class="text-gray-500">Время</p>
@@ -211,7 +214,7 @@ function visitToEvent(v) {
   const dateStr = v.planned_date.slice(0, 10)
   return {
     id: `visit-${v.id}`,
-    title: v.site_title,
+    title: v.client_name || v.site_title,
     start: v.planned_time_from ? `${dateStr}T${v.planned_time_from}` : dateStr,
     end: v.planned_time_to ? `${dateStr}T${v.planned_time_to}` : undefined,
     backgroundColor: color,
@@ -274,11 +277,11 @@ function goToVisit() {
     auth.hasGroup('master_group') &&
     !auth.hasGroup('office_group') &&
     !auth.hasGroup('admin_group')
-  const date = selectedVisit.value.planned_date?.slice(0, 10)
+  const visitId = selectedVisit.value.id
   if (isMaster) {
-    router.push('/my-visits')
+    router.push({ path: '/my-visits', query: { open_visit: visitId } })
   } else {
-    router.push({ path: '/visits', query: { date_from: date, date_to: date } })
+    router.push({ path: '/visits', query: { open_visit: visitId } })
   }
   selectedVisit.value = null
 }

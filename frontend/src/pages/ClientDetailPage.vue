@@ -534,7 +534,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2, FileText } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -910,12 +910,18 @@ function priorityClass(p) {
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-onMounted(async () => {
+async function initPage() {
   if (route.query.tab) activeTab.value = route.query.tab
   loadClient(); loadContracts()
   try {
     const res = await usersAPI.getMasters()
     masters.value = res.data
   } catch { /* ignore */ }
+}
+
+onMounted(initPage)
+
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId && newId !== oldId) initPage()
 })
 </script>

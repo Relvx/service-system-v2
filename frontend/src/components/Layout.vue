@@ -49,11 +49,10 @@
           <div v-else-if="searchResults.length === 0" class="px-4 py-3 text-sm text-gray-500 text-center">Ничего не найдено</div>
           <div v-else class="flex flex-col min-h-0">
             <div class="overflow-y-auto" style="max-height: 360px">
-            <RouterLink
+            <div
               v-for="r in searchResults" :key="`${r.type}-${r.id}`"
-              :to="r.url"
-              @click="closeSearch"
-              class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+              @click="navigateTo(r.url)"
+              class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center"
                 :class="{
@@ -73,7 +72,7 @@
               <span class="text-xs text-gray-400 flex-shrink-0">
                 {{ r.type === 'client' ? 'Клиент' : r.type === 'site' ? 'Объект' : 'Договор' }}
               </span>
-            </RouterLink>
+            </div>
             </div>
             <div v-if="hasMoreResults" class="border-t border-gray-100 flex-shrink-0">
               <button
@@ -348,6 +347,11 @@ function closeSearch() {
   searchResults.value = []
   searchTotal.value = 0
   searchFocused.value = false
+}
+
+function navigateTo(url) {
+  closeSearch()
+  router.push(url)
 }
 
 function onClickOutside(e) {
