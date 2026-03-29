@@ -332,7 +332,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck, FileText } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -348,6 +348,7 @@ import { useEscClose } from '../composables/useEscClose.js'
 const cfg = useConfigStore()
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const sites = ref([])
 const total = ref(0)
@@ -591,5 +592,8 @@ async function handleUnarchive(s) {
   }
 }
 
-onMounted(() => Promise.all([loadSites(), loadClients()]))
+onMounted(async () => {
+  await Promise.all([loadSites(), loadClients()])
+  if (route.query.create === '1') openCreate()
+})
 </script>

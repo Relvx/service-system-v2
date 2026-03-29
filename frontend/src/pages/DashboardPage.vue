@@ -107,7 +107,7 @@
             <p class="text-sm text-gray-600">Запланировать новый выезд мастера</p>
           </RouterLink>
 
-          <RouterLink to="/sites" class="card hover:shadow-md transition-shadow">
+          <RouterLink to="/sites?create=1" class="card hover:shadow-md transition-shadow">
             <div class="flex items-center mb-2">
               <Building2 class="w-5 h-5 text-primary-600 mr-2" />
               <h3 class="font-semibold text-gray-900">Добавить объект</h3>

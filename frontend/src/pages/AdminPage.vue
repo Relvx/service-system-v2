@@ -104,6 +104,9 @@
                 <button @click="openGroupEdit(g)" class="text-gray-400 hover:text-gray-700" title="Изменить группу">
                   <Pencil class="w-4 h-4" />
                 </button>
+                <button @click="deleteGroupConfirm = g" class="text-gray-400 hover:text-red-600" title="Удалить группу">
+                  <Trash2 class="w-4 h-4" />
+                </button>
               </div>
             </div>
             <div class="flex flex-wrap gap-1">
@@ -266,6 +269,22 @@
       </div>
     </div>
 
+    <!-- Delete group confirm -->
+    <div v-if="deleteGroupConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+        <h3 class="text-lg font-semibold mb-2">Удалить группу?</h3>
+        <p class="text-sm text-gray-600 mb-5">
+          Группа <strong>{{ deleteGroupConfirm.display_name }}</strong> (<code>{{ deleteGroupConfirm.sysname }}</code>) будет удалена безвозвратно.
+        </p>
+        <div class="flex gap-3">
+          <button @click="confirmDeleteGroup" :disabled="deletingGroup" class="btn btn-primary bg-red-600 hover:bg-red-700 flex-1 disabled:opacity-50">
+            {{ deletingGroup ? 'Удаление...' : 'Удалить' }}
+          </button>
+          <button @click="deleteGroupConfirm = null" class="btn flex-1">Отмена</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Config item create/edit modal -->
     <div v-if="configModal.open" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
@@ -288,6 +307,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { Plus, Pencil, Trash2, Shield, Key } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { adminAPI, configAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
 const activeTab = ref('users')
 const tabs = [
@@ -392,6 +412,22 @@ async function saveGroup() {
   }
   groupModal.value.open = false
   await loadGroups()
+}
+
+const deleteGroupConfirm = ref(null)
+const deletingGroup = ref(false)
+
+async function confirmDeleteGroup() {
+  deletingGroup.value = true
+  try {
+    await adminAPI.deletePermissionGroup(deleteGroupConfirm.value.sysname)
+    deleteGroupConfirm.value = null
+    await loadGroups()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    deletingGroup.value = false
+  }
 }
 
 // ─── All permissions + group permission editing ───────────────────────────────
@@ -524,6 +560,14 @@ async function deleteConfigItem(item) {
   await configAPI.deleteItem(activeConfig.value, item.sysname)
   await loadConfigItems()
 }
+
+useEscClose([
+  { isOpen: () => userModal.value.open,       close: () => { userModal.value.open = false } },
+  { isOpen: () => groupModal.value.open,      close: () => { groupModal.value.open = false } },
+  { isOpen: () => permEditModal.value.open,   close: () => { permEditModal.value.open = false } },
+  { isOpen: () => !!deleteGroupConfirm.value, close: () => { deleteGroupConfirm.value = null } },
+  { isOpen: () => configModal.value.open,     close: () => { configModal.value.open = false } },
+])
 
 // ─── Initial load ─────────────────────────────────────────────────────────────
 
