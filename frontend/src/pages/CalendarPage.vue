@@ -1,7 +1,7 @@
 <template>
   <Layout>
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between flex-wrap gap-y-3 mb-6">
         <h1 class="text-xl md:text-3xl font-bold text-gray-900">Календарь</h1>
         <div class="flex items-center gap-3">
           <!-- Master filter (office/admin only) -->

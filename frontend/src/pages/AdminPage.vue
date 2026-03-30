@@ -25,7 +25,7 @@
 
       <!-- Users tab -->
       <div v-if="activeTab === 'users'">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center flex-wrap gap-y-3 mb-4">
           <h2 class="text-xl font-semibold text-gray-900">Пользователи</h2>
           <button @click="openUserCreate" class="btn btn-primary flex items-center">
             <Plus class="w-4 h-4 mr-2" /> Добавить
@@ -79,7 +79,7 @@
 
       <!-- Permission groups tab -->
       <div v-if="activeTab === 'groups'">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center flex-wrap gap-y-3 mb-4">
           <h2 class="text-xl font-semibold text-gray-900">Группы прав</h2>
           <button @click="openGroupCreate" class="btn btn-primary flex items-center">
             <Plus class="w-4 h-4 mr-2" /> Добавить
@@ -138,7 +138,7 @@
         </div>
 
         <div v-if="activeConfig" class="card">
-          <div class="flex justify-between items-center mb-4">
+          <div class="flex justify-between items-center flex-wrap gap-y-3 mb-4">
             <h3 class="font-semibold text-gray-900">
               {{ configResources.find(r => r.key === activeConfig)?.label }}
             </h3>

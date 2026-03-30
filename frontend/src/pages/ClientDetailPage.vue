@@ -6,19 +6,19 @@
 
     <div v-else-if="client">
       <!-- Шапка -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <button @click="$router.back()" class="text-gray-500 hover:text-gray-700">
+      <div class="flex items-start justify-between flex-wrap gap-y-3 mb-6">
+        <div class="flex items-center gap-3 min-w-0">
+          <button @click="$router.back()" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
             <ArrowLeft class="w-5 h-5" />
           </button>
-          <div>
-            <h1 class="text-xl md:text-3xl font-bold text-gray-900">{{ client.name }}</h1>
+          <div class="min-w-0">
+            <h1 class="text-xl md:text-3xl font-bold text-gray-900 break-words">{{ client.name }}</h1>
             <p v-if="client.inn" class="text-gray-500 mt-0.5 text-sm">ИНН: {{ client.inn }}<span v-if="client.kpp"> / КПП: {{ client.kpp }}</span></p>
           </div>
-          <span v-if="client.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Архив</span>
-          <span v-else-if="!client.is_active" class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Неактивен</span>
+          <span v-if="client.is_archived" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full flex-shrink-0">Архив</span>
+          <span v-else-if="!client.is_active" class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full flex-shrink-0">Неактивен</span>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap flex-shrink-0">
           <template v-if="canManage && !client.is_archived">
             <button @click="toggleActive" :disabled="toggling" class="btn btn-secondary text-xs disabled:opacity-50">
               {{ client.is_active ? 'Деактивировать' : 'Активировать' }}
@@ -36,8 +36,8 @@
       </div>
 
       <!-- Вкладки -->
-      <div class="border-b mb-6">
-        <nav class="flex gap-6">
+      <div class="border-b mb-6 overflow-x-auto">
+        <nav class="flex gap-6 min-w-max">
           <button
             v-for="tab in tabs" :key="tab.key"
             @click="activeTab = tab.key"

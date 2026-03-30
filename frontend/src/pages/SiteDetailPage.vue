@@ -6,13 +6,13 @@
 
     <div v-else-if="site">
       <!-- Шапка -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <button @click="$router.back()" class="text-gray-500 hover:text-gray-700">
+      <div class="flex items-start justify-between flex-wrap gap-y-3 mb-6">
+        <div class="flex items-center gap-3 min-w-0">
+          <button @click="$router.back()" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
             <ArrowLeft class="w-5 h-5" />
           </button>
-          <div>
-            <h1 class="text-xl md:text-3xl font-bold text-gray-900">{{ site.address }}</h1>
+          <div class="min-w-0">
+            <h1 class="text-xl md:text-3xl font-bold text-gray-900 break-words">{{ site.address }}</h1>
             <p v-if="site.title" class="text-gray-600 mt-0.5 text-sm">{{ site.title }}</p>
             <router-link v-if="site.client_name" :to="`/clients/${site.client_id}`" class="text-primary-600 hover:underline mt-0.5 text-sm block">{{ site.client_name }}</router-link>
           </div>
@@ -24,8 +24,8 @@
       </div>
 
       <!-- Вкладки -->
-      <div class="border-b mb-6">
-        <nav class="flex gap-6">
+      <div class="border-b mb-6 overflow-x-auto">
+        <nav class="flex gap-6 min-w-max">
           <button
             v-for="tab in tabs" :key="tab.key"
             @click="activeTab = tab.key"

@@ -1,7 +1,7 @@
 <template>
   <Layout>
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between flex-wrap gap-y-3 mb-6">
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Выезды</h1>
           <p class="text-gray-600 mt-1">Всего: {{ total }}</p>
