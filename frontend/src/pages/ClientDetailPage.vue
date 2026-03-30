@@ -24,7 +24,7 @@
               {{ client.is_active ? 'Деактивировать' : 'Активировать' }}
             </button>
           </template>
-          <template v-if="auth.hasGroup('admin_group') && client.is_archived">
+          <template v-if="(auth.hasGroup('admin_group') || auth.hasGroup('office_group')) && client.is_archived">
             <button @click="handleUnarchive" :disabled="toggling" class="btn btn-secondary text-xs disabled:opacity-50">
               Восстановить
             </button>

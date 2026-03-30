@@ -35,8 +35,8 @@
             </select>
           </div>
 
-          <!-- Архивные (только admin) -->
-          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap">
+          <!-- Архивные (admin + office) -->
+          <label v-if="auth.hasGroup('admin_group') || auth.hasGroup('office_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap">
             <input type="checkbox" v-model="filters.showArchived" @change="loadClients" class="rounded" />
             Архивные
           </label>
@@ -157,7 +157,7 @@
                 <Archive class="w-4 h-4" />
               </button>
               <button
-                v-if="row.is_archived && auth.hasGroup('admin_group')"
+                v-if="row.is_archived && (auth.hasGroup('admin_group') || auth.hasGroup('office_group'))"
                 @click="handleUnarchive(row)"
                 class="p-1.5 rounded hover:bg-green-50 text-gray-400 hover:text-green-600"
                 title="Восстановить"
