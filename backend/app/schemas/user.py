@@ -36,6 +36,8 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
     is_active: Optional[bool] = None
 
 

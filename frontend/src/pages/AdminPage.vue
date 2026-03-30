@@ -180,21 +180,64 @@
 
     <!-- User create/edit modal -->
     <div v-if="userModal.open" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-lg font-semibold mb-4">{{ userModal.isEdit ? 'Изменить пользователя' : 'Новый пользователь' }}</h3>
-        <div class="space-y-3">
-          <input v-if="!userModal.isEdit" v-model="userForm.email" type="email" placeholder="Email" class="input" />
-          <input v-if="!userModal.isEdit" v-model="userForm.password" type="password" placeholder="Пароль" class="input" />
-          <input v-model="userForm.full_name" type="text" placeholder="Полное имя" class="input" />
-          <input v-model="userForm.phone" type="text" placeholder="Телефон" class="input" />
-          <label v-if="userModal.isEdit" class="flex items-center gap-2 text-sm">
-            <input v-model="userForm.is_active" type="checkbox" />
-            Активен
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
+          <h3 class="text-lg font-semibold">{{ userModal.isEdit ? 'Редактировать пользователя' : 'Новый пользователь' }}</h3>
+          <button @click="userModal.open = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+        <div class="p-4 md:p-6 space-y-3">
+          <!-- Email -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <input v-model="userForm.email" type="email" placeholder="user@example.com" class="input" :class="{ 'border-red-400': userErrors.email }" @input="delete userErrors.email" />
+            <p v-if="userErrors.email" class="text-red-600 text-xs mt-1">{{ userErrors.email }}</p>
+          </div>
+          <!-- Пароль -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              {{ userModal.isEdit ? 'Новый пароль (оставьте пустым чтобы не менять)' : 'Пароль *' }}
+            </label>
+            <input v-model="userForm.password" type="password" placeholder="••••••••" class="input" :class="{ 'border-red-400': userErrors.password }" @input="delete userErrors.password" />
+            <p v-if="userErrors.password" class="text-red-600 text-xs mt-1">{{ userErrors.password }}</p>
+          </div>
+          <!-- Имя -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Полное имя *</label>
+            <input v-model="userForm.full_name" type="text" placeholder="Иванов Иван Иванович" class="input" :class="{ 'border-red-400': userErrors.full_name }" @input="delete userErrors.full_name" />
+            <p v-if="userErrors.full_name" class="text-red-600 text-xs mt-1">{{ userErrors.full_name }}</p>
+          </div>
+          <!-- Телефон -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+            <input v-model="userForm.phone" type="text" placeholder="+7-900-000-00-00" class="input" />
+          </div>
+          <!-- Группы доступа -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Группы доступа</label>
+            <div class="space-y-1.5">
+              <label v-for="g in permissionGroups" :key="g.sysname" class="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  :checked="userForm.groups.includes(g.sysname)"
+                  @change="toggleFormGroup(g.sysname, $event.target.checked)"
+                  class="rounded"
+                />
+                <span class="text-gray-800">{{ g.display_name }}</span>
+                <span class="text-xs text-gray-400">({{ g.sysname }})</span>
+              </label>
+            </div>
+          </div>
+          <!-- Активен (только при редактировании) -->
+          <label v-if="userModal.isEdit" class="flex items-center gap-2 text-sm cursor-pointer pt-1">
+            <input v-model="userForm.is_active" type="checkbox" class="rounded" />
+            <span class="text-gray-700">Пользователь активен</span>
           </label>
         </div>
-        <div class="flex gap-3 mt-5">
-          <button @click="saveUser" class="btn btn-primary flex-1">Сохранить</button>
-          <button @click="userModal.open = false" class="btn flex-1">Отмена</button>
+        <div class="flex gap-3 p-4 md:p-6 border-t">
+          <button @click="saveUser" :disabled="userSaving" class="btn btn-primary flex-1 disabled:opacity-50">
+            {{ userSaving ? 'Сохранение...' : 'Сохранить' }}
+          </button>
+          <button @click="userModal.open = false" class="btn btn-secondary flex-1">Отмена</button>
         </div>
       </div>
     </div>
@@ -304,7 +347,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Plus, Pencil, Trash2, Shield, Key } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, Shield, Key, X } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { adminAPI, configAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
@@ -332,26 +375,86 @@ async function loadUsers() {
 }
 
 const userModal = ref({ open: false, isEdit: false, userId: null })
-const userForm = ref({ email: '', password: '', full_name: '', phone: '', is_active: true })
+const userForm = ref({ email: '', password: '', full_name: '', phone: '', is_active: true, groups: [] })
+const userErrors = ref({})
+const userSaving = ref(false)
 
 function openUserCreate() {
-  userForm.value = { email: '', password: '', full_name: '', phone: '', is_active: true }
+  userForm.value = { email: '', password: '', full_name: '', phone: '', is_active: true, groups: [] }
+  userErrors.value = {}
   userModal.value = { open: true, isEdit: false, userId: null }
 }
 
 function openUserEdit(u) {
-  userForm.value = { full_name: u.full_name, phone: u.phone || '', is_active: u.is_active }
+  userForm.value = {
+    email: u.email,
+    password: '',
+    full_name: u.full_name,
+    phone: u.phone || '',
+    is_active: u.is_active,
+    groups: [...u.groups],
+  }
+  userErrors.value = {}
   userModal.value = { open: true, isEdit: true, userId: u.id }
 }
 
-async function saveUser() {
-  if (userModal.value.isEdit) {
-    await adminAPI.updateUser(userModal.value.userId, userForm.value)
+function toggleFormGroup(sysname, checked) {
+  if (checked) {
+    if (!userForm.value.groups.includes(sysname)) userForm.value.groups.push(sysname)
   } else {
-    await adminAPI.createUser(userForm.value)
+    userForm.value.groups = userForm.value.groups.filter(g => g !== sysname)
   }
-  userModal.value.open = false
-  await loadUsers()
+}
+
+async function saveUser() {
+  userErrors.value = {}
+  // Валидация
+  if (!userForm.value.email) { userErrors.value.email = 'Обязательное поле'; return }
+  if (!userForm.value.full_name) { userErrors.value.full_name = 'Обязательное поле'; return }
+  if (!userModal.value.isEdit && !userForm.value.password) { userErrors.value.password = 'Обязательное поле'; return }
+
+  userSaving.value = true
+  try {
+    if (userModal.value.isEdit) {
+      const payload = {
+        email: userForm.value.email,
+        full_name: userForm.value.full_name,
+        phone: userForm.value.phone || null,
+        is_active: userForm.value.is_active,
+      }
+      if (userForm.value.password) payload.password = userForm.value.password
+      await adminAPI.updateUser(userModal.value.userId, payload)
+      // Обновляем группы — сравниваем с текущими
+      const currentUser = adminUsers.value.find(u => u.id === userModal.value.userId)
+      const oldGroups = currentUser?.groups || []
+      const newGroups = userForm.value.groups
+      for (const g of newGroups) {
+        if (!oldGroups.includes(g)) await adminAPI.addUserToGroup(userModal.value.userId, g)
+      }
+      for (const g of oldGroups) {
+        if (!newGroups.includes(g)) await adminAPI.removeUserFromGroup(userModal.value.userId, g)
+      }
+    } else {
+      await adminAPI.createUser({
+        email: userForm.value.email,
+        password: userForm.value.password,
+        full_name: userForm.value.full_name,
+        phone: userForm.value.phone || null,
+        groups: userForm.value.groups,
+      })
+    }
+    userModal.value.open = false
+    await loadUsers()
+  } catch (e) {
+    const detail = e.response?.data?.detail
+    if (typeof detail === 'string' && detail.includes('Email')) {
+      userErrors.value.email = detail
+    } else {
+      alert('Ошибка: ' + (detail || e.message))
+    }
+  } finally {
+    userSaving.value = false
+  }
 }
 
 // Groups assignment for a user

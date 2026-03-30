@@ -106,6 +106,14 @@ async def update_user(
         user.phone = body.phone
     if body.is_active is not None:
         user.is_active = body.is_active
+    if body.email is not None:
+        # Проверяем уникальность email
+        existing = await db.execute(select(User).where(User.email == body.email, User.id != user_id))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email уже используется другим пользователем")
+        user.email = body.email
+    if body.password is not None and body.password.strip():
+        user.password_hash = hash_password(body.password)
 
     await db.commit()
     await db.refresh(user)
