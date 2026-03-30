@@ -46,15 +46,15 @@
 
       <!-- Visit Detail Modal -->
       <div v-if="selectedVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-          <div class="flex items-center justify-between p-6 border-b">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <div class="min-w-0 pr-2">
               <h2 class="text-lg font-semibold text-gray-900 leading-tight">{{ selectedVisit.client_name || selectedVisit.site_title }}</h2>
               <p v-if="selectedVisit.client_name" class="text-sm text-gray-500 mt-0.5 truncate">{{ selectedVisit.site_address }}</p>
             </div>
             <button @click="selectedVisit = null" class="text-gray-400 hover:text-gray-600 flex-shrink-0"><X class="w-6 h-6" /></button>
           </div>
-          <div class="p-6 space-y-3 text-sm">
+          <div class="p-4 md:p-6 space-y-3 text-sm">
             <div class="flex gap-2">
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(selectedVisit.status)">
                 {{ cfg.visitStatusLabel(selectedVisit.status) }}
@@ -69,7 +69,7 @@
             <div><p class="text-gray-500">Мастер</p><p class="text-gray-900">{{ selectedVisit.master_name || 'Не назначен' }}</p></div>
             <div><p class="text-gray-500">Тип</p><p class="text-gray-900">{{ cfg.visitTypeLabel(selectedVisit.visit_type) }}</p></div>
           </div>
-          <div class="p-6 border-t flex justify-end gap-3">
+          <div class="p-4 md:p-6 border-t flex justify-end gap-3">
             <button @click="goToVisit" class="btn btn-secondary">К выезду</button>
             <button @click="selectedVisit = null" class="btn btn-primary">Закрыть</button>
           </div>
@@ -96,14 +96,14 @@
 
       <!-- Note create/edit modal -->
       <div v-if="noteModal.open" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-          <div class="flex items-center justify-between p-6 border-b">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <h2 class="text-xl font-semibold text-gray-900">
               {{ noteModal.isEdit ? 'Редактировать заметку' : 'Новая заметка' }}
             </h2>
             <button @click="closeNoteModal" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div class="p-6 space-y-4">
+          <div class="p-4 md:p-6 space-y-4">
             <div>
               <label class="block text-sm text-gray-500 mb-1">Дата</label>
               <p class="text-gray-900 font-medium">{{ formatDate(noteModal.date) }}</p>
@@ -118,7 +118,7 @@
               />
             </div>
           </div>
-          <div class="p-6 border-t flex justify-between gap-3">
+          <div class="p-4 md:p-6 border-t flex justify-between gap-3">
             <button
               v-if="noteModal.isEdit"
               @click="deleteNote"
@@ -369,15 +369,26 @@ async function deleteNote() {
   }
 }
 
+const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768
+
 const calendarOptions = computed(() => ({
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
   initialView: 'dayGridMonth',
   locale: ruLocale,
-  headerToolbar: {
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay',
-  },
+  headerToolbar: isMobileScreen
+    ? {
+        left: 'prev,next',
+        center: 'title',
+        right: 'today',
+      }
+    : {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay',
+      },
+  footerToolbar: isMobileScreen
+    ? { center: 'dayGridMonth,timeGridWeek,timeGridDay' }
+    : false,
   events: allEvents.value,
   eventClick: ({ event }) => {
     if (event.extendedProps._type === 'note') {
@@ -401,6 +412,7 @@ const calendarOptions = computed(() => ({
     }
   },
   height: 'auto',
+  dayMaxEvents: isMobileScreen ? 2 : true,
   // Отключаем встроенные CSS-анимации переходов между месяцами
   viewDidMount: () => {},
 }))
@@ -431,5 +443,54 @@ onMounted(async () => {
 .fc-no-transition th {
   transition: none !important;
   animation: none !important;
+}
+
+/* Мобильный адаптив FullCalendar */
+@media (max-width: 767px) {
+  /* Заголовок toolbar — компактный */
+  .fc .fc-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .fc .fc-toolbar-title {
+    font-size: 1rem !important;
+    line-height: 1.3;
+  }
+  /* Кнопки навигации */
+  .fc .fc-button {
+    padding: 4px 8px !important;
+    font-size: 0.75rem !important;
+  }
+  .fc .fc-button-group .fc-button {
+    padding: 4px 8px !important;
+    font-size: 0.75rem !important;
+  }
+  /* Дни недели — сокращённые */
+  .fc .fc-col-header-cell-cushion {
+    font-size: 0.7rem;
+    padding: 4px 2px;
+  }
+  /* Номера дней */
+  .fc .fc-daygrid-day-number {
+    font-size: 0.75rem;
+    padding: 2px 4px;
+  }
+  /* События */
+  .fc .fc-event-title {
+    font-size: 0.65rem !important;
+  }
+  .fc .fc-daygrid-event {
+    font-size: 0.65rem !important;
+  }
+  /* Ячейки дней */
+  .fc .fc-daygrid-day {
+    min-height: 40px !important;
+  }
+  /* Footer toolbar (переключатели вида) */
+  .fc .fc-footer-toolbar {
+    justify-content: center;
+    margin-top: 8px;
+  }
 }
 </style>
