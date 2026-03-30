@@ -148,7 +148,7 @@
     <!-- Visit Detail Modal -->
     <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
-        <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
           <div>
             <h2 class="text-xl font-semibold text-gray-900">{{ formatDate(detailVisit.planned_date) }}</h2>
             <p v-if="detailVisit.master_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.master_name }}</p>
@@ -166,7 +166,7 @@
         </div>
         <!-- Содержимое -->
         <div class="overflow-y-auto flex-1">
-          <div v-if="detailTab === 'info'" class="p-6 space-y-4">
+          <div v-if="detailTab === 'info'" class="p-4 md:p-6 space-y-4">
             <div class="flex gap-2 flex-wrap">
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="visitStatusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
@@ -196,11 +196,11 @@
               </div>
             </template>
           </div>
-          <div v-else class="p-6">
+          <div v-else class="p-4 md:p-6">
             <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
           </div>
         </div>
-        <div class="flex justify-end gap-3 p-6 border-t flex-shrink-0">
+        <div class="flex justify-end gap-3 p-4 md:p-6 border-t flex-shrink-0">
           <button @click="openEditVisit(detailVisit)" class="btn btn-secondary flex items-center">
             <Pencil class="w-4 h-4 mr-2" />Редактировать
           </button>
@@ -212,11 +212,11 @@
     <!-- Edit Visit Modal -->
     <div v-if="editVisitModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Редактировать выезд</h2>
           <button @click="editVisitModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleEditVisitSave" class="p-6 space-y-4">
+        <form @submit.prevent="handleEditVisitSave" class="p-4 md:p-6 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Мастер</label>
             <select v-model="editVisitForm.assigned_user_id" class="input">
@@ -281,11 +281,11 @@
     <!-- Create Visit Modal -->
     <div v-if="visitModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
-        <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
           <h2 class="text-xl font-semibold text-gray-900">Создать выезд</h2>
           <button @click="visitModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleCreateVisit" class="p-6 space-y-4 overflow-y-auto flex-1">
+        <form @submit.prevent="handleCreateVisit" class="p-4 md:p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Мастер *</label>
             <select v-model="visitForm.assigned_user_id" class="input" required>
@@ -328,7 +328,7 @@
             <textarea v-model="visitForm.office_notes" class="input" rows="2" />
           </div>
         </form>
-        <div class="flex justify-end gap-3 p-6 border-t flex-shrink-0">
+        <div class="flex justify-end gap-3 p-4 md:p-6 border-t flex-shrink-0">
           <button type="button" @click="visitModalOpen = false" class="btn btn-secondary">Отмена</button>
           <button @click="handleCreateVisit" :disabled="visitSaving" class="btn btn-primary disabled:opacity-50">
             {{ visitSaving ? 'Создание...' : 'Создать' }}
@@ -340,11 +340,11 @@
     <!-- Edit Modal -->
     <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Редактировать объект</h2>
           <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleSave" class="p-6 space-y-4">
+        <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
             <input v-model="form.title" required class="input" />

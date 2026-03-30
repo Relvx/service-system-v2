@@ -166,11 +166,11 @@
     <!-- Модал редактирования -->
     <div v-if="editModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
-        <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
           <h2 class="text-xl font-semibold text-gray-900">Редактировать договор</h2>
           <button @click="editModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleEditSave" class="p-6 space-y-4 overflow-y-auto flex-1">
+        <form @submit.prevent="handleEditSave" class="p-4 md:p-6 space-y-4 overflow-y-auto flex-1">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Номер договора</label>
             <input v-model="editForm.contract_number" class="input" />
@@ -217,12 +217,12 @@
 
     <!-- Модал добавления объекта -->
     <div v-if="addSiteModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <div class="flex items-center justify-between p-6 border-b">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Добавить объект</h2>
           <button @click="addSiteModalOpen = false; siteSearch = ''; siteResults = []" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <div class="p-6 space-y-4">
+        <div class="p-4 md:p-6 space-y-4">
           <input
             v-model="siteSearch"
             placeholder="Поиск объекта по названию или адресу..."
@@ -247,7 +247,7 @@
 
     <!-- Подтверждение удаления объекта -->
     <div v-if="removeSiteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
         <h2 class="text-xl font-semibold text-gray-900 mb-2">Убрать объект?</h2>
         <p class="text-gray-600 mb-6">Объект <strong>{{ removeSiteConfirm.title }}</strong> будет убран из договора.</p>
         <div class="flex justify-end gap-3">

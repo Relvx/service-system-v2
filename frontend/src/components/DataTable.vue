@@ -1,7 +1,7 @@
 <template>
   <div>
-    <!-- Column settings toolbar -->
-    <div class="flex justify-end mb-2 relative dt-root">
+    <!-- Column settings toolbar (только на десктопе) -->
+    <div class="hidden md:flex justify-end mb-2 relative dt-root">
       <button
         @click.stop="settingsOpen = !settingsOpen"
         class="btn btn-secondary text-sm flex items-center gap-1"
@@ -28,8 +28,8 @@
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="overflow-x-auto border border-gray-200 rounded-lg rounded-b-none">
+    <!-- Десктоп: таблица -->
+    <div class="hidden md:block overflow-x-auto border border-gray-200 rounded-lg rounded-b-none">
       <table class="text-sm text-left" style="table-layout: fixed; border-collapse: collapse; min-width: 100%">
         <colgroup>
           <col
@@ -101,10 +101,50 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Мобильный: карточки -->
+    <div class="md:hidden space-y-2">
+      <div
+        v-for="row in sortedRows"
+        :key="row.id"
+        class="bg-white border border-gray-200 rounded-lg p-3 active:bg-gray-50 transition-colors"
+        :class="rowClass ? rowClass(row) : ''"
+        @click="$emit('row-click', row)"
+      >
+        <div
+          v-for="(col, idx) in visibleColumns"
+          :key="col.key"
+          class="flex items-start gap-2"
+          :class="idx > 0 ? 'mt-2 pt-2 border-t border-gray-50' : ''"
+        >
+          <span class="text-xs text-gray-400 w-28 flex-shrink-0 pt-0.5">{{ col.label }}</span>
+          <div class="flex-1 min-w-0 text-sm text-gray-900">
+            <slot :name="col.key" :row="row">
+              <span class="break-words">{{ row[col.key] ?? '—' }}</span>
+            </slot>
+          </div>
+        </div>
+      </div>
+      <div v-if="sortedRows.length === 0" class="bg-white border border-gray-200 rounded-lg px-4 py-12 text-center text-gray-400">
+        <slot name="empty">Нет данных</slot>
+      </div>
+    </div>
   </div>
 
   <!-- Paginator -->
-  <div v-if="total !== null" class="border border-t-0 border-gray-200 rounded-b-lg bg-gray-50 px-2">
+  <div v-if="total !== null" class="border border-t-0 border-gray-200 rounded-b-lg bg-gray-50 px-2 hidden md:block">
+    <DataPaginator
+      :page="page"
+      :page-size="pageSize"
+      :total="total"
+      :loading="loading"
+      @update:page="$emit('update:page', $event)"
+      @update:page-size="$emit('update:pageSize', $event)"
+      @reload="$emit('reload')"
+    />
+  </div>
+  <!-- Мобильный пагинатор -->
+  <div v-if="total !== null" class="md:hidden mt-2">
     <DataPaginator
       :page="page"
       :page-size="pageSize"

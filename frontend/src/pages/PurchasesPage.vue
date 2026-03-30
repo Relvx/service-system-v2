@@ -13,7 +13,11 @@
 
       <!-- Filters -->
       <div class="card mb-4">
-        <div class="flex flex-wrap gap-3 items-end">
+        <button class="md:hidden w-full flex items-center justify-between text-sm font-medium text-gray-700 mb-2" @click="filtersOpen = !filtersOpen">
+          <span class="flex items-center gap-2"><Filter class="w-4 h-4" />Фильтры<span v-if="filterStatus || filterSiteId || showArchived" class="w-2 h-2 bg-primary-500 rounded-full inline-block"></span></span>
+          <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="filtersOpen ? 'rotate-180' : ''" />
+        </button>
+        <div :class="filtersOpen ? 'flex' : 'hidden md:flex'" class="flex-wrap gap-3 items-end">
           <!-- Статус -->
           <div class="min-w-[160px]">
             <label class="block text-xs text-gray-400 mb-1">Статус</label>
@@ -137,7 +141,7 @@
       <!-- Detail / Edit Modal -->
       <div v-if="detailPurchase" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <div>
               <h2 class="text-xl font-semibold text-gray-900">{{ detailPurchase.item }}</h2>
               <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-1" :class="statusBadgeClass(detailPurchase.status)">
@@ -146,7 +150,7 @@
             </div>
             <button @click="detailPurchase = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <form @submit.prevent="handleEditSave" class="p-6 space-y-4">
+          <form @submit.prevent="handleEditSave" class="p-4 md:p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Наименование *</label>
               <input
@@ -244,11 +248,11 @@
       <!-- Create Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <h2 class="text-xl font-semibold text-gray-900">Добавить закупку</h2>
             <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <form @submit.prevent="handleSave" class="p-6 space-y-4">
+          <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Наименование *</label>
               <input
@@ -338,7 +342,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Plus, ShoppingCart, X } from 'lucide-vue-next'
+import { Plus, ShoppingCart, X, Filter, ChevronDown } from 'lucide-vue-next'
 
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -356,6 +360,7 @@ const page = ref(1)
 const pageSize = ref(50)
 const defects = ref([])
 const loading = ref(true)
+const filtersOpen = ref(false)
 const filterStatus = ref('')
 const filterSiteId = ref('')
 const showArchived = ref(false)

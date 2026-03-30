@@ -244,12 +244,12 @@
 
     <!-- Edit Client Modal -->
     <div v-if="editModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-        <div class="flex items-center justify-between p-6 border-b">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Редактировать клиента</h2>
           <button @click="editModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleEditSave" class="p-6 space-y-4">
+        <form @submit.prevent="handleEditSave" class="p-4 md:p-6 space-y-4">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Название *</label><input v-model="editForm.name" required class="input" /></div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium text-gray-700 mb-1">ИНН</label><input v-model="editForm.inn" class="input" /></div>
@@ -268,12 +268,12 @@
 
     <!-- Legal Modal -->
     <div v-if="legalModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-        <div class="flex items-center justify-between p-6 border-b">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Юридические реквизиты</h2>
           <button @click="legalModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleLegalSave" class="p-6 space-y-4">
+        <form @submit.prevent="handleLegalSave" class="p-4 md:p-6 space-y-4">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Юридический адрес</label><textarea v-model="legalForm.legal_address" class="input" rows="2" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Банк</label><input v-model="legalForm.bank" class="input" placeholder="ПАО Сбербанк" /></div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -290,12 +290,12 @@
 
     <!-- Contact Create/Edit Modal -->
     <div v-if="contactModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <div class="flex items-center justify-between p-6 border-b">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">{{ editingContact ? 'Редактировать контакт' : 'Добавить контакт' }}</h2>
           <button @click="contactModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleContactSave" class="p-6 space-y-4">
+        <form @submit.prevent="handleContactSave" class="p-4 md:p-6 space-y-4">
           <div><label class="block text-sm font-medium text-gray-700 mb-1">ФИО *</label><input v-model="contactForm.full_name" required class="input" placeholder="Иванов Иван Иванович" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Должность</label><input v-model="contactForm.position" class="input" placeholder="Директор" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Телефон</label><input v-model="contactForm.phone" class="input" placeholder="+7-900-000-00-00" /></div>
@@ -315,11 +315,11 @@
     <!-- Site Create Modal -->
     <div v-if="siteModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Добавить объект</h2>
           <button @click="siteModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleSiteCreate" class="p-6 space-y-4">
+        <form @submit.prevent="handleSiteCreate" class="p-4 md:p-6 space-y-4">
           <div class="text-sm text-gray-500 bg-gray-50 rounded p-3">
             Клиент: <span class="font-medium text-gray-900">{{ client.name }}</span>
           </div>
@@ -360,12 +360,12 @@
 
     <!-- Contract Create Modal -->
     <div v-if="contractCreateModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-        <div class="flex items-center justify-between p-6 border-b">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Новый договор</h2>
           <button @click="contractCreateModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleContractCreate" class="p-6 space-y-4">
+        <form @submit.prevent="handleContractCreate" class="p-4 md:p-6 space-y-4">
           <div class="text-sm text-gray-500 bg-gray-50 rounded p-3">
             Клиент: <span class="font-medium text-gray-900">{{ client.name }}</span>
           </div>
@@ -387,7 +387,7 @@
 
     <!-- Contact Delete Confirm -->
     <div v-if="contactDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
         <h2 class="text-xl font-semibold text-gray-900 mb-2">Удалить контакт?</h2>
         <p class="text-gray-600 mb-6">Контакт <strong>{{ contactDeleteConfirm.full_name }}</strong> будет удалён.</p>
         <div class="flex justify-end gap-3">
@@ -400,11 +400,11 @@
     <!-- Historical Visit Modal -->
     <div v-if="historicalVisitModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 border-b">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b">
           <h2 class="text-xl font-semibold text-gray-900">Внести исторический выезд</h2>
           <button @click="historicalVisitModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleHistoricalVisitSave" class="p-6 space-y-4">
+        <form @submit.prevent="handleHistoricalVisitSave" class="p-4 md:p-6 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Дата выезда *</label>
             <input v-model="historicalVisitForm.planned_date" type="date" required class="input" :class="{ 'border-red-400': historicalVisitErrors.planned_date }" @change="delete historicalVisitErrors.planned_date" />
@@ -463,7 +463,7 @@
     <!-- Visit Detail Modal -->
     <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
-        <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
           <div>
             <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
             <p class="text-sm text-gray-500 mt-0.5">{{ formatDate(detailVisit.planned_date) }}</p>
@@ -477,7 +477,7 @@
             :class="detailTab === 'files' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'">Файлы и фото</button>
         </div>
         <div class="overflow-y-auto flex-1">
-          <div v-if="detailTab === 'info'" class="p-6 space-y-4">
+          <div v-if="detailTab === 'info'" class="p-4 md:p-6 space-y-4">
             <div class="flex gap-2 flex-wrap">
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
@@ -508,11 +508,11 @@
               </div>
             </template>
           </div>
-          <div v-else class="p-6">
+          <div v-else class="p-4 md:p-6">
             <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
           </div>
         </div>
-        <div class="flex justify-between p-6 border-t flex-shrink-0">
+        <div class="flex justify-between p-4 md:p-6 border-t flex-shrink-0">
           <button
             v-if="auth.hasGroup('admin_group') || auth.hasGroup('office_group')"
             @click="visitDeleteConfirm = detailVisit; detailVisit = null"
@@ -527,7 +527,7 @@
 
     <!-- Visit Delete Confirm -->
     <div v-if="visitDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
         <h2 class="text-xl font-semibold text-gray-900 mb-2">Удалить выезд?</h2>
         <p class="text-gray-600 mb-1">
           <span class="font-medium">{{ visitDeleteConfirm.site_title }}</span>

@@ -2,22 +2,80 @@
   <div class="min-h-screen bg-gray-50">
 
     <!-- Mobile top bar (only on < md) -->
-    <div class="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-4 z-40">
-      <button
-        @click="mobileOpen = !mobileOpen"
-        class="flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-      >
-        <Menu class="w-5 h-5" />
-      </button>
-      <h1 class="ml-3 text-base font-bold text-primary-600">Service System</h1>
-      <div class="ml-auto flex items-center gap-2">
-        <RouterLink to="/notifications" class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg">
+    <div class="md:hidden fixed top-0 left-0 right-0 z-40">
+      <!-- Верхняя строка -->
+      <div class="h-14 bg-white border-b border-gray-200 flex items-center px-3 gap-2">
+        <button
+          @click="mobileOpen = !mobileOpen"
+          class="flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"
+        >
+          <Menu class="w-5 h-5" />
+        </button>
+        <h1 class="text-base font-bold text-primary-600 flex-shrink-0">Service System</h1>
+        <div class="flex-1 relative" ref="mobileSearchWrapRef">
+          <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <input
+            v-model="searchQuery"
+            @input="onSearchInput"
+            @focus="searchFocused = true"
+            @keydown.escape="closeSearch"
+            placeholder="Поиск..."
+            class="w-full pl-8 pr-7 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
+          <button v-if="searchQuery" @click="closeSearch" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+            <X class="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <RouterLink to="/notifications" class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg flex-shrink-0">
           <Bell class="h-5 w-5" />
           <span
             v-if="unreadCount > 0"
             class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold"
           >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
         </RouterLink>
+      </div>
+      <!-- Мобильный дропдаун поиска -->
+      <div
+        v-if="searchFocused && searchQuery.length >= 1"
+        class="bg-white border-b border-gray-200 shadow-lg flex flex-col"
+        style="max-height: 60vh; overflow-y: auto"
+      >
+        <div v-if="searchLoading" class="px-4 py-3 text-sm text-gray-500 text-center">Поиск...</div>
+        <div v-else-if="searchResults.length === 0" class="px-4 py-3 text-sm text-gray-500 text-center">Ничего не найдено</div>
+        <div v-else>
+          <div
+            v-for="r in searchResults" :key="`m-${r.type}-${r.id}`"
+            @click="navigateTo(r.url)"
+            class="flex items-center gap-3 px-4 py-3 border-b border-gray-50 active:bg-gray-50 cursor-pointer"
+          >
+            <div class="flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center"
+              :class="{
+                'bg-blue-100': r.type === 'client',
+                'bg-green-100': r.type === 'site',
+                'bg-purple-100': r.type === 'contract',
+              }"
+            >
+              <Users v-if="r.type === 'client'" class="w-4 h-4 text-blue-600" />
+              <Building2 v-else-if="r.type === 'site'" class="w-4 h-4 text-green-600" />
+              <FileText v-else class="w-4 h-4 text-purple-600" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-gray-900 truncate">{{ r.title }}</p>
+              <p v-if="r.subtitle" class="text-xs text-gray-500 truncate">{{ r.subtitle }}</p>
+            </div>
+            <span class="text-xs text-gray-400 flex-shrink-0">
+              {{ r.type === 'client' ? 'Клиент' : r.type === 'site' ? 'Объект' : 'Договор' }}
+            </span>
+          </div>
+          <button
+            v-if="hasMoreResults"
+            @click="loadMoreSearch"
+            :disabled="searchLoadingMore"
+            class="w-full px-4 py-3 text-sm text-primary-600 font-medium disabled:opacity-50 text-center"
+          >
+            {{ searchLoadingMore ? 'Загрузка...' : `Показать ещё (${searchTotal - searchResults.length})` }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -216,7 +274,7 @@
       class="transition-all duration-300 ease-in-out pt-14 md:pt-14"
       :class="collapsed ? 'md:ml-16' : 'md:ml-64'"
     >
-      <main class="p-4 md:p-8">
+      <main class="p-3 md:p-8">
         <slot />
       </main>
     </div>
@@ -303,6 +361,7 @@ const searchLoading = ref(false)
 const searchLoadingMore = ref(false)
 const searchFocused = ref(false)
 const searchWrapRef = ref(null)
+const mobileSearchWrapRef = ref(null)
 
 const hasMoreResults = computed(() => searchResults.value.length < searchTotal.value)
 
@@ -355,7 +414,9 @@ function navigateTo(url) {
 }
 
 function onClickOutside(e) {
-  if (searchWrapRef.value && !searchWrapRef.value.contains(e.target)) {
+  const inDesktop = searchWrapRef.value && searchWrapRef.value.contains(e.target)
+  const inMobile = mobileSearchWrapRef.value && mobileSearchWrapRef.value.contains(e.target)
+  if (!inDesktop && !inMobile) {
     searchFocused.value = false
   }
 }

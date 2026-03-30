@@ -13,7 +13,11 @@
 
       <!-- Filters -->
       <div class="card mb-4">
-        <div class="flex flex-wrap gap-3 items-end">
+        <button class="md:hidden w-full flex items-center justify-between text-sm font-medium text-gray-700 mb-2" @click="filtersOpen = !filtersOpen">
+          <span class="flex items-center gap-2"><Filter class="w-4 h-4" />Фильтры<span v-if="hasActiveFilters" class="w-2 h-2 bg-primary-500 rounded-full inline-block"></span></span>
+          <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="filtersOpen ? 'rotate-180' : ''" />
+        </button>
+        <div :class="filtersOpen ? 'flex' : 'hidden md:flex'" class="flex-wrap gap-3 items-end">
           <!-- Статус -->
           <div class="min-w-[150px]">
             <label class="block text-xs text-gray-400 mb-1">Статус</label>
@@ -145,7 +149,7 @@
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
           <!-- Header: фиксированный -->
-          <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
             <div>
               <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
               <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
@@ -168,7 +172,7 @@
           <!-- Контент: скроллируется -->
           <div class="overflow-y-auto flex-1">
             <!-- Info tab -->
-            <div v-if="detailTab === 'info'" class="p-6 space-y-4">
+            <div v-if="detailTab === 'info'" class="p-4 md:p-6 space-y-4">
               <div class="flex gap-2 flex-wrap">
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
@@ -199,12 +203,12 @@
               </template>
             </div>
             <!-- Files tab -->
-            <div v-else class="p-6">
+            <div v-else class="p-4 md:p-6">
               <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
             </div>
           </div>
           <!-- Footer: фиксированный -->
-          <div class="flex justify-between items-center p-6 border-t flex-shrink-0">
+          <div class="flex justify-between items-center p-4 md:p-6 border-t flex-shrink-0">
             <button
               v-if="detailVisit.status === 'done' || detailVisit.status === 'closed'"
               @click="openDefectCreate(detailVisit)"
@@ -224,11 +228,11 @@
       <!-- Create / Edit Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <h2 class="text-xl font-semibold text-gray-900">{{ editing ? 'Редактировать выезд' : 'Создать выезд' }}</h2>
             <button @click="closeModal" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <form @submit.prevent="handleSave" class="p-6 space-y-4">
+          <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
             <!-- CREATE: клиент + мультивыбор объектов -->
             <template v-if="!editing">
               <div>
@@ -346,7 +350,7 @@
 
       <!-- Archive Confirm -->
       <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
           <h2 class="text-xl font-semibold text-gray-900 mb-2">Отправить в архив?</h2>
           <p class="text-gray-600 mb-1">Выезд <strong>{{ archiveConfirm.site_title }}</strong> будет скрыт из основного списка.</p>
           <p class="text-sm text-gray-500 mb-6">Все данные сохранятся.</p>
@@ -360,11 +364,11 @@
       <!-- Defect Create Modal -->
       <div v-if="defectModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <h2 class="text-xl font-semibold text-gray-900">Добавить дефект</h2>
             <button @click="defectModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <form @submit.prevent="handleDefectSave" class="p-6 space-y-4">
+          <form @submit.prevent="handleDefectSave" class="p-4 md:p-6 space-y-4">
             <div class="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
               Объект: <span class="font-medium text-gray-900">{{ defectForm._site_title }}</span><br />
               Выезд от <span class="font-medium text-gray-900">{{ formatDate(defectForm._planned_date) }}</span>
@@ -437,7 +441,7 @@
 
       <!-- Cancel Confirm -->
       <div v-if="cancelConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
           <h2 class="text-xl font-semibold text-gray-900 mb-2">Отменить выезд?</h2>
           <p class="text-gray-600 mb-1">Выезд на объект <strong>{{ cancelConfirm.site_title }}</strong> будет переведён в статус «Отменён».</p>
           <p class="text-sm text-gray-500 mb-6">Это действие нельзя отменить.</p>
@@ -454,7 +458,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown, Filter } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
@@ -471,6 +475,7 @@ const visits = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(50)
+const filtersOpen = ref(false)
 const loading = ref(true)
 const filters = ref({ status: '', priority: '', date_from: '', date_to: '', master_id: '' })
 const showArchived = ref(false)

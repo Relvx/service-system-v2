@@ -17,7 +17,11 @@
 
       <!-- Filters -->
       <div class="card mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <button class="md:hidden w-full flex items-center justify-between text-sm font-medium text-gray-700 mb-2" @click="filtersOpen = !filtersOpen">
+          <span class="flex items-center gap-2"><Filter class="w-4 h-4" />Фильтры<span v-if="filterStatus || filterPriority" class="w-2 h-2 bg-primary-500 rounded-full inline-block"></span></span>
+          <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="filtersOpen ? 'rotate-180' : ''" />
+        </button>
+        <div :class="filtersOpen ? 'grid' : 'hidden md:grid'" class="grid-cols-1 md:grid-cols-3 gap-4">
           <select v-model="filterStatus" @change="resetAndLoad" class="input">
             <option value="">Все статусы</option>
             <option v-for="s in cfg.defectStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
@@ -86,11 +90,11 @@
       <!-- ─── Create Defect Modal ────────────────────────────────────────── -->
       <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-6 border-b">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <h2 class="text-xl font-semibold text-gray-900">Новый дефект</h2>
             <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div class="p-6 space-y-4">
+          <div class="p-4 md:p-6 space-y-4">
             <div class="relative">
               <label class="block text-sm font-medium text-gray-700 mb-1">Объект <span class="text-red-500">*</span></label>
               <input
@@ -145,7 +149,7 @@
               <textarea v-model="createForm.suggested_parts" class="input" rows="2" placeholder="Список запчастей и материалов"></textarea>
             </div>
           </div>
-          <div class="p-6 border-t flex justify-end gap-3">
+          <div class="p-4 md:p-6 border-t flex justify-end gap-3">
             <button @click="showCreateModal = false" class="btn btn-secondary">Отмена</button>
             <button @click="submitCreate" :disabled="saving" class="btn btn-primary disabled:opacity-50">
               {{ saving ? 'Сохранение...' : 'Создать' }}
@@ -157,12 +161,12 @@
       <!-- ─── Detail Modal ───────────────────────────────────────────────── -->
       <div v-if="selectedDefect" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
-          <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
             <h2 class="text-xl font-semibold text-gray-900">{{ selectedDefect.title }}</h2>
             <button @click="closeDetail" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
 
-          <div class="p-6 space-y-4 text-sm overflow-y-auto flex-1">
+          <div class="p-4 md:p-6 space-y-4 text-sm overflow-y-auto flex-1">
             <!-- Badges -->
             <div class="flex gap-2">
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="defectStatusClass(selectedDefect.status)">{{ cfg.defectStatusLabel(selectedDefect.status) }}</span>
@@ -289,7 +293,7 @@
             </div>
           </div>
 
-          <div class="p-6 border-t flex justify-end flex-shrink-0">
+          <div class="p-4 md:p-6 border-t flex justify-end flex-shrink-0">
             <button @click="closeDetail" class="btn btn-primary">Закрыть</button>
           </div>
         </div>
@@ -300,7 +304,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { AlertTriangle, X, Eye, Plus, Image as ImageIcon, Upload } from 'lucide-vue-next'
+import { AlertTriangle, X, Eye, Plus, Image as ImageIcon, Upload, Filter, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
@@ -318,6 +322,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(50)
 const loading = ref(true)
+const filtersOpen = ref(false)
 const filterStatus = ref('')
 const filterPriority = ref('')
 

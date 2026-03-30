@@ -13,7 +13,11 @@
 
       <!-- Фильтры -->
       <div class="card mb-4">
-        <div class="flex flex-wrap gap-3 items-end">
+        <button class="md:hidden w-full flex items-center justify-between text-sm font-medium text-gray-700 mb-2" @click="filtersOpen = !filtersOpen">
+          <span class="flex items-center gap-2"><Filter class="w-4 h-4" />Фильтры<span v-if="hasActiveFilters" class="w-2 h-2 bg-primary-500 rounded-full inline-block"></span></span>
+          <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="filtersOpen ? 'rotate-180' : ''" />
+        </button>
+        <div :class="filtersOpen ? 'flex' : 'hidden md:flex'" class="flex-wrap gap-3 items-end">
           <div class="relative flex-1 min-w-[200px]">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -333,7 +337,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck, FileText } from 'lucide-vue-next'
+import { Search, Plus, MapPin, Building2, X, Edit, Archive, ArchiveRestore, CalendarCheck, FileText, Filter, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import SiteQuickModal from '../components/modals/SiteQuickModal.vue'
@@ -357,6 +361,7 @@ const pageSize = ref(50)
 const clientsList = ref([])
 const loading = ref(true)
 
+const filtersOpen = ref(false)
 const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)

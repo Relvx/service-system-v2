@@ -1,8 +1,8 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.self="$emit('close')">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
       <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center">
             <Building2 class="w-5 h-5 text-green-600" />
@@ -18,7 +18,7 @@
       </div>
 
       <!-- Body -->
-      <div class="px-6 py-4 space-y-3">
+      <div class="px-4 py-3 md:px-6 md:py-4 space-y-3">
         <!-- Статус -->
         <div class="flex items-center gap-2">
           <span class="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -96,7 +96,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="px-6 py-4 border-t flex justify-end">
+      <div class="px-4 py-3 md:px-6 md:py-4 border-t flex justify-end">
         <button
           @click="$emit('open-page')"
           class="btn btn-primary flex items-center gap-2"

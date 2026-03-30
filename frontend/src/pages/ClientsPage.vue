@@ -13,7 +13,13 @@
 
       <!-- Фильтры -->
       <div class="card mb-4">
-        <div class="flex flex-wrap gap-3 items-end">
+        <!-- Мобильная шапка фильтров -->
+        <button class="md:hidden w-full flex items-center justify-between text-sm font-medium text-gray-700 mb-2" @click="filtersOpen = !filtersOpen">
+          <span class="flex items-center gap-2"><Filter class="w-4 h-4" />Фильтры<span v-if="hasActiveFilters" class="w-2 h-2 bg-primary-500 rounded-full inline-block"></span></span>
+          <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="filtersOpen ? 'rotate-180' : ''" />
+        </button>
+        <div class="flex-wrap gap-3 items-end" :class="filtersOpen ? 'flex' : 'hidden md:flex'">
+
           <!-- Поиск -->
           <div class="relative flex-1 min-w-[200px]">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -179,14 +185,14 @@
 
       <!-- Create / Edit Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-          <div class="flex items-center justify-between p-6 border-b">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <h2 class="text-xl font-semibold text-gray-900">
               {{ editing ? 'Редактировать клиента' : 'Добавить клиента' }}
             </h2>
             <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <form @submit.prevent="handleSave" class="p-6 space-y-4">
+          <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
               <input v-model="form.name" class="input" :class="{ 'border-red-400': errors.name }" placeholder='ООО "Название"' @input="delete errors.name" />
@@ -271,7 +277,7 @@
 
       <!-- Archive Confirm -->
       <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
           <h2 class="text-xl font-semibold text-gray-900 mb-2">Отправить в архив?</h2>
           <p class="text-gray-600 mb-1">Клиент <strong>{{ archiveConfirm.name }}</strong> будет скрыт из основного списка.</p>
           <p class="text-sm text-gray-500 mb-6">Все данные и история выездов сохранятся.</p>
@@ -290,7 +296,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Search, Plus, Building2, Edit, Archive, ArchiveRestore, X,
-  MapPin, FileText, CalendarCheck,
+  MapPin, FileText, CalendarCheck, Filter, ChevronDown,
 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -311,6 +317,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(50)
 const loading = ref(true)
+const filtersOpen = ref(false)
 const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)
