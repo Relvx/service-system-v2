@@ -33,6 +33,8 @@ app.add_middleware(
         "http://localhost:3001",
         "http://localhost:5002",
         "http://localhost:5173",
+        # Продакшен сервер
+        "http://72.56.237.245",
     ],
     allow_credentials=True,
     allow_methods=["*"],
