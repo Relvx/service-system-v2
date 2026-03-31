@@ -21,7 +21,7 @@
           <!-- Статус -->
           <div class="min-w-[150px]">
             <label class="block text-xs text-gray-400 mb-1">Статус</label>
-            <select v-model="filters.status" @change="() => { page.value = 1; loadVisits() }" class="input text-sm">
+            <select v-model="filters.status" class="input text-sm">
               <option value="">Все статусы</option>
               <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
             </select>
@@ -29,7 +29,7 @@
           <!-- Приоритет -->
           <div class="min-w-[140px]">
             <label class="block text-xs text-gray-400 mb-1">Приоритет</label>
-            <select v-model="filters.priority" @change="() => { page.value = 1; loadVisits() }" class="input text-sm">
+            <select v-model="filters.priority" class="input text-sm">
               <option value="">Все приоритеты</option>
               <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
             </select>
@@ -37,7 +37,7 @@
           <!-- Мастер -->
           <div class="min-w-[160px]">
             <label class="block text-xs text-gray-400 mb-1">Мастер</label>
-            <select v-model="filters.master_id" @change="() => { page.value = 1; loadVisits() }" class="input text-sm">
+            <select v-model="filters.master_id" class="input text-sm">
               <option value="">Все мастера</option>
               <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
             </select>
@@ -45,16 +45,16 @@
           <!-- Дата с -->
           <div>
             <label class="block text-xs text-gray-400 mb-1">Дата с</label>
-            <input v-model="filters.date_from" @change="() => { page.value = 1; loadVisits() }" type="date" class="input text-sm" />
+            <input v-model="filters.date_from" type="date" class="input text-sm" />
           </div>
           <!-- Дата по -->
           <div>
             <label class="block text-xs text-gray-400 mb-1">Дата по</label>
-            <input v-model="filters.date_to" @change="() => { page.value = 1; loadVisits() }" type="date" class="input text-sm" />
+            <input v-model="filters.date_to" type="date" class="input text-sm" />
           </div>
           <!-- Архивные -->
           <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap pb-1">
-            <input type="checkbox" v-model="showArchived" @change="() => { page.value = 1; loadVisits() }" class="rounded" />
+            <input type="checkbox" v-model="showArchived" class="rounded" />
             Архивные
           </label>
           <!-- Сброс -->
@@ -529,6 +529,10 @@ useEscClose([
   { isOpen: () => !!cancelConfirm.value,   close: () => { cancelConfirm.value = null } },
   { isOpen: () => defectModalOpen.value,   close: () => { defectModalOpen.value = false } },
 ])
+
+// Реактивный пересчёт при изменении фильтров
+watch(filters, () => { page.value = 1; loadVisits() }, { deep: true })
+watch(showArchived, () => { page.value = 1; loadVisits() })
 
 // Create form: client search + multi-site
 const allClients = ref([])
