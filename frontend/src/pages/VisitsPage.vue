@@ -266,25 +266,40 @@
                 <p v-if="errors.client" class="text-red-600 text-xs mt-1">{{ errors.client }}</p>
               </div>
 
+              <!-- Договор (появляется после выбора клиента) -->
+              <div v-if="selectedClient">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Договор</label>
+                <select v-model="selectedContractId" class="input" @change="onContractChange">
+                  <option value="">— Без договора (все объекты) —</option>
+                  <option v-for="c in clientContracts" :key="c.id" :value="c.id">
+                    {{ c.contract_number || 'Без номера' }}{{ c.subject ? ' — ' + c.subject : '' }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Объекты (появляются после выбора клиента) -->
               <div v-if="selectedClient">
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Объекты * <span class="text-gray-400 font-normal">(выбрано: {{ selectedSiteIds.length }})</span>
                 </label>
-                <div v-if="clientSites.length" class="border border-gray-200 rounded-lg max-h-44 overflow-y-auto divide-y divide-gray-100">
-                  <label
-                    v-for="s in clientSites"
-                    :key="s.id"
-                    class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
-                    @click.prevent="toggleSite(s.id); delete errors.sites"
-                  >
-                    <input type="checkbox" :checked="selectedSiteIds.includes(s.id)" class="mt-0.5 rounded flex-shrink-0" readonly />
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium text-gray-900 truncate">{{ s.title }}</p>
-                      <p class="text-xs text-gray-500 truncate">{{ s.address }}</p>
-                    </div>
-                  </label>
-                </div>
-                <p v-else class="text-sm text-gray-400 py-2">Нет активных объектов у этого клиента</p>
+                <div v-if="clientSitesLoading" class="text-sm text-gray-400 py-2">Загрузка объектов...</div>
+                <template v-else>
+                  <div v-if="clientSites.length" class="border border-gray-200 rounded-lg max-h-44 overflow-y-auto divide-y divide-gray-100">
+                    <label
+                      v-for="s in clientSites"
+                      :key="s.id"
+                      class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                      @click.prevent="toggleSite(s.id); delete errors.sites"
+                    >
+                      <input type="checkbox" :checked="selectedSiteIds.includes(s.id)" class="mt-0.5 rounded flex-shrink-0" readonly />
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ s.title }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ s.address }}</p>
+                      </div>
+                    </label>
+                  </div>
+                  <p v-else class="text-sm text-gray-400 py-2">Нет объектов</p>
+                </template>
                 <p v-if="errors.sites" class="text-red-600 text-xs mt-1">{{ errors.sites }}</p>
               </div>
             </template>
@@ -464,7 +479,7 @@ import DataTable from '../components/DataTable.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
-import { visitsAPI, sitesAPI, usersAPI, clientsAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
+import { visitsAPI, sitesAPI, usersAPI, clientsAPI, contractsAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
@@ -520,7 +535,10 @@ const allClients = ref([])
 const clientQuery = ref('')
 const clientDropdownOpen = ref(false)
 const selectedClient = ref(null)
+const clientContracts = ref([])
+const selectedContractId = ref('')
 const clientSites = ref([])
+const clientSitesLoading = ref(false)
 const selectedSiteIds = ref([])
 
 const filteredClients = computed(() => allClients.value)
@@ -529,6 +547,8 @@ let clientSearchTimer = null
 async function onClientQueryInput() {
   clientDropdownOpen.value = true
   selectedClient.value = null
+  clientContracts.value = []
+  selectedContractId.value = ''
   clientSites.value = []
   selectedSiteIds.value = []
   clearTimeout(clientSearchTimer)
@@ -544,8 +564,46 @@ async function selectClient(client) {
   clientQuery.value = client.name
   clientDropdownOpen.value = false
   selectedSiteIds.value = []
-  const res = await sitesAPI.getAll({ client_id: client.id, active_only: true, limit: 500 })
-  clientSites.value = res.data.items
+  selectedContractId.value = ''
+  clientContracts.value = []
+  clientSites.value = []
+  // Загружаем договоры клиента
+  try {
+    const cr = await contractsAPI.getByClient(client.id)
+    clientContracts.value = cr.data?.items ?? cr.data ?? []
+    // Если 1 договор — подставляем автоматически
+    if (clientContracts.value.length === 1) {
+      selectedContractId.value = clientContracts.value[0].id
+      await onContractChange()
+      return
+    }
+  } catch {
+    clientContracts.value = []
+  }
+  // По умолчанию (без договора) — все объекты клиента
+  await loadSitesByContract('')
+}
+
+async function onContractChange() {
+  selectedSiteIds.value = []
+  await loadSitesByContract(selectedContractId.value)
+}
+
+async function loadSitesByContract(contractId) {
+  clientSitesLoading.value = true
+  try {
+    if (contractId) {
+      const res = await contractsAPI.getById(contractId)
+      clientSites.value = res.data.sites || []
+    } else {
+      const res = await sitesAPI.getAll({ client_id: selectedClient.value.id, active_only: true, limit: 500 })
+      clientSites.value = res.data.items
+    }
+  } catch {
+    clientSites.value = []
+  } finally {
+    clientSitesLoading.value = false
+  }
 }
 
 function toggleSite(id) {
@@ -640,8 +698,11 @@ function openCreate() {
   form.value = { site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '', planned_time_to: '', visit_type: 'maintenance', priority: 'medium', office_notes: '', status: 'planned' }
   clientQuery.value = ''
   selectedClient.value = null
+  clientContracts.value = []
+  selectedContractId.value = ''
   clientSites.value = []
   selectedSiteIds.value = []
+  clientSitesLoading.value = false
   clientDropdownOpen.value = false
   loadFormData()
   modalOpen.value = true
