@@ -53,6 +53,7 @@ class TestAdminUsers:
         """Создание нового пользователя и удаление."""
         headers = auth_headers(admin_token)
         payload = {
+            "username": "__testuser__",
             "email": "__test__user@system.local",
             "password": "testpass123",
             "full_name": "Тест Тестов",
@@ -62,6 +63,7 @@ class TestAdminUsers:
         assert res.status_code == 201
         user_id = res.json()["id"]
         assert res.json()["email"] == payload["email"]
+        assert res.json()["username"] == payload["username"]
 
         del_res = await http_client.delete(f"/api/admin/users/{user_id}", headers=headers)
         assert del_res.status_code == 204
@@ -70,6 +72,7 @@ class TestAdminUsers:
         """Дублирующийся email → 409."""
         headers = auth_headers(admin_token)
         res = await http_client.post("/api/admin/users", headers=headers, json={
+            "username": "__dupladmin__",
             "email": "admin@system.local",
             "password": "admin123",
             "full_name": "Дубль",
@@ -81,6 +84,7 @@ class TestAdminUsers:
         headers = auth_headers(admin_token)
 
         res = await http_client.post("/api/admin/users", headers=headers, json={
+            "username": "__testupduser__",
             "email": "__test__upd@system.local",
             "password": "testpass123",
             "full_name": "Исходное Имя",

@@ -69,7 +69,7 @@ class TestCompleteVisitAuth:
         visit_id = await self._create_visit_assigned_to_master(http_client, admin_token, site_id)
 
         login = await http_client.post("/api/auth/login", json={
-            "email": "master2@system.local", "password": "admin123"
+            "username": "master2", "password": "admin123"
         })
         master2_token = login.json()["token"]
 

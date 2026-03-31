@@ -13,8 +13,8 @@ export const useAuthStore = defineStore('auth', () => {
     return groups.value.includes(sysname)
   }
 
-  async function login(email, password) {
-    const res = await authAPI.login(email, password)
+  async function login(username, password) {
+    const res = await authAPI.login(username, password)
     token.value = res.data.token
     user.value = res.data.user
     localStorage.setItem('token', res.data.token)

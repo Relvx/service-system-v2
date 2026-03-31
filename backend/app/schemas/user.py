@@ -6,6 +6,7 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    username: str
     email: str
     full_name: str
     phone: Optional[str] = None
@@ -26,6 +27,7 @@ class UserOut(BaseModel):
 
 
 class UserCreate(BaseModel):
+    username: str
     email: str
     password: str
     full_name: str
@@ -34,6 +36,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    username: Optional[str] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None

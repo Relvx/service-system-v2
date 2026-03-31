@@ -41,6 +41,7 @@
             <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th class="text-left px-4 py-3 font-medium text-gray-600">Имя</th>
+                <th class="text-left px-4 py-3 font-medium text-gray-600">Логин</th>
                 <th class="text-left px-4 py-3 font-medium text-gray-600">Email</th>
                 <th class="text-left px-4 py-3 font-medium text-gray-600">Группы</th>
                 <th class="text-left px-4 py-3 font-medium text-gray-600">Статус</th>
@@ -50,6 +51,7 @@
             <tbody class="divide-y divide-gray-100">
               <tr v-for="u in adminUsers" :key="u.id" class="hover:bg-gray-50">
                 <td class="px-4 py-3 font-medium text-gray-900">{{ u.full_name }}</td>
+                <td class="px-4 py-3 text-gray-600 font-mono">{{ u.username }}</td>
                 <td class="px-4 py-3 text-gray-600">{{ u.email }}</td>
                 <td class="px-4 py-3">
                   <span
@@ -186,6 +188,12 @@
           <button @click="userModal.open = false" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
         </div>
         <div class="p-4 md:p-6 space-y-3">
+          <!-- Логин -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Логин *</label>
+            <input v-model="userForm.username" type="text" placeholder="ivan_ivanov" class="input" :class="{ 'border-red-400': userErrors.username }" @input="delete userErrors.username" autocomplete="username" />
+            <p v-if="userErrors.username" class="text-red-600 text-xs mt-1">{{ userErrors.username }}</p>
+          </div>
           <!-- Email -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
@@ -375,18 +383,19 @@ async function loadUsers() {
 }
 
 const userModal = ref({ open: false, isEdit: false, userId: null })
-const userForm = ref({ email: '', password: '', full_name: '', phone: '', is_active: true, groups: [] })
+const userForm = ref({ username: '', email: '', password: '', full_name: '', phone: '', is_active: true, groups: [] })
 const userErrors = ref({})
 const userSaving = ref(false)
 
 function openUserCreate() {
-  userForm.value = { email: '', password: '', full_name: '', phone: '', is_active: true, groups: [] }
+  userForm.value = { username: '', email: '', password: '', full_name: '', phone: '', is_active: true, groups: [] }
   userErrors.value = {}
   userModal.value = { open: true, isEdit: false, userId: null }
 }
 
 function openUserEdit(u) {
   userForm.value = {
+    username: u.username,
     email: u.email,
     password: '',
     full_name: u.full_name,
@@ -409,6 +418,7 @@ function toggleFormGroup(sysname, checked) {
 async function saveUser() {
   userErrors.value = {}
   // Валидация
+  if (!userForm.value.username) { userErrors.value.username = 'Обязательное поле'; return }
   if (!userForm.value.email) { userErrors.value.email = 'Обязательное поле'; return }
   if (!userForm.value.full_name) { userErrors.value.full_name = 'Обязательное поле'; return }
   if (!userModal.value.isEdit && !userForm.value.password) { userErrors.value.password = 'Обязательное поле'; return }
@@ -417,6 +427,7 @@ async function saveUser() {
   try {
     if (userModal.value.isEdit) {
       const payload = {
+        username: userForm.value.username,
         email: userForm.value.email,
         full_name: userForm.value.full_name,
         phone: userForm.value.phone || null,
@@ -436,6 +447,7 @@ async function saveUser() {
       }
     } else {
       await adminAPI.createUser({
+        username: userForm.value.username,
         email: userForm.value.email,
         password: userForm.value.password,
         full_name: userForm.value.full_name,
@@ -447,7 +459,9 @@ async function saveUser() {
     await loadUsers()
   } catch (e) {
     const detail = e.response?.data?.detail
-    if (typeof detail === 'string' && detail.includes('Email')) {
+    if (typeof detail === 'string' && detail.toLowerCase().includes('логин')) {
+      userErrors.value.username = detail
+    } else if (typeof detail === 'string' && detail.includes('Email')) {
       userErrors.value.email = detail
     } else {
       alert('Ошибка: ' + (detail || e.message))

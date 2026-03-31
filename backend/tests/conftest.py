@@ -42,7 +42,7 @@ async def http_client():
 @pytest_asyncio.fixture(scope="session")
 async def admin_token(http_client: AsyncClient) -> str:
     res = await http_client.post("/api/auth/login", json={
-        "email": "admin@system.local",
+        "username": "admin",
         "password": "admin123",
     })
     assert res.status_code == 200, f"Admin login failed: {res.text}"
@@ -52,7 +52,7 @@ async def admin_token(http_client: AsyncClient) -> str:
 @pytest_asyncio.fixture(scope="session")
 async def office_token(http_client: AsyncClient) -> str:
     res = await http_client.post("/api/auth/login", json={
-        "email": "office1@system.local",
+        "username": "office1",
         "password": "admin123",
     })
     assert res.status_code == 200, f"Office login failed: {res.text}"
@@ -62,7 +62,7 @@ async def office_token(http_client: AsyncClient) -> str:
 @pytest_asyncio.fixture(scope="session")
 async def master_token(http_client: AsyncClient) -> str:
     res = await http_client.post("/api/auth/login", json={
-        "email": "master1@system.local",
+        "username": "master1",
         "password": "admin123",
     })
     assert res.status_code == 200, f"Master login failed: {res.text}"

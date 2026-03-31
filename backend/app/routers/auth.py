@@ -14,7 +14,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(User).where(User.email == body.email, User.is_active == True)
+        select(User).where(User.username == body.username, User.is_active == True)
     )
     user = result.scalar_one_or_none()
     if user is None or not verify_password(body.password, user.password_hash):

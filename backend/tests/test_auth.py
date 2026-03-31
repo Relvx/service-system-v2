@@ -1,7 +1,7 @@
 """
 Тесты эндпоинтов аутентификации.
 
-POST /api/auth/login         — вход по email/password, возврат JWT
+POST /api/auth/login         — вход по username/password, возврат JWT
 GET  /api/auth/me            — профиль текущего пользователя
 PUT  /api/auth/change-password — смена пароля
 """
@@ -16,7 +16,7 @@ class TestLogin:
     async def test_login_success(self, http_client: AsyncClient):
         """Успешный вход возвращает access_token и данные пользователя."""
         res = await http_client.post("/api/auth/login", json={
-            "email": "admin@system.local",
+            "username": "admin",
             "password": "admin123",
         })
         assert res.status_code == 200
@@ -28,15 +28,15 @@ class TestLogin:
     async def test_login_wrong_password(self, http_client: AsyncClient):
         """Неверный пароль → 401."""
         res = await http_client.post("/api/auth/login", json={
-            "email": "admin@system.local",
+            "username": "admin",
             "password": "wrongpassword",
         })
         assert res.status_code == 401
 
-    async def test_login_unknown_email(self, http_client: AsyncClient):
+    async def test_login_unknown_username(self, http_client: AsyncClient):
         """Несуществующий пользователь → 401."""
         res = await http_client.post("/api/auth/login", json={
-            "email": "nobody@nowhere.com",
+            "username": "nobody",
             "password": "admin123",
         })
         assert res.status_code == 401

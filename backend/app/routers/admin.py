@@ -44,7 +44,12 @@ async def admin_create_user(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already exists")
 
+    existing_uname = await db.execute(select(User).where(User.username == body.username))
+    if existing_uname.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Логин уже занят")
+
     user = User(
+        username=body.username,
         email=body.email,
         password_hash=hash_password(body.password),
         full_name=body.full_name,
@@ -78,6 +83,13 @@ async def admin_update_user(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if body.username is not None:
+        existing_uname = await db.execute(
+            select(User).where(User.username == body.username, User.id != user_id)
+        )
+        if existing_uname.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Логин уже используется другим пользователем")
+        user.username = body.username
     if body.full_name is not None:
         user.full_name = body.full_name
     if body.phone is not None:

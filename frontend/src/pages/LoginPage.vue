@@ -18,8 +18,8 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input v-model="email" type="email" class="input" placeholder="your@email.com" required autofocus />
+            <label class="block text-sm font-medium text-gray-700 mb-2">Логин</label>
+            <input v-model="username" type="text" class="input" placeholder="Введите логин" required autofocus autocomplete="username" />
           </div>
 
           <div>
@@ -38,13 +38,13 @@
           <div class="space-y-2">
             <button
               v-for="acc in testAccounts"
-              :key="acc.email"
+              :key="acc.username"
               type="button"
-              @click="email = acc.email; password = acc.password"
+              @click="username = acc.username; password = acc.password"
               class="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <div class="font-medium text-gray-900">{{ acc.role }}</div>
-              <div class="text-gray-500">{{ acc.email }}</div>
+              <div class="text-gray-500">{{ acc.username }}</div>
             </button>
           </div>
         </div>
@@ -66,22 +66,22 @@ const router = useRouter()
 const auth = useAuthStore()
 const config = useConfigStore()
 
-const email = ref('')
+const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
 const testAccounts = [
-  { email: 'admin@system.local', password: 'admin123', role: 'Администратор' },
-  { email: 'master1@system.local', password: 'admin123', role: 'Мастер' },
-  { email: 'office1@system.local', password: 'admin123', role: 'Офис' },
+  { username: 'admin', password: 'admin123', role: 'Администратор' },
+  { username: 'master1', password: 'admin123', role: 'Мастер' },
+  { username: 'office1', password: 'admin123', role: 'Офис' },
 ]
 
 async function handleSubmit() {
   error.value = ''
   loading.value = true
   try {
-    const user = await auth.login(email.value, password.value)
+    const user = await auth.login(username.value, password.value)
     await config.loadAll()
     const groups = user.groups || []
     if (groups.includes('master_group') && !groups.includes('office_group') && !groups.includes('admin_group')) {
@@ -90,7 +90,7 @@ async function handleSubmit() {
       router.push('/dashboard')
     }
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Неверный email или пароль'
+    error.value = e.response?.data?.detail || 'Неверный логин или пароль'
   } finally {
     loading.value = false
   }
