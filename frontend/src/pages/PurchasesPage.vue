@@ -108,7 +108,7 @@
         </template>
 
         <template #actions="{ row }">
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1" @click.stop>
             <span v-if="row.is_archived" class="text-xs text-gray-400 italic">Архив</span>
             <template v-else>
               <button
@@ -126,6 +126,14 @@
               class="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50"
             >
               Восстановить
+            </button>
+            <button
+              v-if="auth.hasGroup('admin_group')"
+              @click="deletePurchaseConfirm = row"
+              class="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+              title="Удалить"
+            >
+              <Trash2 class="w-4 h-4" />
             </button>
           </div>
         </template>
@@ -230,16 +238,26 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
               <textarea v-model="editForm.notes" class="input" rows="2" :disabled="detailPurchase.is_archived" />
             </div>
-            <div class="flex justify-end gap-3 pt-4">
-              <button type="button" @click="detailPurchase = null" class="btn btn-secondary">Отмена</button>
+            <div class="flex justify-between items-center pt-4">
               <button
-                v-if="!detailPurchase.is_archived"
-                type="submit"
-                :disabled="editSaving"
-                class="btn btn-primary disabled:opacity-50"
+                v-if="auth.hasGroup('admin_group')"
+                type="button"
+                @click="deletePurchaseConfirm = detailPurchase"
+                class="btn text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-1"
               >
-                {{ editSaving ? 'Сохранение...' : 'Сохранить' }}
+                <Trash2 class="w-4 h-4" />Удалить
               </button>
+              <div class="flex gap-3 ml-auto">
+                <button type="button" @click="detailPurchase = null" class="btn btn-secondary">Отмена</button>
+                <button
+                  v-if="!detailPurchase.is_archived"
+                  type="submit"
+                  :disabled="editSaving"
+                  class="btn btn-primary disabled:opacity-50"
+                >
+                  {{ editSaving ? 'Сохранение...' : 'Сохранить' }}
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -337,12 +355,28 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete purchase confirm -->
+    <div v-if="deletePurchaseConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+        <h3 class="text-lg font-semibold mb-2">Удалить закупку?</h3>
+        <p class="text-sm text-gray-600 mb-5">
+          Закупка <strong>«{{ deletePurchaseConfirm.item }}»</strong> будет удалена безвозвратно.
+        </p>
+        <div class="flex gap-3">
+          <button @click="confirmDeletePurchase" :disabled="deletingPurchase" class="btn bg-red-600 text-white hover:bg-red-700 flex-1 disabled:opacity-50">
+            {{ deletingPurchase ? 'Удаление...' : 'Удалить' }}
+          </button>
+          <button @click="deletePurchaseConfirm = null" class="btn btn-secondary flex-1">Отмена</button>
+        </div>
+      </div>
+    </div>
   </Layout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { Plus, ShoppingCart, X, Filter, ChevronDown } from 'lucide-vue-next'
+import { Plus, ShoppingCart, X, Trash2, Filter, ChevronDown } from 'lucide-vue-next'
 
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -467,10 +501,13 @@ const editForm = ref({})
 const originalEditForm = ref(null)
 const editErrors = ref({})
 const editSaving = ref(false)
+const deletePurchaseConfirm = ref(null)
+const deletingPurchase = ref(false)
 
 useEscClose([
-  { isOpen: () => modalOpen.value,           close: () => { modalOpen.value = false } },
-  { isOpen: () => !!detailPurchase.value,    close: () => { detailPurchase.value = null } },
+  { isOpen: () => modalOpen.value,                close: () => { modalOpen.value = false } },
+  { isOpen: () => !!detailPurchase.value,         close: () => { detailPurchase.value = null } },
+  { isOpen: () => !!deletePurchaseConfirm.value,  close: () => { deletePurchaseConfirm.value = null } },
 ])
 
 // Preload site results при открытии дропдауна фильтра
@@ -647,6 +684,20 @@ async function unarchivePurchase(p) {
     await loadPurchases()
   } catch (e) {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function confirmDeletePurchase() {
+  deletingPurchase.value = true
+  try {
+    await purchasesAPI.delete(deletePurchaseConfirm.value.id)
+    deletePurchaseConfirm.value = null
+    detailPurchase.value = null
+    await loadPurchases()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    deletingPurchase.value = false
   }
 }
 

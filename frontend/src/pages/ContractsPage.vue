@@ -134,6 +134,14 @@
               >
                 <Eye class="w-4 h-4" />
               </router-link>
+              <button
+                v-if="auth.hasGroup('admin_group') || auth.hasGroup('office_group')"
+                @click="deleteConfirm = row"
+                class="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                title="Удалить"
+              >
+                <Trash2 class="w-4 h-4" />
+              </button>
             </div>
           </template>
 
@@ -219,22 +227,40 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete confirm -->
+    <div v-if="deleteConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+        <h3 class="text-lg font-semibold mb-2">Удалить договор?</h3>
+        <p class="text-sm text-gray-600 mb-5">
+          Договор <strong>{{ deleteConfirm.contract_number || '—' }}</strong> будет удалён безвозвратно.
+        </p>
+        <div class="flex gap-3">
+          <button @click="confirmDelete" :disabled="deleting" class="btn bg-red-600 text-white hover:bg-red-700 flex-1 disabled:opacity-50">
+            {{ deleting ? 'Удаление...' : 'Удалить' }}
+          </button>
+          <button @click="deleteConfirm = null" class="btn btn-secondary flex-1">Отмена</button>
+        </div>
+      </div>
+    </div>
   </Layout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, FileText, X, Search, MapPin, Eye, Filter, ChevronDown } from 'lucide-vue-next'
+import { Plus, FileText, X, Search, MapPin, Eye, Trash2, Filter, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import ContractQuickModal from '../components/modals/ContractQuickModal.vue'
 import SiteQuickModal from '../components/modals/SiteQuickModal.vue'
 import ClientQuickModal from '../components/modals/ClientQuickModal.vue'
 import { contractsAPI, sitesAPI, clientsAPI } from '../services/api.js'
+import { useAuthStore } from '../stores/auth.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const router = useRouter()
+const auth = useAuthStore()
 const contracts = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -243,6 +269,8 @@ const loading = ref(true)
 const filtersOpen = ref(false)
 const createModalOpen = ref(false)
 const saving = ref(false)
+const deleteConfirm = ref(null)
+const deleting = ref(false)
 const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
 const createErrors = ref({})
 
@@ -277,6 +305,7 @@ useEscClose([
   { isOpen: () => !!quickClient.value,   close: () => { quickClient.value = null } },
   { isOpen: () => !!quickContract.value, close: () => { quickContract.value = null } },
   { isOpen: () => createModalOpen.value, close: () => { createModalOpen.value = false } },
+  { isOpen: () => !!deleteConfirm.value, close: () => { deleteConfirm.value = null } },
 ])
 
 const filters = ref({ search: '', status: '' })
@@ -290,7 +319,7 @@ const columns = [
   { key: 'act_amount',      label: 'Сумма акта', width: 140, sortable: true, defaultVisible: false },
   { key: 'sites_count',     label: 'Объекты',    width: 100, sortable: true },
   { key: 'status',          label: 'Статус',     width: 110, sortable: false },
-  { key: 'actions',         label: '',           width: 60,  sortable: false },
+  { key: 'actions',         label: '',           width: 90,  sortable: false },
 ]
 
 function onRowClick(_row) {
@@ -357,6 +386,19 @@ async function handleCreate() {
     alert('Ошибка: ' + (e.response?.data?.detail || e.message))
   } finally {
     saving.value = false
+  }
+}
+
+async function confirmDelete() {
+  deleting.value = true
+  try {
+    await contractsAPI.delete(deleteConfirm.value.id)
+    deleteConfirm.value = null
+    await load()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    deleting.value = false
   }
 }
 

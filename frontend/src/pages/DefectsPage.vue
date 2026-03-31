@@ -74,9 +74,19 @@
         <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
 
         <template #actions="{ row }">
-          <button @click="openDetail(row)" class="text-primary-600 hover:text-primary-900" title="Подробнее">
-            <Eye class="w-4 h-4" />
-          </button>
+          <div class="flex items-center gap-2" @click.stop>
+            <button @click="openDetail(row)" class="text-primary-600 hover:text-primary-900" title="Подробнее">
+              <Eye class="w-4 h-4" />
+            </button>
+            <button
+              v-if="auth.hasGroup('admin_group')"
+              @click="deleteDefectConfirm = row"
+              class="text-gray-400 hover:text-red-600"
+              title="Удалить"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
+          </div>
         </template>
 
         <template #empty>
@@ -293,9 +303,32 @@
             </div>
           </div>
 
-          <div class="p-4 md:p-6 border-t flex justify-end flex-shrink-0">
-            <button @click="closeDetail" class="btn btn-primary">Закрыть</button>
+          <div class="p-4 md:p-6 border-t flex justify-between items-center flex-shrink-0">
+            <button
+              v-if="auth.hasGroup('admin_group')"
+              @click="deleteDefectConfirm = selectedDefect"
+              class="btn text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-1"
+            >
+              <Trash2 class="w-4 h-4" />Удалить
+            </button>
+            <button @click="closeDetail" class="btn btn-primary ml-auto">Закрыть</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete defect confirm -->
+    <div v-if="deleteDefectConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+        <h3 class="text-lg font-semibold mb-2">Удалить дефект?</h3>
+        <p class="text-sm text-gray-600 mb-5">
+          Дефект <strong>«{{ deleteDefectConfirm.title }}»</strong> будет удалён безвозвратно.
+        </p>
+        <div class="flex gap-3">
+          <button @click="confirmDeleteDefect" :disabled="deletingDefect" class="btn bg-red-600 text-white hover:bg-red-700 flex-1 disabled:opacity-50">
+            {{ deletingDefect ? 'Удаление...' : 'Удалить' }}
+          </button>
+          <button @click="deleteDefectConfirm = null" class="btn btn-secondary flex-1">Отмена</button>
         </div>
       </div>
     </div>
@@ -304,7 +337,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { AlertTriangle, X, Eye, Plus, Image as ImageIcon, Upload, Filter, ChevronDown } from 'lucide-vue-next'
+import { AlertTriangle, X, Eye, Plus, Trash2, Image as ImageIcon, Upload, Filter, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
@@ -330,6 +363,8 @@ const filterPriority = ref('')
 const selectedDefect = ref(null)
 const newStatus = ref('')
 const saving = ref(false)
+const deleteDefectConfirm = ref(null)
+const deletingDefect = ref(false)
 
 // Photos in detail
 const defectPhotos = ref([])
@@ -355,9 +390,10 @@ const createForm = ref({ site_id: null, title: '', description: '', priority: 'm
 const createErrors = ref({})
 
 useEscClose([
-  { isOpen: () => !!selectedDefect.value,   close: () => { closeDetail() } },
-  { isOpen: () => showCreateModal.value,     close: () => { showCreateModal.value = false } },
-  { isOpen: () => showCreatePurchase.value,  close: () => { showCreatePurchase.value = false } },
+  { isOpen: () => !!selectedDefect.value,        close: () => { closeDetail() } },
+  { isOpen: () => showCreateModal.value,          close: () => { showCreateModal.value = false } },
+  { isOpen: () => showCreatePurchase.value,       close: () => { showCreatePurchase.value = false } },
+  { isOpen: () => !!deleteDefectConfirm.value,    close: () => { deleteDefectConfirm.value = null } },
 ])
 
 const columns = [
@@ -417,6 +453,20 @@ function closeDetail() {
   showCreatePurchase.value = false
   defectPurchases.value = []
   defectPhotos.value = []
+}
+
+async function confirmDeleteDefect() {
+  deletingDefect.value = true
+  try {
+    await defectsAPI.delete(deleteDefectConfirm.value.id)
+    deleteDefectConfirm.value = null
+    closeDetail()
+    await loadDefects()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    deletingDefect.value = false
+  }
 }
 
 async function loadPhotos(defectId) {

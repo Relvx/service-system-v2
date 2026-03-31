@@ -137,6 +137,20 @@ async def create_contract(
     return out
 
 
+@router.delete("/{contract_id}", status_code=204)
+async def delete_contract(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    result = await db.execute(select(Contract).where(Contract.id == contract_id))
+    contract = result.scalar_one_or_none()
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    await db.delete(contract)
+    await db.commit()
+
+
 @router.patch("/{contract_id}", response_model=ContractOut)
 async def update_contract(
     contract_id: int,

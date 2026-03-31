@@ -84,12 +84,14 @@ export const defectsAPI = {
   getAll: (params) => api.get('/defects', { params }),
   create: (data) => api.post('/defects', data),
   update: (id, data) => api.put(`/defects/${id}`, data),
+  delete: (id) => api.delete(`/defects/${id}`),
 }
 
 export const purchasesAPI = {
   getAll: (params) => api.get('/purchases', { params }),
   create: (data) => api.post('/purchases', data),
   update: (id, data) => api.put(`/purchases/${id}`, data),
+  delete: (id) => api.delete(`/purchases/${id}`),
   archive: (id) => api.patch(`/purchases/${id}/archive`),
   unarchive: (id) => api.patch(`/purchases/${id}/unarchive`),
 }
@@ -159,6 +161,7 @@ export const contractsAPI = {
   getByClient: (clientId) => api.get(`/contracts/by-client/${clientId}`),
   create: (data) => api.post('/contracts', data),
   update: (id, data) => api.patch(`/contracts/${id}`, data),
+  delete: (id) => api.delete(`/contracts/${id}`),
   addSite: (contractId, siteId) => api.post(`/contracts/${contractId}/sites/${siteId}`),
   removeSite: (contractId, siteId) => api.delete(`/contracts/${contractId}/sites/${siteId}`),
 }

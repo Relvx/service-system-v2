@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, require_groups
 from app.models.defect import Defect
 from app.models.site import Site
 from app.models.client import Client
@@ -95,6 +95,20 @@ async def create_defect(
     stmt = _build_defect_query().where(Defect.id == defect.id)
     result = await db.execute(stmt)
     return _row_to_out(result.first())
+
+
+@router.delete("/{defect_id}", status_code=204,
+               dependencies=[Depends(require_groups("admin_group"))])
+async def delete_defect(
+    defect_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Defect).where(Defect.id == defect_id))
+    defect = result.scalar_one_or_none()
+    if defect is None:
+        raise HTTPException(status_code=404, detail="Defect not found")
+    await db.delete(defect)
+    await db.commit()
 
 
 @router.put("/{defect_id}", response_model=DefectOut)
