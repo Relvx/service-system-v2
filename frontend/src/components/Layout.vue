@@ -45,7 +45,8 @@
         <div v-else>
           <div
             v-for="r in searchResults" :key="`m-${r.type}-${r.id}`"
-            @click="navigateTo(r.url)"
+            @mousedown.prevent="navigateTo(r.url)"
+            @touchstart.prevent="navigateTo(r.url)"
             class="flex items-center gap-3 px-4 py-3 border-b border-gray-50 active:bg-gray-50 cursor-pointer"
           >
             <div class="flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center"
@@ -109,7 +110,8 @@
             <div class="overflow-y-auto" style="max-height: 360px">
             <div
               v-for="r in searchResults" :key="`${r.type}-${r.id}`"
-              @click="navigateTo(r.url)"
+              @mousedown.prevent="navigateTo(r.url)"
+              @touchstart.prevent="navigateTo(r.url)"
               class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <div class="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center"
