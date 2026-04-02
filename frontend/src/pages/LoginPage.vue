@@ -24,7 +24,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
-            <input v-model="password" type="password" class="input" placeholder="••••••••" required />
+            <input v-model="password" type="password" class="input" placeholder="••••••••" required autocomplete="current-password" />
           </div>
 
           <button type="submit" :disabled="loading" class="w-full btn btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed">
@@ -32,22 +32,6 @@
           </button>
         </form>
 
-        <!-- Test Accounts -->
-        <div class="mt-6 pt-6 border-t border-gray-200">
-          <p class="text-sm text-gray-600 mb-3 text-center">Тестовые аккаунты:</p>
-          <div class="space-y-2">
-            <button
-              v-for="acc in testAccounts"
-              :key="acc.username"
-              type="button"
-              @click="username = acc.username; password = acc.password"
-              class="w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <div class="font-medium text-gray-900">{{ acc.role }}</div>
-              <div class="text-gray-500">{{ acc.username }}</div>
-            </button>
-          </div>
-        </div>
       </div>
 
       <p class="text-center text-sm text-gray-600 mt-6">© 2026 Service System v2</p>
@@ -70,12 +54,6 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
-
-const testAccounts = [
-  { username: 'admin', password: 'admin123', role: 'Администратор' },
-  { username: 'master1', password: 'admin123', role: 'Мастер' },
-  { username: 'office1', password: 'admin123', role: 'Офис' },
-]
 
 async function handleSubmit() {
   error.value = ''
