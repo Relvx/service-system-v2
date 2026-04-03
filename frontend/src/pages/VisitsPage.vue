@@ -289,9 +289,8 @@
                       v-for="s in clientSites"
                       :key="s.id"
                       class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
-                      @click.prevent="toggleSite(s.id); delete errors.sites"
                     >
-                      <input type="checkbox" :checked="selectedSiteIds.includes(s.id)" class="mt-0.5 rounded flex-shrink-0" readonly />
+                      <input type="checkbox" :value="s.id" v-model="selectedSiteIds" class="mt-0.5 rounded flex-shrink-0" @change="delete errors.sites" />
                       <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900 truncate">{{ s.title }}</p>
                         <p class="text-xs text-gray-500 truncate">{{ s.address }}</p>
@@ -301,6 +300,19 @@
                   <p v-else class="text-sm text-gray-400 py-2">Нет объектов</p>
                 </template>
                 <p v-if="errors.sites" class="text-red-600 text-xs mt-1">{{ errors.sites }}</p>
+              </div>
+
+              <!-- Режим создания при 2+ объектах -->
+              <div v-if="selectedSiteIds.length > 1" class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                <p class="text-sm font-medium text-blue-800">Выбрано {{ selectedSiteIds.length }} объекта — как создать?</p>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-blue-700">
+                  <input type="radio" v-model="createMode" value="separate" class="text-blue-600" />
+                  {{ selectedSiteIds.length }} отдельных выезда (по одному на каждый объект)
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-blue-700">
+                  <input type="radio" v-model="createMode" value="single" class="text-blue-600" />
+                  Один выезд (один мастер посетит все объекты)
+                </label>
               </div>
             </template>
 
@@ -325,9 +337,9 @@
               <input v-model="form.planned_date" type="date" class="input" :class="{ 'border-red-400': errors.planned_date }" @input="delete errors.planned_date" />
               <p v-if="errors.planned_date" class="text-red-600 text-xs mt-1">{{ errors.planned_date }}</p>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><label class="block text-sm font-medium text-gray-700 mb-1">Время с</label><input v-model="form.planned_time_from" type="time" class="input" /></div>
-              <div><label class="block text-sm font-medium text-gray-700 mb-1">Время до</label><input v-model="form.planned_time_to" type="time" class="input" /></div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Время</label>
+              <input v-model="form.planned_time_from" type="time" class="input" />
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -356,7 +368,7 @@
             <div class="flex justify-end gap-3 pt-4">
               <button type="button" @click="closeModal" class="btn btn-secondary">Отмена</button>
               <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
-                {{ saving ? 'Сохранение...' : editing ? 'Сохранить' : selectedSiteIds.length > 1 ? `Создать ${selectedSiteIds.length} выезда` : 'Создать выезд' }}
+                {{ saving ? 'Сохранение...' : editing ? 'Сохранить' : selectedSiteIds.length > 1 && createMode === 'separate' ? `Создать ${selectedSiteIds.length} выезда` : 'Создать выезд' }}
               </button>
             </div>
           </form>
@@ -544,6 +556,7 @@ const selectedContractId = ref('')
 const clientSites = ref([])
 const clientSitesLoading = ref(false)
 const selectedSiteIds = ref([])
+const createMode = ref('separate')
 
 const filteredClients = computed(() => allClients.value)
 
@@ -617,14 +630,15 @@ function toggleSite(id) {
 }
 
 const columns = [
-  { key: 'planned_date', label: 'Дата',       width: 130 },
-  { key: 'site_title',   label: 'Объект',     width: 200 },
-  { key: 'site_address', label: 'Адрес',      width: 200, defaultVisible: false },
-  { key: 'master_name',  label: 'Мастер',     width: 160 },
-  { key: 'visit_type',   label: 'Тип',        width: 130 },
-  { key: 'status',       label: 'Статус',     width: 140 },
-  { key: 'priority',     label: 'Приоритет',  width: 130, defaultVisible: false },
-  { key: 'actions',      label: 'Действия',   width: 110, sortable: false },
+  { key: 'planned_date',  label: 'Дата',       width: 130 },
+  { key: 'client_name',   label: 'Клиент',     width: 180 },
+  { key: 'site_title',    label: 'Объект',     width: 200 },
+  { key: 'site_address',  label: 'Адрес',      width: 200, defaultVisible: false },
+  { key: 'master_name',   label: 'Мастер',     width: 160 },
+  { key: 'visit_type',    label: 'Тип',        width: 130 },
+  { key: 'status',        label: 'Статус',     width: 140 },
+  { key: 'priority',      label: 'Приоритет',  width: 130, defaultVisible: false },
+  { key: 'actions',       label: 'Действия',   width: 110, sortable: false },
 ]
 
 const form = ref({
@@ -706,6 +720,7 @@ function openCreate() {
   selectedContractId.value = ''
   clientSites.value = []
   selectedSiteIds.value = []
+  createMode.value = 'separate'
   clientSitesLoading.value = false
   clientDropdownOpen.value = false
   loadFormData()
@@ -761,7 +776,16 @@ async function handleSave() {
       }
       await visitsAPI.update(editing.value.id, { ...base, site_id: form.value.site_id, status: form.value.status })
     } else {
-      await Promise.all(selectedSiteIds.value.map(sid => visitsAPI.create({ ...base, site_id: sid })))
+      if (createMode.value === 'single') {
+        const siteIds = selectedSiteIds.value
+        const siteNames = siteIds.map(sid => clientSites.value.find(s => s.id === sid)?.title).filter(Boolean)
+        const notes = siteNames.length > 1
+          ? [base.office_notes, 'Объекты: ' + siteNames.join(', ')].filter(Boolean).join('\n')
+          : base.office_notes
+        await visitsAPI.create({ ...base, site_id: siteIds[0], office_notes: notes || null })
+      } else {
+        await Promise.all(selectedSiteIds.value.map(sid => visitsAPI.create({ ...base, site_id: sid })))
+      }
     }
     closeModal()
     await loadVisits()
