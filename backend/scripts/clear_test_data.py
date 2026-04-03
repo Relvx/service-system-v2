@@ -61,9 +61,8 @@ async def clear():
     print("Паттерны тестовых имён: __ / TEST_ / ZZZTEST_ / BLK17- / TEST-B14-")
     print()
 
+    # ── Предпросмотр ──────────────────────────────────────────────
     async with AsyncSessionLocal() as session:
-
-        # ── Предпросмотр ──────────────────────────────────────────────
         print("Будет удалено:")
         preview = [
             ("клиенты",    f"SELECT id, name FROM clients WHERE {like_clause('name', CLIENT_PATTERNS)}"),
@@ -104,13 +103,15 @@ async def clear():
             return
 
         print()
-        confirm = input("Введите 'yes' для удаления: ").strip().lower()
-        if confirm != "yes":
-            print("Отменено.")
-            return
 
-        # ── Удаление ──────────────────────────────────────────────────
-        print()
+    confirm = input("Введите 'yes' для удаления: ").strip().lower()
+    if confirm != "yes":
+        print("Отменено.")
+        return
+
+    # ── Удаление ──────────────────────────────────────────────────
+    print()
+    async with AsyncSessionLocal() as session:
         async with session.begin():
 
             # 1. Собираем id тестовых объектов и клиентов
