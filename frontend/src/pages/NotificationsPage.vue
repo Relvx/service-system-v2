@@ -65,15 +65,22 @@ import { useRouter } from 'vue-router'
 import { Bell, CalendarCheck, AlertTriangle, ShoppingCart, ExternalLink } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { notificationsAPI } from '../services/api.js'
+import { useAuthStore } from '../stores/auth.js'
 
 const router = useRouter()
+const auth = useAuthStore()
 const notifications = ref([])
 const loading = ref(true)
 const unreadCount = computed(() => notifications.value.filter((n) => !n.is_read).length)
 
 // Определяем маршрут по полям уведомления
 function notifRoute(n) {
-  if (n.related_visit_id)    return { path: '/visits',    query: { open_visit: n.related_visit_id } }
+  if (n.related_visit_id) {
+    const visitPath = auth.hasGroup('master_group') && !auth.hasGroup('office_group') && !auth.hasGroup('admin_group')
+      ? '/my-visits'
+      : '/visits'
+    return { path: visitPath, query: { open_visit: n.related_visit_id } }
+  }
   if (n.related_defect_id)   return { path: '/defects',   query: { highlight: n.related_defect_id } }
   if (n.related_purchase_id) return { path: '/purchases', query: { highlight: n.related_purchase_id } }
   return null
