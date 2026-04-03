@@ -36,18 +36,20 @@ from sqlalchemy import text
 from app.database import AsyncSessionLocal
 
 # Паттерны имён тестовых данных
-CLIENT_PATTERNS  = ['%__%', 'TEST_%', 'ZZZTEST_%']
-SITE_PATTERNS    = ['%__%', 'TEST_%', 'ZZZTEST_%']
-CONTRACT_PATTERNS = ['%__%', 'BLK17-%', 'TEST-B14-%', 'TEST_B%', 'ZZZTEST_%']
-DEFECT_PATTERNS  = ['%__%', 'TEST_%']
-PURCHASE_PATTERNS = ['%__%', 'TEST_%']
-TASK_PATTERNS    = ['%__%', 'TEST_%']
-REMINDER_PATTERNS = ['%__%', 'TEST_%']
-NOTE_PATTERNS    = ['%__%', 'TEST_%']
+# ВАЖНО: _ в SQL LIKE — wildcard (любой символ), поэтому используем ESCAPE '!'
+# и экранируем реальные подчёркивания как !_
+CLIENT_PATTERNS  = ['%!_!_%', 'TEST!_%', 'ZZZTEST!_%']
+SITE_PATTERNS    = ['%!_!_%', 'TEST!_%', 'ZZZTEST!_%']
+CONTRACT_PATTERNS = ['%!_!_%', 'BLK17-%', 'TEST-B14-%', 'TEST!_B%', 'ZZZTEST!_%']
+DEFECT_PATTERNS  = ['%!_!_%', 'TEST!_%']
+PURCHASE_PATTERNS = ['%!_!_%', 'TEST!_%']
+TASK_PATTERNS    = ['%!_!_%', 'TEST!_%']
+REMINDER_PATTERNS = ['%!_!_%', 'TEST!_%']
+NOTE_PATTERNS    = ['%!_!_%', 'TEST!_%']
 
 
 def like_clause(field: str, patterns: list[str]) -> str:
-    parts = " OR ".join(f"{field} LIKE '{p}'" for p in patterns)
+    parts = " OR ".join(f"{field} LIKE '{p}' ESCAPE '!'" for p in patterns)
     return f"({parts})"
 
 
