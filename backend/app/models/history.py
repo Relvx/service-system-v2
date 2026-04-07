@@ -8,7 +8,7 @@
 
 from datetime import datetime
 from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, Float, Numeric, ForeignKey, BigInteger
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from app.database import Base
 
 
@@ -93,6 +93,7 @@ class VisitHistory(Base):
     v_planned_time_from = Column(Time,      nullable=True)
     v_planned_time_to   = Column(Time,      nullable=True)
     v_visit_type        = Column(String(30), nullable=True)
+    v_visit_types       = Column(ARRAY(String(30)), nullable=True)
     v_priority          = Column(String(20), nullable=True)
     v_status            = Column(String(20), nullable=True)
     v_work_summary      = Column(Text,       nullable=True)

@@ -114,7 +114,11 @@
             <div v-if="detailTab === 'visit'" class="space-y-4 text-sm">
               <div class="flex gap-2 flex-wrap">
                 <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
-                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
+                <span
+                  v-for="vt in (detailVisit.visit_types?.length ? detailVisit.visit_types : [detailVisit.visit_type])"
+                  :key="vt"
+                  class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+                >{{ cfg.visitTypeLabel(vt) }}</span>
                 <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
               </div>
               <div>
@@ -181,7 +185,15 @@
           </div>
 
           <!-- Footer -->
-          <div class="p-6 border-t flex justify-end flex-shrink-0">
+          <div class="p-6 border-t flex justify-between items-center flex-shrink-0 flex-wrap gap-2">
+            <button
+              v-if="detailVisit.client_id"
+              @click="router.push(`/clients/${detailVisit.client_id}`); detailVisit = null"
+              class="btn btn-secondary flex items-center text-sm"
+            >
+              К клиенту
+            </button>
+            <div v-else />
             <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
           </div>
         </div>
@@ -237,9 +249,10 @@ import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import { visitsAPI, attachmentsAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 
 const auth = useAuthStore()
 const cfg = useConfigStore()

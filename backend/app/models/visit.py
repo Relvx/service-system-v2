@@ -1,9 +1,25 @@
 """Модель выезда — основная рабочая единица системы."""
 
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, Float, ForeignKey, BigInteger
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Boolean, DateTime, Date, Time, Text, Float, ForeignKey, BigInteger, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from app.database import Base
+
+
+class VisitMaster(Base):
+    """Связь выезда с мастером (many-to-many).
+
+    Позволяет назначать несколько мастеров на один выезд.
+    assigned_user_id на Visit хранит основного мастера для уведомлений.
+    """
+    __tablename__ = "visit_masters"
+    __table_args__ = (
+        UniqueConstraint("visit_id", "user_id", name="uq_visit_masters"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    visit_id = Column(BigInteger, ForeignKey("visits.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
 
 class Visit(Base):
@@ -23,6 +39,7 @@ class Visit(Base):
     planned_time_from = Column(Time, nullable=True)
     planned_time_to = Column(Time, nullable=True)
     visit_type = Column(String(30), nullable=False, default="maintenance")
+    visit_types = Column(ARRAY(String(30)), nullable=True)  # множественные типы; если NULL — используется visit_type
     priority = Column(String(20), nullable=False, default="medium")
     status = Column(String(20), nullable=False, default="planned")
     work_summary = Column(Text, nullable=True)

@@ -429,18 +429,35 @@
             <p v-if="historicalVisitErrors.site_id" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.site_id }}</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Мастер *</label>
-            <select v-model="historicalVisitForm.assigned_user_id" required class="input" :class="{ 'border-red-400': historicalVisitErrors.assigned_user_id }" @change="delete historicalVisitErrors.assigned_user_id">
-              <option value="">— Выберите мастера —</option>
-              <option v-for="u in masters" :key="u.id" :value="u.id">{{ u.full_name || u.username }}</option>
-            </select>
-            <p v-if="historicalVisitErrors.assigned_user_id" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.assigned_user_id }}</p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Мастера *</label>
+            <div
+              class="border rounded-lg max-h-36 overflow-y-auto divide-y divide-gray-100"
+              :class="historicalVisitErrors.master_ids ? 'border-red-400' : 'border-gray-200'"
+            >
+              <label
+                v-for="u in masters"
+                :key="u.id"
+                class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+              >
+                <input type="checkbox" :value="u.id" v-model="historicalVisitForm.master_ids" class="rounded flex-shrink-0" @change="delete historicalVisitErrors.master_ids" />
+                <span class="text-sm text-gray-900">{{ u.full_name || u.username }}</span>
+              </label>
+              <div v-if="!masters.length" class="px-3 py-2 text-sm text-gray-400">Нет мастеров</div>
+            </div>
+            <p v-if="historicalVisitErrors.master_ids" class="text-red-600 text-xs mt-1">{{ historicalVisitErrors.master_ids }}</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Тип выезда</label>
-            <select v-model="historicalVisitForm.visit_type" class="input">
-              <option v-for="vt in cfg.visitTypes" :key="vt.sysname" :value="vt.sysname">{{ vt.display_name }}</option>
-            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Тип(ы) выезда</label>
+            <div class="border border-gray-200 rounded-lg divide-y divide-gray-100">
+              <label
+                v-for="vt in cfg.visitTypes"
+                :key="vt.sysname"
+                class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+              >
+                <input type="checkbox" :value="vt.sysname" v-model="historicalVisitForm.visit_types" class="rounded flex-shrink-0" />
+                <span class="text-sm text-gray-900">{{ vt.display_name }}</span>
+              </label>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Итог работы</label>
@@ -613,8 +630,8 @@ const historicalVisitForm = ref({
   planned_date: '',
   contract_id: '',
   site_id: '',
-  assigned_user_id: '',
-  visit_type: 'maintenance',
+  master_ids: [],
+  visit_types: ['maintenance'],
   work_summary: '',
   defects_present: false,
 })
@@ -629,8 +646,8 @@ function openHistoricalVisitModal() {
     planned_date: '',
     contract_id: autoContract,
     site_id: '',
-    assigned_user_id: '',
-    visit_type: 'maintenance',
+    master_ids: [],
+    visit_types: ['maintenance'],
     work_summary: '',
     defects_present: false,
   }
@@ -668,16 +685,19 @@ async function handleHistoricalVisitSave() {
   const e = {}
   if (!historicalVisitForm.value.planned_date) e.planned_date = 'Укажите дату'
   if (!historicalVisitForm.value.site_id) e.site_id = 'Выберите объект'
-  if (!historicalVisitForm.value.assigned_user_id) e.assigned_user_id = 'Выберите мастера'
+  if (!historicalVisitForm.value.master_ids.length) e.master_ids = 'Выберите хотя бы одного мастера'
   historicalVisitErrors.value = e
   if (Object.keys(e).length) return
   historicalVisitSaving.value = true
+  const visitTypes = historicalVisitForm.value.visit_types.length ? historicalVisitForm.value.visit_types : ['maintenance']
   try {
     await visitsAPI.create({
       planned_date: historicalVisitForm.value.planned_date,
       site_id: historicalVisitForm.value.site_id,
-      assigned_user_id: historicalVisitForm.value.assigned_user_id,
-      visit_type: historicalVisitForm.value.visit_type || 'maintenance',
+      master_ids: historicalVisitForm.value.master_ids,
+      visit_types: visitTypes,
+      visit_type: visitTypes[0],
+      contract_id: historicalVisitForm.value.contract_id || null,
       status: 'done',
       work_summary: historicalVisitForm.value.work_summary || null,
       defects_present: historicalVisitForm.value.defects_present,

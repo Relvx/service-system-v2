@@ -175,7 +175,11 @@
             <div v-if="detailTab === 'info'" class="p-4 md:p-6 space-y-4">
               <div class="flex gap-2 flex-wrap">
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</span>
+                <span
+                  v-for="vt in (detailVisit.visit_types && detailVisit.visit_types.length ? detailVisit.visit_types : [detailVisit.visit_type])"
+                  :key="vt"
+                  class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+                >{{ cfg.visitTypeLabel(vt) }}</span>
                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
               </div>
               <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
@@ -183,7 +187,12 @@
                 <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
                 <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
               </div>
-              <div><p class="text-sm text-gray-500">Мастер</p><p class="text-gray-900">{{ detailVisit.master_name || 'Не назначен' }}</p></div>
+              <div>
+                <p class="text-sm text-gray-500">Мастер(а)</p>
+                <p class="text-gray-900">
+                  {{ (detailVisit.master_names && detailVisit.master_names.length) ? detailVisit.master_names.join(', ') : (detailVisit.master_name || 'Не назначен') }}
+                </p>
+              </div>
               <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
                 <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
                 <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
@@ -208,17 +217,25 @@
             </div>
           </div>
           <!-- Footer: фиксированный -->
-          <div class="flex justify-between items-center p-4 md:p-6 border-t flex-shrink-0">
-            <button
-              v-if="detailVisit.status === 'done' || detailVisit.status === 'closed'"
-              @click="openDefectCreate(detailVisit)"
-              class="btn btn-secondary flex items-center text-yellow-700 border-yellow-300 hover:bg-yellow-50"
-            >
-              <AlertTriangle class="w-4 h-4 mr-2" />Добавить дефект
-            </button>
-            <div v-else />
+          <div class="flex justify-between items-center p-4 md:p-6 border-t flex-shrink-0 flex-wrap gap-2">
+            <div class="flex gap-2 flex-wrap">
+              <button
+                v-if="detailVisit.client_id"
+                @click="router.push(`/clients/${detailVisit.client_id}`); detailVisit = null"
+                class="btn btn-secondary flex items-center text-sm"
+              >
+                <User class="w-4 h-4 mr-1" />К клиенту
+              </button>
+              <button
+                v-if="(detailVisit.status === 'done' || detailVisit.status === 'closed') && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                @click="openDefectCreate(detailVisit)"
+                class="btn btn-secondary flex items-center text-yellow-700 border-yellow-300 hover:bg-yellow-50 text-sm"
+              >
+                <AlertTriangle class="w-4 h-4 mr-1" />Дефект
+              </button>
+            </div>
             <div class="flex gap-3">
-              <button v-if="!detailVisit.is_archived" @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
+              <button v-if="!detailVisit.is_archived && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))" @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
               <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
             </div>
           </div>
@@ -326,11 +343,18 @@
               <p v-if="errors.site_id" class="text-red-600 text-xs mt-1">{{ errors.site_id }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Мастер</label>
-              <select v-model="form.assigned_user_id" class="input">
-                <option value="">Не назначен</option>
-                <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
-              </select>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Мастера</label>
+              <div class="border border-gray-200 rounded-lg max-h-36 overflow-y-auto divide-y divide-gray-100">
+                <label
+                  v-for="m in masters"
+                  :key="m.id"
+                  class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                >
+                  <input type="checkbox" :value="m.id" v-model="form.master_ids" class="rounded flex-shrink-0" />
+                  <span class="text-sm text-gray-900">{{ m.full_name }}</span>
+                </label>
+                <div v-if="!masters.length" class="px-3 py-2 text-sm text-gray-400">Нет мастеров</div>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
@@ -343,10 +367,17 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
-                <select v-model="form.visit_type" class="input">
-                  <option v-for="t in cfg.visitTypes" :key="t.sysname" :value="t.sysname">{{ t.display_name }}</option>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Тип(ы) выезда</label>
+                <div class="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  <label
+                    v-for="t in cfg.visitTypes"
+                    :key="t.sysname"
+                    class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                  >
+                    <input type="checkbox" :value="t.sysname" v-model="form.visit_types" class="rounded flex-shrink-0" />
+                    <span class="text-sm text-gray-900">{{ t.display_name }}</span>
+                  </label>
+                </div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
@@ -484,7 +515,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown, Filter } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -495,6 +526,7 @@ import { visitsAPI, sitesAPI, usersAPI, clientsAPI, contractsAPI, attachmentsAPI
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
+const router = useRouter()
 const cfg = useConfigStore()
 const auth = useAuthStore()
 
@@ -642,8 +674,8 @@ const columns = [
 ]
 
 const form = ref({
-  site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '',
-  planned_time_to: '', visit_type: 'maintenance', priority: 'medium',
+  site_id: '', master_ids: [], planned_date: '', planned_time_from: '',
+  planned_time_to: '', visit_types: ['maintenance'], priority: 'medium',
   office_notes: '', status: 'planned',
 })
 const originalForm = ref(null)
@@ -713,7 +745,7 @@ function validate() {
 function openCreate() {
   editing.value = null
   errors.value = {}
-  form.value = { site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '', planned_time_to: '', visit_type: 'maintenance', priority: 'medium', office_notes: '', status: 'planned' }
+  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned' }
   clientQuery.value = ''
   selectedClient.value = null
   clientContracts.value = []
@@ -731,12 +763,17 @@ async function openEdit(v) {
   editing.value = v
   errors.value = {}
   form.value = {
-    site_id: v.site_id || '', assigned_user_id: v.assigned_user_id || '',
-    planned_date: v.planned_date?.slice(0, 10) || '', planned_time_from: v.planned_time_from?.slice(0, 5) || '',
-    planned_time_to: v.planned_time_to?.slice(0, 5) || '', visit_type: v.visit_type || 'maintenance',
-    priority: v.priority || 'medium', office_notes: v.office_notes || '', status: v.status || 'planned',
+    site_id: v.site_id || '',
+    master_ids: v.master_ids?.length ? [...v.master_ids] : (v.assigned_user_id ? [v.assigned_user_id] : []),
+    planned_date: v.planned_date?.slice(0, 10) || '',
+    planned_time_from: v.planned_time_from?.slice(0, 5) || '',
+    planned_time_to: v.planned_time_to?.slice(0, 5) || '',
+    visit_types: v.visit_types?.length ? [...v.visit_types] : [v.visit_type || 'maintenance'],
+    priority: v.priority || 'medium',
+    office_notes: v.office_notes || '',
+    status: v.status || 'planned',
   }
-  originalForm.value = { ...form.value }
+  originalForm.value = { ...form.value, master_ids: [...form.value.master_ids], visit_types: [...form.value.visit_types] }
   detailVisit.value = null
   // Загружаем только если ещё не загружено
   const tasks = []
@@ -760,31 +797,44 @@ async function handleSave() {
   if (!validate()) return
   saving.value = true
   try {
+    const masterIds = form.value.master_ids.length ? form.value.master_ids : null
+    const visitTypes = form.value.visit_types.length ? form.value.visit_types : ['maintenance']
     const base = {
-      assigned_user_id: form.value.assigned_user_id || null,
+      master_ids: masterIds,
+      visit_types: visitTypes,
+      visit_type: visitTypes[0],
       planned_date: form.value.planned_date,
       planned_time_from: form.value.planned_time_from || null,
       planned_time_to: form.value.planned_time_to || null,
-      visit_type: form.value.visit_type,
       priority: form.value.priority,
       office_notes: form.value.office_notes || null,
     }
     if (editing.value) {
-      if (JSON.stringify(form.value) === JSON.stringify(originalForm.value)) {
-        closeModal()
-        return
-      }
+      const orig = originalForm.value
+      const cur = form.value
+      const noChange =
+        JSON.stringify(cur.master_ids) === JSON.stringify(orig.master_ids) &&
+        JSON.stringify(cur.visit_types) === JSON.stringify(orig.visit_types) &&
+        cur.planned_date === orig.planned_date &&
+        cur.planned_time_from === orig.planned_time_from &&
+        cur.planned_time_to === orig.planned_time_to &&
+        cur.priority === orig.priority &&
+        cur.office_notes === orig.office_notes &&
+        cur.site_id === orig.site_id &&
+        cur.status === orig.status
+      if (noChange) { closeModal(); return }
       await visitsAPI.update(editing.value.id, { ...base, site_id: form.value.site_id, status: form.value.status })
     } else {
+      const contractId = selectedContractId.value || null
       if (createMode.value === 'single') {
         const siteIds = selectedSiteIds.value
         const siteNames = siteIds.map(sid => clientSites.value.find(s => s.id === sid)?.title).filter(Boolean)
         const notes = siteNames.length > 1
           ? [base.office_notes, 'Объекты: ' + siteNames.join(', ')].filter(Boolean).join('\n')
           : base.office_notes
-        await visitsAPI.create({ ...base, site_id: siteIds[0], office_notes: notes || null })
+        await visitsAPI.create({ ...base, site_id: siteIds[0], office_notes: notes || null, contract_id: contractId })
       } else {
-        await Promise.all(selectedSiteIds.value.map(sid => visitsAPI.create({ ...base, site_id: sid })))
+        await Promise.all(selectedSiteIds.value.map(sid => visitsAPI.create({ ...base, site_id: sid, contract_id: contractId })))
       }
     }
     closeModal()

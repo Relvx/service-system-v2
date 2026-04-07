@@ -2,11 +2,11 @@ from typing import List, Optional
 from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, exists
 from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user, require_groups
-from app.models.visit import Visit
+from app.models.visit import Visit, VisitMaster
 from app.models.site import Site
 from app.models.client import Client
 from app.models.user import User
@@ -39,6 +39,22 @@ def _build_visit_query(
         .scalar_subquery()
     )
 
+    # Subqueries for multiple masters
+    master_ids_subq = (
+        select(func.array_agg(VisitMaster.user_id))
+        .where(VisitMaster.visit_id == Visit.id)
+        .correlate(Visit)
+        .scalar_subquery()
+    )
+
+    master_names_subq = (
+        select(func.array_agg(User.full_name))
+        .join(VisitMaster, VisitMaster.user_id == User.id)
+        .where(VisitMaster.visit_id == Visit.id)
+        .correlate(Visit)
+        .scalar_subquery()
+    )
+
     stmt = (
         select(
             Visit,
@@ -53,6 +69,9 @@ def _build_visit_query(
             User.full_name.label("master_name"),
             User.phone.label("master_phone"),
             act_count.label("act_photos_count"),
+            Client.id.label("client_id"),
+            master_ids_subq.label("master_ids"),
+            master_names_subq.label("master_names"),
         )
         .outerjoin(Site, Visit.site_id == Site.id)
         .outerjoin(Client, Site.client_id == Client.id)
@@ -60,7 +79,12 @@ def _build_visit_query(
     )
 
     if master_id:
-        stmt = stmt.where(Visit.assigned_user_id == master_id)
+        stmt = stmt.where(
+            exists().where(
+                VisitMaster.visit_id == Visit.id,
+                VisitMaster.user_id == master_id,
+            )
+        )
     if site_id:
         stmt = stmt.where(Visit.site_id == site_id)
     if status_:
@@ -92,7 +116,20 @@ def _row_to_visit_out(row) -> VisitOut:
     obj.master_name = row[9]
     obj.master_phone = row[10]
     obj.act_photos_count = row[11]
+    obj.client_id = row[12]
+    obj.master_ids = list(row[13]) if row[13] else []
+    obj.master_names = list(row[14]) if row[14] else []
     return obj
+
+
+async def _sync_visit_masters(db: AsyncSession, visit_id: int, master_ids: List[int]):
+    """Синхронизирует таблицу visit_masters для выезда."""
+    await db.execute(
+        VisitMaster.__table__.delete().where(VisitMaster.visit_id == visit_id)
+    )
+    for uid in master_ids:
+        db.add(VisitMaster(visit_id=visit_id, user_id=uid))
+    await db.flush()
 
 
 @router.get("", response_model=VisitPage)
@@ -151,13 +188,25 @@ async def create_visit(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    data = body.model_dump()
-    # Применяем статус по умолчанию если не передан
+    data = body.model_dump(exclude={"master_ids", "visit_types"})
+
+    # Определяем мастеров
+    master_ids = body.master_ids or ([body.assigned_user_id] if body.assigned_user_id else [])
+    if master_ids:
+        data["assigned_user_id"] = master_ids[0]  # первый = основной
+
+    # Определяем типы выезда
+    visit_types = body.visit_types or [body.visit_type or "maintenance"]
+    data["visit_type"] = visit_types[0]
+    data["visit_types"] = visit_types
+
+    # Статус по умолчанию
     if not data.get("status"):
         data["status"] = "planned"
+
     visit = Visit(**data)
 
-    # Автоподстановка стоимости из объекта, если не задана явно
+    # Автоподстановка стоимости из объекта
     if visit.cost is None and visit.site_id:
         site_res = await db.execute(select(Site).where(Site.id == visit.site_id))
         site = site_res.scalar_one_or_none()
@@ -172,19 +221,23 @@ async def create_visit(
     db.add(visit)
     await db.flush()
 
-    # Для исторических выездов (статус done) уведомление не нужно
+    # Синхронизируем мастеров
+    if master_ids:
+        await _sync_visit_masters(db, visit.id, master_ids)
+
+    # Уведомления (для исторических не нужны)
     if visit.status != "done":
-        await create_notification(
-            db,
-            user_id=body.assigned_user_id,
-            type_="visit_assigned",
-            title="Новый выезд",
-            message=f"Вам назначен новый выезд на {body.planned_date}",
-            related_visit_id=visit.id,
-        )
+        for uid in master_ids:
+            await create_notification(
+                db,
+                user_id=uid,
+                type_="visit_assigned",
+                title="Новый выезд",
+                message=f"Вам назначен новый выезд на {body.planned_date}",
+                related_visit_id=visit.id,
+            )
 
     await save_log(db, current_user.id, enums.log_actions.visit_create, "visit", visit.id)
-
     await db.commit()
     await db.refresh(visit)
 
@@ -206,7 +259,22 @@ async def update_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    changed = body.model_dump(exclude_unset=True)
+    changed = body.model_dump(exclude_unset=True, exclude={"master_ids", "visit_types"})
+
+    # Обработка мастеров
+    if body.master_ids is not None:
+        master_ids = body.master_ids
+        if master_ids:
+            changed["assigned_user_id"] = master_ids[0]
+        await _sync_visit_masters(db, visit_id, master_ids)
+
+    # Обработка типов
+    if body.visit_types is not None:
+        visit_types = body.visit_types
+        if visit_types:
+            changed["visit_type"] = visit_types[0]
+        changed["visit_types"] = visit_types
+
     await save_history(db, VisitHistory, visit, current_user.id,
                        method="update", new_values=changed)
 
@@ -226,7 +294,6 @@ async def update_visit(
             title="Изменение выезда", message=message, related_visit_id=visit_id,
         )
 
-    # Выбираем наиболее специфичное действие
     if "assigned_user_id" in changed:
         action = enums.log_actions.visit_assign
     elif "status" in changed:
@@ -256,7 +323,6 @@ async def complete_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
-    # Only the assigned master OR office/admin can complete a visit
     user_groups = {g.sysname for g in current_user.groups}
     is_office_admin = bool(user_groups & {"office_group", "admin_group"})
     if not is_office_admin and visit.assigned_user_id != current_user.id:
