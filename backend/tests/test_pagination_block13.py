@@ -167,10 +167,10 @@ class TestGlobalSearchPaginated:
         t2 = r2.json()["clients_total"] + r2.json()["sites_total"] + r2.json()["contracts_total"]
         assert t1 == t2
 
-    async def test_search_short_query_rejected(self, http_client: AsyncClient, admin_token: str):
-        """Запрос < 2 символов → 422."""
+    async def test_search_one_char_allowed(self, http_client: AsyncClient, admin_token: str):
+        """Запрос из 1 символа разрешён (min_length=1) → 200."""
         res = await http_client.get("/api/search?q=а", headers=auth_headers(admin_token))
-        assert res.status_code == 422
+        assert res.status_code == 200
 
     async def test_search_unauthenticated(self, http_client: AsyncClient):
         res = await http_client.get("/api/search?q=тест")

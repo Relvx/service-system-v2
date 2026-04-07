@@ -6,6 +6,16 @@
         <p class="text-gray-600 mt-1">Привет, {{ user?.full_name }}</p>
       </div>
 
+      <!-- Search -->
+      <div class="mb-4">
+        <input
+          v-model="searchQuery"
+          type="text"
+          class="input max-w-sm"
+          placeholder="Поиск по объекту, клиенту, адресу..."
+        />
+      </div>
+
       <!-- Tabs -->
       <div class="flex border-b border-gray-200 mb-6">
         <button
@@ -236,6 +246,7 @@ const cfg = useConfigStore()
 const user = computed(() => auth.user)
 
 const visits = ref([])
+const searchQuery = ref('')
 const loading = ref(true)
 const actionLoading = ref(null)
 const completeModal = ref(null)
@@ -266,9 +277,18 @@ const tabs = computed(() => [
 ])
 
 const filteredVisits = computed(() => {
-  if (activeTab.value === 'active') return visits.value.filter((v) => ['planned', 'in_progress'].includes(v.status))
-  if (activeTab.value === 'closed') return visits.value.filter((v) => ['closed', 'done'].includes(v.status))
-  return visits.value
+  let result = visits.value
+  if (activeTab.value === 'active') result = result.filter((v) => ['planned', 'in_progress'].includes(v.status))
+  else if (activeTab.value === 'closed') result = result.filter((v) => ['closed', 'done'].includes(v.status))
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    result = result.filter((v) =>
+      (v.site_title || '').toLowerCase().includes(q) ||
+      (v.site_address || '').toLowerCase().includes(q) ||
+      (v.client_name || '').toLowerCase().includes(q)
+    )
+  }
+  return result
 })
 
 async function loadMyVisits() {

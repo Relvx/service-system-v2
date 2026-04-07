@@ -360,12 +360,12 @@
 
     <!-- Contract Create Modal -->
     <div v-if="contractCreateModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-4 md:p-6 border-b">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
           <h2 class="text-xl font-semibold text-gray-900">Новый договор</h2>
           <button @click="contractCreateModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
         </div>
-        <form @submit.prevent="handleContractCreate" class="p-4 md:p-6 space-y-4">
+        <form @submit.prevent="handleContractCreate" class="p-4 md:p-6 space-y-4 overflow-y-auto flex-1">
           <div class="text-sm text-gray-500 bg-gray-50 rounded p-3">
             Клиент: <span class="font-medium text-gray-900">{{ client.name }}</span>
           </div>

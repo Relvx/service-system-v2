@@ -329,7 +329,7 @@ const allNav = [
   { name: 'Клиенты',     href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
   { name: 'Договоры',    href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group'] },
   { name: 'Объекты',     href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group'] },
-  { name: 'Выезды',      href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group'] },
+  { name: 'Выезды',      href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group', 'master_group'] },
   { name: 'Дефекты',     href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },
   { name: 'Закупки',     href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group'] },
   { name: 'Задачи',      href: '/tasks',      icon: CheckSquare,     groups: ['office_group', 'admin_group'] },

@@ -35,7 +35,7 @@ class SearchResponse(BaseModel):
 
 @router.get("", response_model=SearchResponse)
 async def global_search(
-    q: str = Query(..., min_length=2),
+    q: str = Query(..., min_length=1),
     limit: int = Query(PREVIEW_LIMIT, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),

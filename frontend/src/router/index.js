@@ -52,7 +52,7 @@ const routes = [
   {
     path: '/visits',
     component: () => import('../pages/VisitsPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'master_group'] },
   },
   {
     path: '/my-visits',
