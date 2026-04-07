@@ -10,6 +10,7 @@ from app.dependencies import get_db, get_current_user
 from app.models.client import Client
 from app.models.site import Site
 from app.models.contract import Contract
+from sqlalchemy.orm import aliased
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -69,25 +70,38 @@ async def global_search(
         ))
 
     # ── Объекты ──────────────────────────────────────────────────────────
-    site_filter = (
+    SiteClient = aliased(Client)
+    site_search_cond = (
         Site.is_archived == False,
         Site.address.ilike(pattern) |
-        Site.title.ilike(pattern)
+        Site.title.ilike(pattern) |
+        SiteClient.name.ilike(pattern)
     )
     sites_total_res = await db.execute(
-        select(func.count()).where(*site_filter)
+        select(func.count())
+        .select_from(Site)
+        .outerjoin(SiteClient, Site.client_id == SiteClient.id)
+        .where(*site_search_cond)
     )
     sites_total = sites_total_res.scalar() or 0
 
-    sites = await db.execute(
-        select(Site).where(*site_filter).offset(offset).limit(limit)
+    sites_rows = await db.execute(
+        select(Site, SiteClient.name.label("client_name"))
+        .outerjoin(SiteClient, Site.client_id == SiteClient.id)
+        .where(*site_search_cond)
+        .offset(offset).limit(limit)
     )
-    for s in sites.scalars():
+    for s, client_name in sites_rows.all():
+        subtitle_parts = []
+        if s.title and s.title != s.address:
+            subtitle_parts.append(s.title)
+        if client_name:
+            subtitle_parts.append(client_name)
         results.append(SearchResult(
             type="site",
             id=s.id,
             title=s.address,
-            subtitle=s.title if s.title != s.address else None,
+            subtitle=" · ".join(subtitle_parts) if subtitle_parts else None,
             url=f"/sites/{s.id}",
         ))
 

@@ -23,6 +23,7 @@ class Site(Base):
     access_notes = Column(Text, nullable=True)
     onsite_contact = Column(Text, nullable=True)
     service_frequency = Column(String(30), nullable=True)
+    service_frequency_custom = Column(Text, nullable=True)
     price_maintenance = Column(Float, nullable=True)
     price_repair = Column(Float, nullable=True)
     price_emergency = Column(Float, nullable=True)

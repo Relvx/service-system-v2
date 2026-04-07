@@ -193,6 +193,10 @@
                   {{ (detailVisit.master_names && detailVisit.master_names.length) ? detailVisit.master_names.join(', ') : (detailVisit.master_name || 'Не назначен') }}
                 </p>
               </div>
+              <div v-if="detailVisit.visit_contact">
+                <p class="text-sm text-gray-500">Контакт на выезде</p>
+                <p class="text-gray-900">{{ detailVisit.visit_contact }}<span v-if="detailVisit.visit_contact_position" class="text-gray-500 text-sm"> · {{ detailVisit.visit_contact_position }}</span></p>
+              </div>
               <div v-if="detailVisit.contract_number">
                 <p class="text-sm text-gray-500">Договор</p>
                 <p class="text-gray-900">{{ detailVisit.contract_number }}</p>
@@ -395,6 +399,14 @@
               <select v-model="form.status" class="input">
                 <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
               </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Контакт на выезде</label>
+              <input v-model="form.visit_contact" class="input" placeholder="Имя контактного лица" />
+            </div>
+            <div v-if="form.visit_contact">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Должность контакта</label>
+              <input v-model="form.visit_contact_position" class="input" placeholder="Должность" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
@@ -680,7 +692,7 @@ const columns = [
 const form = ref({
   site_id: '', master_ids: [], planned_date: '', planned_time_from: '',
   planned_time_to: '', visit_types: ['maintenance'], priority: 'medium',
-  office_notes: '', status: 'planned',
+  office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '',
 })
 const originalForm = ref(null)
 
@@ -749,7 +761,7 @@ function validate() {
 function openCreate() {
   editing.value = null
   errors.value = {}
-  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned' }
+  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '' }
   clientQuery.value = ''
   selectedClient.value = null
   clientContracts.value = []
@@ -776,6 +788,8 @@ async function openEdit(v) {
     priority: v.priority || 'medium',
     office_notes: v.office_notes || '',
     status: v.status || 'planned',
+    visit_contact: v.visit_contact || '',
+    visit_contact_position: v.visit_contact_position || '',
   }
   originalForm.value = { ...form.value, master_ids: [...form.value.master_ids], visit_types: [...form.value.visit_types] }
   detailVisit.value = null
@@ -812,6 +826,8 @@ async function handleSave() {
       planned_time_to: form.value.planned_time_to || null,
       priority: form.value.priority,
       office_notes: form.value.office_notes || null,
+      visit_contact: form.value.visit_contact || null,
+      visit_contact_position: form.value.visit_contact_position || null,
     }
     if (editing.value) {
       const orig = originalForm.value

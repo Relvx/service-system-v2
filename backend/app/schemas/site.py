@@ -15,6 +15,7 @@ class SiteOut(BaseModel):
     access_notes: Optional[str] = None
     onsite_contact: Optional[str] = None
     service_frequency: Optional[str] = None
+    service_frequency_custom: Optional[str] = None
     price_maintenance: Optional[float] = None
     price_repair: Optional[float] = None
     price_emergency: Optional[float] = None
@@ -43,6 +44,7 @@ class SiteCreate(BaseModel):
     access_notes: Optional[str] = None
     onsite_contact: Optional[str] = None
     service_frequency: Optional[str] = None
+    service_frequency_custom: Optional[str] = None
     price_maintenance: Optional[float] = None
     price_repair: Optional[float] = None
     price_emergency: Optional[float] = None
@@ -57,6 +59,7 @@ class SiteUpdate(BaseModel):
     access_notes: Optional[str] = None
     onsite_contact: Optional[str] = None
     service_frequency: Optional[str] = None
+    service_frequency_custom: Optional[str] = None
     price_maintenance: Optional[float] = None
     price_repair: Optional[float] = None
     price_emergency: Optional[float] = None

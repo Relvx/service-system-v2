@@ -264,6 +264,7 @@
                 <option value="">Не указано</option>
                 <option v-for="f in cfg.serviceFrequencies" :key="f.sysname" :value="f.sysname">{{ f.display_name }}</option>
               </select>
+              <input v-if="form.service_frequency === 'custom'" v-model="form.service_frequency_custom" class="input mt-2" placeholder="Укажите свою частоту..." />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Стоимость выездов (руб.)</label>
@@ -366,7 +367,7 @@ const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)
 const saving = ref(false)
-const form = ref({ title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', price_maintenance: '', price_repair: '', price_emergency: '' })
+const form = ref({ title: '', address: '', client_id: '', latitude: '', longitude: '', onsite_contact: '', access_notes: '', service_frequency: 'monthly', service_frequency_custom: '', price_maintenance: '', price_repair: '', price_emergency: '' })
 const originalForm = ref(null)
 const errors = ref({})
 const clientSearch = ref('')
@@ -532,7 +533,7 @@ function openEdit(s) {
   editing.value = s
   errors.value = {}
   geocodeError.value = ''
-  form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly', price_maintenance: s.price_maintenance || '', price_repair: s.price_repair || '', price_emergency: s.price_emergency || '' }
+  form.value = { title: s.title, address: s.address, client_id: s.client_id || '', latitude: s.latitude || '', longitude: s.longitude || '', onsite_contact: s.onsite_contact || '', access_notes: s.access_notes || '', service_frequency: s.service_frequency || 'monthly', service_frequency_custom: s.service_frequency_custom || '', price_maintenance: s.price_maintenance || '', price_repair: s.price_repair || '', price_emergency: s.price_emergency || '' }
   originalForm.value = { ...form.value }
   clientSearch.value = s.client_name || ''
   clientDropdownOpen.value = false
@@ -558,7 +559,7 @@ async function handleSave() {
   if (!validate()) return
   saving.value = true
   try {
-    const payload = { ...form.value, client_id: form.value.client_id || null, latitude: form.value.latitude || null, longitude: form.value.longitude || null, price_maintenance: form.value.price_maintenance || null, price_repair: form.value.price_repair || null, price_emergency: form.value.price_emergency || null }
+    const payload = { ...form.value, client_id: form.value.client_id || null, latitude: form.value.latitude || null, longitude: form.value.longitude || null, price_maintenance: form.value.price_maintenance || null, price_repair: form.value.price_repair || null, price_emergency: form.value.price_emergency || null, service_frequency_custom: form.value.service_frequency === 'custom' ? (form.value.service_frequency_custom || null) : null }
     if (editing.value) {
       if (JSON.stringify(form.value) === JSON.stringify(originalForm.value)) {
         modalOpen.value = false

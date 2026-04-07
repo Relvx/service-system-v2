@@ -48,7 +48,7 @@
           <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ site.address }}</p></div>
           <div v-if="site.onsite_contact"><p class="text-sm text-gray-500">Контакт на месте</p><p class="text-gray-900">{{ site.onsite_contact }}</p></div>
           <div v-if="site.access_notes"><p class="text-sm text-gray-500">Описание доступа</p><p class="text-gray-900 whitespace-pre-wrap">{{ site.access_notes }}</p></div>
-          <div v-if="site.service_frequency"><p class="text-sm text-gray-500">Частота обслуживания</p><p class="text-gray-900">{{ cfg.serviceFrequencyLabel(site.service_frequency) }}</p></div>
+          <div v-if="site.service_frequency"><p class="text-sm text-gray-500">Частота обслуживания</p><p class="text-gray-900">{{ site.service_frequency === 'custom' && site.service_frequency_custom ? site.service_frequency_custom : cfg.serviceFrequencyLabel(site.service_frequency) }}</p></div>
           <div v-if="site.latitude"><p class="text-sm text-gray-500">Координаты</p><p class="text-gray-900 text-sm font-mono">{{ site.latitude }}, {{ site.longitude }}</p></div>
         </div>
 
@@ -367,6 +367,7 @@
               <option value="">Не указано</option>
               <option v-for="f in cfg.serviceFrequencies" :key="f.sysname" :value="f.sysname">{{ f.display_name }}</option>
             </select>
+            <input v-if="form.service_frequency === 'custom'" v-model="form.service_frequency_custom" class="input mt-2" placeholder="Укажите свою частоту..." />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Широта</label><input v-model="form.latitude" type="number" step="any" class="input" /></div>
@@ -571,6 +572,7 @@ function openEdit() {
     onsite_contact: site.value.onsite_contact || '',
     access_notes: site.value.access_notes || '',
     service_frequency: site.value.service_frequency || '',
+    service_frequency_custom: site.value.service_frequency_custom || '',
     latitude: site.value.latitude || '',
     longitude: site.value.longitude || '',
     price_maintenance: site.value.price_maintenance || '',
@@ -595,6 +597,7 @@ async function handleSave() {
       price_maintenance: form.value.price_maintenance || null,
       price_repair: form.value.price_repair || null,
       price_emergency: form.value.price_emergency || null,
+      service_frequency_custom: form.value.service_frequency === 'custom' ? (form.value.service_frequency_custom || null) : null,
     }
     await sitesAPI.update(route.params.id, payload)
     modalOpen.value = false
