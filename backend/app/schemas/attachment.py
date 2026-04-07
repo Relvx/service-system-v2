@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, date
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict
 
 
@@ -17,6 +17,24 @@ class AttachmentOut(BaseModel):
     file_name: Optional[str] = None
     created_by_user_id: Optional[int] = None
     created_at: datetime
+
+
+class AttachmentGalleryItem(BaseModel):
+    id: int
+    file_url: str
+    file_name: Optional[str] = None
+    created_at: datetime
+    visit_id: Optional[int] = None
+    visit_date: Optional[date] = None
+    site_id: Optional[int] = None
+    site_title: Optional[str] = None
+    client_id: Optional[int] = None
+    client_name: Optional[str] = None
+
+
+class AttachmentGalleryPage(BaseModel):
+    items: List[AttachmentGalleryItem]
+    total: int
 
 
 class AttachmentCreate(BaseModel):

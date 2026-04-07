@@ -90,6 +90,11 @@ const routes = [
     meta: { requiresAuth: true, allowedGroups: ['admin_group', 'office_group'] },
   },
   {
+    path: '/photos',
+    component: () => import('../pages/PhotoGalleryPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
     path: '/admin',
     component: () => import('../pages/AdminPage.vue'),
     meta: { requiresAuth: true, allowedGroups: ['admin_group'] },

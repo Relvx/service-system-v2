@@ -103,6 +103,7 @@ export const attachmentsAPI = {
   getBySite: (siteId) => api.get('/attachments', { params: { site_id: siteId } }),
   getByDefect: (defectId) => api.get('/attachments', { params: { defect_id: defectId } }),
   getByTask: (taskId) => api.get('/attachments', { params: { task_id: taskId } }),
+  getGallery: (params = {}) => api.get('/attachments/gallery', { params }),
   upload: (data) => api.post('/attachments', data),
   delete: (id) => api.delete(`/attachments/${id}`),
 }
