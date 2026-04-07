@@ -28,14 +28,9 @@ def upgrade():
     op.add_column("visits", sa.Column("visit_contact", sa.String(200), nullable=True))
     op.add_column("visits", sa.Column("visit_contact_position", sa.String(100), nullable=True))
 
-    # 4. Контакт при выезде — история
-    op.add_column("visits_history", sa.Column("v_visit_contact", sa.String(200), nullable=True))
-    op.add_column("visits_history", sa.Column("v_visit_contact_position", sa.String(100), nullable=True))
 
 
 def downgrade():
-    op.drop_column("visits_history", "v_visit_contact_position")
-    op.drop_column("visits_history", "v_visit_contact")
     op.drop_column("visits", "visit_contact_position")
     op.drop_column("visits", "visit_contact")
     op.drop_column("sites", "service_frequency_custom")
