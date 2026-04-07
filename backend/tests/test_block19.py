@@ -218,3 +218,24 @@ class TestVisitContractAndClientId:
 
         # cleanup
         await http_client.delete(f"/api/visits/{vid}", headers=auth_headers(admin_token))
+
+    async def test_visit_returns_contract_number(
+        self, http_client: AsyncClient, admin_token: str, site_id: int, admin_user_id: int
+    ):
+        """GET /visits/{id} возвращает поле contract_number (null если нет договора)."""
+        payload = {
+            "site_id": site_id,
+            "master_ids": [admin_user_id],
+            "planned_date": FUTURE,
+            "visit_types": ["maintenance"],
+        }
+        create_res = await http_client.post("/api/visits", json=payload, headers=auth_headers(admin_token))
+        assert create_res.status_code == 201
+        vid = create_res.json()["id"]
+
+        r = await http_client.get(f"/api/visits/{vid}", headers=auth_headers(admin_token))
+        assert r.status_code == 200
+        assert "contract_number" in r.json()
+
+        # cleanup
+        await http_client.delete(f"/api/visits/{vid}", headers=auth_headers(admin_token))

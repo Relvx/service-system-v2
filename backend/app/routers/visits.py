@@ -9,6 +9,7 @@ from app.dependencies import get_db, get_current_user, require_groups
 from app.models.visit import Visit, VisitMaster
 from app.models.site import Site
 from app.models.client import Client
+from app.models.contract import Contract
 from app.models.user import User
 from app.models.attachment import Attachment
 from app.models.history import VisitHistory
@@ -72,10 +73,12 @@ def _build_visit_query(
             Client.id.label("client_id"),
             master_ids_subq.label("master_ids"),
             master_names_subq.label("master_names"),
+            Contract.contract_number.label("contract_number"),
         )
         .outerjoin(Site, Visit.site_id == Site.id)
         .outerjoin(Client, Site.client_id == Client.id)
         .outerjoin(User, Visit.assigned_user_id == User.id)
+        .outerjoin(Contract, Visit.contract_id == Contract.id)
     )
 
     if master_id:
@@ -119,6 +122,7 @@ def _row_to_visit_out(row) -> VisitOut:
     obj.client_id = row[12]
     obj.master_ids = list(row[13]) if row[13] else []
     obj.master_names = list(row[14]) if row[14] else []
+    obj.contract_number = row[15]
     return obj
 
 

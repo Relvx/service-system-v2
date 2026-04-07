@@ -193,6 +193,10 @@
                   {{ (detailVisit.master_names && detailVisit.master_names.length) ? detailVisit.master_names.join(', ') : (detailVisit.master_name || 'Не назначен') }}
                 </p>
               </div>
+              <div v-if="detailVisit.contract_number">
+                <p class="text-sm text-gray-500">Договор</p>
+                <p class="text-gray-900">{{ detailVisit.contract_number }}</p>
+              </div>
               <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
                 <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
                 <p class="text-primary-900">{{ detailVisit.office_notes }}</p>

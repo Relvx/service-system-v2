@@ -41,6 +41,7 @@ class VisitOut(BaseModel):
     longitude: Optional[float] = None
     client_contacts: Optional[str] = None
     act_photos_count: Optional[int] = None
+    contract_number: Optional[str] = None
     # многомастерность
     master_ids: List[int] = []
     master_names: List[str] = []

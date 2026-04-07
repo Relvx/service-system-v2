@@ -129,6 +129,10 @@
                   <span v-if="detailVisit.planned_time_to"> — {{ detailVisit.planned_time_to.slice(0,5) }}</span>
                 </p>
               </div>
+              <div v-if="detailVisit.contract_number">
+                <p class="text-gray-500 mb-0.5">Договор</p>
+                <p class="text-gray-900 font-medium">{{ detailVisit.contract_number }}</p>
+              </div>
               <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded-lg p-3">
                 <p class="text-xs font-medium text-primary-700 mb-1">💬 Заметка офиса</p>
                 <p class="text-primary-900 whitespace-pre-wrap">{{ detailVisit.office_notes }}</p>
