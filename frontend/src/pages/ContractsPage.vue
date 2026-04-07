@@ -184,12 +184,64 @@
 
       <!-- Модал создания -->
       <div v-if="createModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
-          <div class="flex items-center justify-between p-6 border-b">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+          <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
             <h2 class="text-xl font-semibold text-gray-900">Новый договор</h2>
             <button @click="createModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <form @submit.prevent="handleCreate" class="p-6 space-y-4">
+          <form @submit.prevent="handleCreate" class="p-6 space-y-4 overflow-y-auto flex-1">
+            <!-- Клиент -->
+            <div class="relative" ref="clientDropRef">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Клиент</label>
+              <input
+                v-model="clientSearch"
+                @input="onClientSearch"
+                @focus="clientDropOpen = true"
+                placeholder="Начните вводить название..."
+                class="input"
+                autocomplete="off"
+              />
+              <div
+                v-if="clientDropOpen && clientOptions.length"
+                class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                <div
+                  v-for="c in clientOptions"
+                  :key="c.id"
+                  @mousedown.prevent="selectClient(c)"
+                  class="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                >{{ c.name }}</div>
+              </div>
+              <button
+                v-if="form.client_id"
+                type="button"
+                @click="clearClient"
+                class="absolute right-2 top-8 text-gray-400 hover:text-gray-600"
+              ><X class="w-4 h-4" /></button>
+            </div>
+
+            <!-- Объекты клиента -->
+            <div v-if="form.client_id && clientSites.length">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Объекты клиента (выберите для привязки)</label>
+              <div class="border border-gray-200 rounded-lg max-h-36 overflow-y-auto divide-y divide-gray-100">
+                <label
+                  v-for="s in clientSites"
+                  :key="s.id"
+                  class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                >
+                  <input type="checkbox" :value="s.id" v-model="selectedSiteIds" class="rounded border-gray-300 text-primary-600" />
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate">{{ s.title }}</p>
+                    <p class="text-xs text-gray-400 truncate">{{ s.address }}</p>
+                  </div>
+                </label>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Выбрано: {{ selectedSiteIds.length }}</p>
+            </div>
+            <div v-else-if="form.client_id && !sitesLoading && clientSites.length === 0" class="text-sm text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+              У клиента нет объектов
+            </div>
+
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Номер договора *</label>
               <input v-model="form.contract_number" class="input" :class="{ 'border-red-400': createErrors.contract_number }" placeholder="0817/2 от 17.08.2006" @input="delete createErrors.contract_number" />
@@ -247,7 +299,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, FileText, X, Search, MapPin, Eye, Trash2, Filter, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
@@ -271,8 +323,57 @@ const createModalOpen = ref(false)
 const saving = ref(false)
 const deleteConfirm = ref(null)
 const deleting = ref(false)
-const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
+const form = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '', client_id: null })
 const createErrors = ref({})
+
+// Client search in create modal
+const clientSearch = ref('')
+const clientOptions = ref([])
+const clientDropOpen = ref(false)
+const clientDropRef = ref(null)
+const clientSites = ref([])
+const selectedSiteIds = ref([])
+const sitesLoading = ref(false)
+
+let clientSearchTimer = null
+async function onClientSearch() {
+  form.value.client_id = null
+  clientSites.value = []
+  selectedSiteIds.value = []
+  clearTimeout(clientSearchTimer)
+  if (!clientSearch.value.trim()) { clientOptions.value = []; return }
+  clientSearchTimer = setTimeout(async () => {
+    try {
+      const res = await clientsAPI.getAll({ search: clientSearch.value, limit: 10 })
+      clientOptions.value = res.data.items || res.data
+    } catch { clientOptions.value = [] }
+  }, 250)
+}
+
+async function selectClient(c) {
+  form.value.client_id = c.id
+  clientSearch.value = c.name
+  clientDropOpen.value = false
+  clientOptions.value = []
+  sitesLoading.value = true
+  try {
+    const res = await sitesAPI.getAll({ client_id: c.id, limit: 100 })
+    clientSites.value = (res.data.items || res.data).filter(s => !s.is_archived)
+  } catch { clientSites.value = [] } finally { sitesLoading.value = false }
+}
+
+function clearClient() {
+  form.value.client_id = null
+  clientSearch.value = ''
+  clientSites.value = []
+  selectedSiteIds.value = []
+}
+
+function onClickOutsideClientDrop(e) {
+  if (clientDropRef.value && !clientDropRef.value.contains(e.target)) {
+    clientDropOpen.value = false
+  }
+}
 
 // Quick modals
 const quickContract = ref(null)
@@ -363,8 +464,12 @@ function resetFilters() {
 }
 
 function openCreate() {
-  form.value = { contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' }
+  form.value = { contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '', client_id: null }
   createErrors.value = {}
+  clientSearch.value = ''
+  clientOptions.value = []
+  clientSites.value = []
+  selectedSiteIds.value = []
   createModalOpen.value = true
 }
 
@@ -379,7 +484,13 @@ async function handleCreate() {
     if (!payload.contract_date) delete payload.contract_date
     if (!payload.amount) delete payload.amount
     if (!payload.act_amount) delete payload.act_amount
-    await contractsAPI.create(payload)
+    if (!payload.client_id) delete payload.client_id
+    const res = await contractsAPI.create(payload)
+    const newId = res.data.id
+    // Привязываем выбранные объекты
+    for (const siteId of selectedSiteIds.value) {
+      await contractsAPI.addSite(newId, siteId)
+    }
     createModalOpen.value = false
     await load()
   } catch (e) {
@@ -413,5 +524,12 @@ function statusLabel(s) {
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 function formatAmount(v) { return Number(v).toLocaleString('ru-RU') }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  document.addEventListener('mousedown', onClickOutsideClientDrop)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onClickOutsideClientDrop)
+})
 </script>
