@@ -151,7 +151,7 @@
           <div class="mt-auto pt-4 border-t border-gray-100 flex flex-col gap-2">
             <RouterLink
               v-if="selected.visit_id"
-              :to="`/visits?visit_id=${selected.visit_id}`"
+              :to="`/visits?open_visit=${selected.visit_id}`"
               class="w-full text-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
               @click="closeModal"
             >
