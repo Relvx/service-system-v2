@@ -29,7 +29,7 @@ def upgrade():
             END,
             CASE
                 WHEN c.contacts IS NOT NULL AND TRIM(c.contacts) != ''
-                THEN TRIM(c.contacts)
+                THEN LEFT(TRIM(c.contacts), 50)
                 ELSE NULL
             END,
             TRUE,

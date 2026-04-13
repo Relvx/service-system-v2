@@ -258,7 +258,7 @@ class TestSiteFilters:
         await http_client.patch(f"/api/sites/{site_id}/archive", headers=auth_headers(admin_token))
         try:
             res = await http_client.get(
-                "/api/sites?search=TEST_BLOCK14_SITE_ARCHIVE",
+                f"/api/sites?search=TEST_BLOCK14_SITE_ARCHIVE&limit=500",
                 headers=auth_headers(admin_token)
             )
             assert res.status_code == 200
@@ -266,7 +266,7 @@ class TestSiteFilters:
             assert site_id not in ids
 
             res2 = await http_client.get(
-                "/api/sites?search=TEST_BLOCK14_SITE_ARCHIVE&show_archived=true",
+                f"/api/sites?search=TEST_BLOCK14_SITE_ARCHIVE&show_archived=true&limit=500",
                 headers=auth_headers(admin_token)
             )
             assert res2.status_code == 200
