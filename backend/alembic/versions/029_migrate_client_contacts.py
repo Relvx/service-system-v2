@@ -24,14 +24,13 @@ def upgrade():
             c.id,
             CASE
                 WHEN c.contact_person IS NOT NULL AND TRIM(c.contact_person) != ''
+                     AND c.contacts IS NOT NULL AND TRIM(c.contacts) != ''
+                THEN TRIM(c.contact_person) || ' | ' || TRIM(c.contacts)
+                WHEN c.contact_person IS NOT NULL AND TRIM(c.contact_person) != ''
                 THEN TRIM(c.contact_person)
-                ELSE 'Контакт'
+                ELSE TRIM(c.contacts)
             END,
-            CASE
-                WHEN c.contacts IS NOT NULL AND TRIM(c.contacts) != ''
-                THEN LEFT(TRIM(c.contacts), 50)
-                ELSE NULL
-            END,
+            NULL,
             TRUE,
             NOW()
         FROM clients c
