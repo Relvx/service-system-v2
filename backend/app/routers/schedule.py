@@ -231,24 +231,26 @@ async def get_contract_visits(
         raise HTTPException(status_code=404, detail="Contract not found")
     contract, client_name = row
 
-    # Ищем выезды через: contract → contract_sites → site → visits
-    # А также напрямую через Visit.contract_id (на случай если есть)
+    # Собираем site_id для данного договора
     site_ids_result = await db.execute(
         select(ContractSite.site_id).where(ContractSite.contract_id == contract_id)
     )
     site_ids = [r.site_id for r in site_ids_result.all()]
 
+    # Ищем завершённые выезды: напрямую по contract_id ИЛИ через site_id
     from sqlalchemy import or_
+    visit_filter = [Visit.status == "done"]
+    if site_ids:
+        visit_filter.append(
+            or_(Visit.contract_id == contract_id, Visit.site_id.in_(site_ids))
+        )
+    else:
+        visit_filter.append(Visit.contract_id == contract_id)
+
     visits_result = await db.execute(
         select(Visit, User.full_name)
         .outerjoin(User, Visit.assigned_user_id == User.id)
-        .where(
-            Visit.status == "done",
-            or_(
-                Visit.contract_id == contract_id,
-                Visit.site_id.in_(site_ids) if site_ids else False,
-            ),
-        )
+        .where(*visit_filter)
         .order_by(Visit.planned_date.desc())
         .limit(50)
     )
