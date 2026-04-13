@@ -6,8 +6,8 @@
         <div>
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Расписание</h1>
           <p class="text-gray-600 mt-1">
-            <span v-if="viewMode === 'year'">{{ rows.length }} договоров в {{ currentYear }} году</span>
-            <span v-else>{{ monthItems.length }} договоров в {{ MONTHS_FULL[currentMonth - 1] }} {{ currentYear }}</span>
+            <span v-if="viewMode === 'year'">{{ filteredRows.length }} договоров в {{ currentYear }} году</span>
+            <span v-else>{{ filteredMonthItems.length }} договоров в {{ MONTHS_FULL[currentMonth - 1] }} {{ currentYear }}</span>
           </p>
         </div>
 
@@ -59,6 +59,19 @@
         </div>
       </div>
 
+      <!-- Поиск по клиенту -->
+      <div class="relative mb-4 max-w-sm">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+        <input
+          v-model="search"
+          placeholder="Поиск по клиенту или договору..."
+          class="input pl-9 text-sm w-full"
+        />
+        <button v-if="search" @click="search = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <X class="w-4 h-4" />
+        </button>
+      </div>
+
       <!-- Загрузка -->
       <div v-if="loading" class="flex justify-center py-16">
         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
@@ -87,7 +100,7 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="row in rows"
+                  v-for="row in filteredRows"
                   :key="row.contract_id"
                   class="border-b border-gray-100 hover:bg-gray-50"
                 >
@@ -122,8 +135,10 @@
                     >+</button>
                   </td>
                 </tr>
-                <tr v-if="rows.length === 0">
-                  <td :colspan="13" class="text-center py-10 text-gray-400">Нет данных за {{ currentYear }} год</td>
+                <tr v-if="filteredRows.length === 0">
+                  <td :colspan="13" class="text-center py-10 text-gray-400">
+                    {{ search ? 'Ничего не найдено' : `Нет данных за ${currentYear} год` }}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -132,12 +147,12 @@
 
         <!-- ======= РЕЖИМ: МЕСЯЦ (список) ======= -->
         <div v-else>
-          <div v-if="monthItems.length === 0" class="card text-center py-12 text-gray-400">
-            Нет записей в {{ MONTHS_FULL[currentMonth - 1] }} {{ currentYear }}
+          <div v-if="filteredMonthItems.length === 0" class="card text-center py-12 text-gray-400">
+            {{ search ? 'Ничего не найдено' : `Нет записей в ${MONTHS_FULL[currentMonth - 1]} ${currentYear}` }}
           </div>
           <div v-else class="space-y-2">
             <div
-              v-for="item in monthItems"
+              v-for="item in filteredMonthItems"
               :key="item.contract_id"
               class="card flex items-center gap-4"
             >
@@ -339,7 +354,7 @@ import { scheduleAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  X, ExternalLink, MessageSquare, Pencil,
+  X, ExternalLink, MessageSquare, Pencil, Search,
 } from 'lucide-vue-next'
 
 const auth = useAuthStore()
@@ -356,6 +371,25 @@ const loading = ref(false)
 
 const rows = ref([])
 const monthItems = ref([])
+const search = ref('')
+
+const filteredRows = computed(() => {
+  if (!search.value.trim()) return rows.value
+  const q = search.value.trim().toLowerCase()
+  return rows.value.filter(r =>
+    r.client_name.toLowerCase().includes(q) ||
+    (r.contract_number || '').toLowerCase().includes(q)
+  )
+})
+
+const filteredMonthItems = computed(() => {
+  if (!search.value.trim()) return monthItems.value
+  const q = search.value.trim().toLowerCase()
+  return monthItems.value.filter(r =>
+    r.client_name.toLowerCase().includes(q) ||
+    (r.contract_number || '').toLowerCase().includes(q)
+  )
+})
 
 function isCurrentMonth(month) {
   return currentYear.value === now.getFullYear() && month === (now.getMonth() + 1)
