@@ -402,6 +402,12 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Контакт на выезде</label>
+              <select v-if="clientContacts.length" v-model="selectedContactId" @change="onContactSelect" class="input mb-2">
+                <option value="">— не выбрано —</option>
+                <option v-for="c in clientContacts" :key="c.id" :value="c.id">
+                  {{ c.full_name }}{{ c.position ? ' · ' + c.position : '' }}{{ c.phone ? ' · ' + c.phone : '' }}
+                </option>
+              </select>
               <input v-model="form.visit_contact" class="input" placeholder="Имя контактного лица" />
             </div>
             <div v-if="form.visit_contact">
@@ -605,6 +611,8 @@ const clientSites = ref([])
 const clientSitesLoading = ref(false)
 const selectedSiteIds = ref([])
 const createMode = ref('separate')
+const clientContacts = ref([])
+const selectedContactId = ref('')
 
 const filteredClients = computed(() => allClients.value)
 
@@ -632,6 +640,18 @@ async function selectClient(client) {
   selectedContractId.value = ''
   clientContracts.value = []
   clientSites.value = []
+  clientContacts.value = []
+  selectedContactId.value = ''
+  form.value.visit_contact = ''
+  form.value.visit_contact_position = ''
+  try {
+    const res = await clientsAPI.getById(client.id)
+    clientContacts.value = res.data.contact_persons || []
+    if (clientContacts.value.length === 1) {
+      selectedContactId.value = clientContacts.value[0].id
+      applyContact(clientContacts.value[0])
+    }
+  } catch { clientContacts.value = [] }
   // Загружаем договоры клиента
   try {
     const cr = await contractsAPI.getByClient(client.id)
@@ -647,6 +667,21 @@ async function selectClient(client) {
   }
   // По умолчанию (без договора) — все объекты клиента
   await loadSitesByContract('')
+}
+
+function applyContact(contact) {
+  form.value.visit_contact = contact.full_name || ''
+  form.value.visit_contact_position = contact.position || ''
+}
+
+function onContactSelect() {
+  if (!selectedContactId.value) {
+    form.value.visit_contact = ''
+    form.value.visit_contact_position = ''
+    return
+  }
+  const c = clientContacts.value.find(c => c.id === Number(selectedContactId.value))
+  if (c) applyContact(c)
 }
 
 async function onContractChange() {
@@ -793,10 +828,14 @@ async function openEdit(v) {
   }
   originalForm.value = { ...form.value, master_ids: [...form.value.master_ids], visit_types: [...form.value.visit_types] }
   detailVisit.value = null
-  // Загружаем только если ещё не загружено
+  clientContacts.value = []
+  selectedContactId.value = ''
   const tasks = []
   if (!sites.value.length) tasks.push(sitesAPI.getAll({ active_only: true }).then(r => { sites.value = r.data }))
   if (!masters.value.length) tasks.push(usersAPI.getMasters().then(r => { masters.value = r.data }))
+  if (v.client_id) tasks.push(
+    clientsAPI.getById(v.client_id).then(r => { clientContacts.value = r.data.contact_persons || [] })
+  )
   if (tasks.length) await Promise.all(tasks)
   modalOpen.value = true
 }

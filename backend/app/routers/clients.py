@@ -60,12 +60,13 @@ async def _get_client_contact(
     return contact
 
 
-def _client_out_with_counts(client: Client, sites_count: int, visits_count: int, contracts_count: int) -> ClientOut:
+def _client_out_with_counts(client: Client, sites_count: int, visits_count: int, contracts_count: int, primary_contact: str | None = None) -> ClientOut:
     """Создать ClientOut с дополнительными счетчиками."""
     obj = ClientOut.model_validate(client)
     obj.sites_count = sites_count
     obj.visits_count = visits_count
     obj.contracts_count = contracts_count
+    obj.primary_contact = primary_contact
     return obj
 
 
@@ -102,11 +103,20 @@ async def get_clients(
         .scalar_subquery()
     )
 
+    primary_contact_sq = (
+        select(ClientContact.full_name)
+        .where(ClientContact.client_id == Client.id, ClientContact.is_primary == True)
+        .limit(1)
+        .correlate(Client)
+        .scalar_subquery()
+    )
+
     stmt = select(
         Client,
         sites_count_sq.label("sites_count"),
         visits_count_sq.label("visits_count"),
         contracts_count_sq.label("contracts_count"),
+        primary_contact_sq.label("primary_contact"),
     )
     if show_archived:
         stmt = stmt.where(Client.is_archived == True)
@@ -131,8 +141,8 @@ async def get_clients(
     result = await db.execute(paginated_stmt)
     
     items = [
-        _client_out_with_counts(client, s_cnt, v_cnt, c_cnt)
-        for client, s_cnt, v_cnt, c_cnt in result.all()
+        _client_out_with_counts(client, s_cnt, v_cnt, c_cnt, pc)
+        for client, s_cnt, v_cnt, c_cnt, pc in result.all()
     ]
     return ClientPage(items=items, total=total, limit=limit, offset=offset)
 

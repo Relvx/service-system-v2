@@ -96,7 +96,10 @@
 
           <!-- Контакт -->
           <template #contacts="{ row }">
-            <span class="text-gray-300">—</span>
+            <div class="min-w-0 cursor-pointer" @click.stop="openClientQuick(row)">
+              <span v-if="row.primary_contact" class="truncate text-gray-800">{{ row.primary_contact }}</span>
+              <span v-else class="text-gray-300">—</span>
+            </div>
           </template>
 
           <!-- Объекты -->

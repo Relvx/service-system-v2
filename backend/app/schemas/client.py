@@ -19,6 +19,7 @@ class ClientOut(BaseModel):
     sites_count: Optional[int] = None
     visits_count: Optional[int] = None
     contracts_count: Optional[int] = None
+    primary_contact: Optional[str] = None
 
 
 class ClientCreate(BaseModel):
