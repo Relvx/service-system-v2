@@ -53,6 +53,7 @@ class Visit(Base):
     contract_id = Column(BigInteger, ForeignKey("contracts.id", ondelete="SET NULL"), nullable=True)
     visit_contact = Column(String(200), nullable=True)
     visit_contact_position = Column(String(100), nullable=True)
+    visit_contact_phone = Column(String(50), nullable=True)
     master_name_raw = Column(String(100), nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)

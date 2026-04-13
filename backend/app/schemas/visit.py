@@ -44,6 +44,7 @@ class VisitOut(BaseModel):
     contract_number: Optional[str] = None
     visit_contact: Optional[str] = None
     visit_contact_position: Optional[str] = None
+    visit_contact_phone: Optional[str] = None
     # многомастерность
     master_ids: List[int] = []
     master_names: List[str] = []
@@ -72,6 +73,7 @@ class VisitCreate(BaseModel):
     contract_id: Optional[int] = None
     visit_contact: Optional[str] = None
     visit_contact_position: Optional[str] = None
+    visit_contact_phone: Optional[str] = None
 
 
 class VisitUpdate(BaseModel):
@@ -95,6 +97,7 @@ class VisitUpdate(BaseModel):
     contract_id: Optional[int] = None
     visit_contact: Optional[str] = None
     visit_contact_position: Optional[str] = None
+    visit_contact_phone: Optional[str] = None
 
 
 class VisitComplete(BaseModel):

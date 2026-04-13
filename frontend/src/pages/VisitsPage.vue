@@ -195,7 +195,7 @@
               </div>
               <div v-if="detailVisit.visit_contact">
                 <p class="text-sm text-gray-500">Контакт на выезде</p>
-                <p class="text-gray-900">{{ detailVisit.visit_contact }}<span v-if="detailVisit.visit_contact_position" class="text-gray-500 text-sm"> · {{ detailVisit.visit_contact_position }}</span></p>
+                <p class="text-gray-900">{{ detailVisit.visit_contact }}<span v-if="detailVisit.visit_contact_position" class="text-gray-500 text-sm"> · {{ detailVisit.visit_contact_position }}</span><span v-if="detailVisit.visit_contact_phone" class="text-gray-500 text-sm"> · {{ detailVisit.visit_contact_phone }}</span></p>
               </div>
               <div v-if="detailVisit.contract_number">
                 <p class="text-sm text-gray-500">Договор</p>
@@ -419,6 +419,10 @@
             <div v-if="form.visit_contact">
               <label class="block text-sm font-medium text-gray-700 mb-1">Должность контакта</label>
               <input v-model="form.visit_contact_position" class="input" placeholder="Должность" />
+            </div>
+            <div v-if="form.visit_contact">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Телефон контакта</label>
+              <input v-model="form.visit_contact_phone" class="input" placeholder="+7-900-000-00-00" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
@@ -650,6 +654,7 @@ async function selectClient(client) {
   selectedContactId.value = ''
   form.value.visit_contact = ''
   form.value.visit_contact_position = ''
+  form.value.visit_contact_phone = ''
   try {
     const res = await clientsAPI.getById(client.id)
     clientContacts.value = res.data.contact_persons || []
@@ -678,12 +683,14 @@ async function selectClient(client) {
 function applyContact(contact) {
   form.value.visit_contact = contact.full_name || ''
   form.value.visit_contact_position = contact.position || ''
+  form.value.visit_contact_phone = contact.phone || ''
 }
 
 function onContactSelect() {
   if (!selectedContactId.value) {
     form.value.visit_contact = ''
     form.value.visit_contact_position = ''
+    form.value.visit_contact_phone = ''
     return
   }
   const c = clientContacts.value.find(c => c.id === Number(selectedContactId.value))
@@ -733,7 +740,7 @@ const columns = [
 const form = ref({
   site_id: '', master_ids: [], planned_date: '', planned_time_from: '',
   planned_time_to: '', visit_types: ['maintenance'], priority: 'medium',
-  office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '',
+  office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '', visit_contact_phone: '',
 })
 const originalForm = ref(null)
 
@@ -802,7 +809,7 @@ function validate() {
 function openCreate() {
   editing.value = null
   errors.value = {}
-  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '' }
+  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '', visit_contact_phone: '' }
   clientQuery.value = ''
   selectedClient.value = null
   clientContracts.value = []
@@ -831,6 +838,7 @@ async function openEdit(v) {
     status: v.status || 'planned',
     visit_contact: v.visit_contact || '',
     visit_contact_position: v.visit_contact_position || '',
+    visit_contact_phone: v.visit_contact_phone || '',
   }
   originalForm.value = { ...form.value, master_ids: [...form.value.master_ids], visit_types: [...form.value.visit_types] }
   detailVisit.value = null
@@ -873,6 +881,7 @@ async function handleSave() {
       office_notes: form.value.office_notes || null,
       visit_contact: form.value.visit_contact || null,
       visit_contact_position: form.value.visit_contact_position || null,
+      visit_contact_phone: form.value.visit_contact_phone || null,
     }
     if (editing.value) {
       const orig = originalForm.value
@@ -886,7 +895,10 @@ async function handleSave() {
         cur.priority === orig.priority &&
         cur.office_notes === orig.office_notes &&
         cur.site_id === orig.site_id &&
-        cur.status === orig.status
+        cur.status === orig.status &&
+        cur.visit_contact === orig.visit_contact &&
+        cur.visit_contact_position === orig.visit_contact_position &&
+        cur.visit_contact_phone === orig.visit_contact_phone
       if (noChange) { closeModal(); return }
       await visitsAPI.update(editing.value.id, { ...base, site_id: form.value.site_id, status: form.value.status })
     } else {

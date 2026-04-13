@@ -109,6 +109,7 @@ class VisitHistory(Base):
     v_master_name_raw   = Column(String(100), nullable=True)
     v_visit_contact     = Column(String(200), nullable=True)
     v_visit_contact_position = Column(String(100), nullable=True)
+    v_visit_contact_phone = Column(String(50), nullable=True)
     v_created_at        = Column(DateTime,   nullable=True)
     v_updated_at        = Column(DateTime,   nullable=True)
     changed_at         = Column(DateTime, default=datetime.now, nullable=False)
