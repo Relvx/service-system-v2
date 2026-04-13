@@ -189,6 +189,37 @@
         </div>
       </div>
 
+      <!-- Фотографии -->
+      <div v-if="activeTab === 'photos'">
+        <div v-if="photosLoading && photos.length === 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div v-for="i in 10" :key="i" class="aspect-square bg-gray-200 rounded-lg animate-pulse" />
+        </div>
+        <div v-else-if="!photosLoading && photos.length === 0" class="text-center py-16 card">
+          <Images class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <p class="text-gray-500">Фотографий выездов нет</p>
+        </div>
+        <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div
+            v-for="item in photos" :key="item.id"
+            @click="selectedPhoto = item"
+            class="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+          >
+            <img :src="item.file_url" :alt="item.file_name || 'Фото'" class="w-full h-full object-cover" loading="lazy" />
+            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-end">
+              <div class="p-2 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity w-full">
+                <p v-if="item.site_title" class="truncate font-medium">{{ item.site_title }}</p>
+                <p v-if="item.visit_date" class="opacity-80">{{ formatPhotoDate(item.visit_date) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="photos.length < photosTotal" class="mt-6 flex justify-center">
+          <button @click="loadPhotos(false)" :disabled="photosLoading" class="btn btn-secondary disabled:opacity-50">
+            {{ photosLoading ? 'Загрузка...' : `Показать ещё (${photosTotal - photos.length})` }}
+          </button>
+        </div>
+      </div>
+
       <!-- Файлы -->
       <div v-if="activeTab === 'files'">
         <AttachmentsTab entity-type="client" :entity-id="client.id" />
@@ -235,6 +266,36 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo Modal -->
+    <div v-if="selectedPhoto" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80" @click.self="selectedPhoto = null">
+      <div class="relative max-w-4xl w-full mx-4 flex flex-col md:flex-row bg-white rounded-xl overflow-hidden shadow-2xl max-h-[90vh]">
+        <button @click="selectedPhoto = null" class="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black bg-opacity-40 text-white hover:bg-opacity-60">
+          <X class="w-4 h-4" />
+        </button>
+        <div class="flex-1 bg-black flex items-center justify-center min-h-48">
+          <img :src="selectedPhoto.file_url" :alt="selectedPhoto.file_name || 'Фото'" class="max-h-[60vh] md:max-h-[80vh] max-w-full object-contain" />
+        </div>
+        <div class="w-full md:w-64 flex-shrink-0 p-5 flex flex-col gap-3 overflow-y-auto">
+          <div v-if="selectedPhoto.visit_date" class="flex items-start gap-3">
+            <Calendar class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+            <div><p class="text-xs text-gray-500">Дата выезда</p><p class="text-sm font-medium">{{ formatPhotoDate(selectedPhoto.visit_date) }}</p></div>
+          </div>
+          <div v-if="selectedPhoto.site_title" class="flex items-start gap-3">
+            <Building2 class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+            <div><p class="text-xs text-gray-500">Объект</p><p class="text-sm font-medium">{{ selectedPhoto.site_title }}</p></div>
+          </div>
+          <div class="mt-auto pt-4 border-t flex flex-col gap-2">
+            <router-link v-if="selectedPhoto.visit_id" :to="`/visits?open_visit=${selectedPhoto.visit_id}`" @click="selectedPhoto = null" class="w-full text-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700">
+              Перейти к выезду
+            </router-link>
+            <a :href="selectedPhoto.file_url" target="_blank" rel="noopener" class="w-full text-center px-4 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50">
+              Открыть оригинал
+            </a>
           </div>
         </div>
       </div>
@@ -562,12 +623,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2, FileText } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2, FileText, Images, Clock } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
-import { clientsAPI, sitesAPI, contractsAPI, visitsAPI, usersAPI } from '../services/api.js'
+import { clientsAPI, sitesAPI, contractsAPI, visitsAPI, usersAPI, attachmentsAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
@@ -603,6 +664,30 @@ const contractsLoading = ref(false)
 const contractCreateModalOpen = ref(false)
 const contractForm = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
 const contractSaving = ref(false)
+
+// Photos tab
+const photos = ref([])
+const photosTotal = ref(0)
+const photosLoading = ref(false)
+const selectedPhoto = ref(null)
+const PHOTOS_LIMIT = 20
+
+async function loadPhotos(reset = false) {
+  if (photosLoading.value) return
+  photosLoading.value = true
+  try {
+    const offset = reset ? 0 : photos.value.length
+    const res = await attachmentsAPI.getGallery({ client_id: client.value.id, limit: PHOTOS_LIMIT, offset })
+    if (reset) photos.value = res.data.items
+    else photos.value.push(...res.data.items)
+    photosTotal.value = res.data.total
+  } catch { /* ignore */ } finally { photosLoading.value = false }
+}
+
+function formatPhotoDate(d) {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
 
 // Visit detail
 const detailVisit = ref(null)
@@ -749,7 +834,8 @@ const tabs = computed(() => [
   { key: 'sites', label: 'Объекты', count: client.value?.sites?.length ?? 0 },
   { key: 'contracts', label: 'Договоры', count: contracts.value?.length ?? 0 },
   { key: 'visits', label: 'История выездов', count: client.value?.recent_visits?.length ?? 0 },
-  { key: 'files', label: 'Файлы и фото' },
+  { key: 'photos', label: 'Фотографии' },
+  { key: 'files', label: 'Файлы' },
 ])
 
 async function loadClient() {
@@ -977,5 +1063,9 @@ onMounted(initPage)
 
 watch(() => route.params.id, (newId, oldId) => {
   if (newId && newId !== oldId) initPage()
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'photos' && photos.value.length === 0) loadPhotos(true)
 })
 </script>

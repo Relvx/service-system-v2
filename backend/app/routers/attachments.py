@@ -20,6 +20,7 @@ async def get_gallery(
     offset: int = 0,
     site_id: Optional[int] = None,
     client_id: Optional[int] = None,
+    client_name: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -45,6 +46,8 @@ async def get_gallery(
         base = base.where(Visit.site_id == site_id)
     if client_id is not None:
         base = base.where(Client.id == client_id)
+    if client_name is not None:
+        base = base.where(Client.name.ilike(f"%{client_name}%"))
 
     total_res = await db.execute(select(func.count()).select_from(base.subquery()))
     total = total_res.scalar() or 0
