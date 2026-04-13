@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.dependencies import get_db, get_current_user
 from app.models.contract_schedule import ContractSchedule
-from app.models.contract import Contract
+from app.models.contract import Contract, ContractSite
 from app.models.client import Client
 from app.models.visit import Visit
 from app.models.user import User
@@ -231,12 +231,23 @@ async def get_contract_visits(
         raise HTTPException(status_code=404, detail="Contract not found")
     contract, client_name = row
 
+    # Ищем выезды через: contract → contract_sites → site → visits
+    # А также напрямую через Visit.contract_id (на случай если есть)
+    site_ids_result = await db.execute(
+        select(ContractSite.site_id).where(ContractSite.contract_id == contract_id)
+    )
+    site_ids = [r.site_id for r in site_ids_result.all()]
+
+    from sqlalchemy import or_
     visits_result = await db.execute(
         select(Visit, User.full_name)
         .outerjoin(User, Visit.assigned_user_id == User.id)
         .where(
-            Visit.contract_id == contract_id,
             Visit.status == "done",
+            or_(
+                Visit.contract_id == contract_id,
+                Visit.site_id.in_(site_ids) if site_ids else False,
+            ),
         )
         .order_by(Visit.planned_date.desc())
         .limit(50)
