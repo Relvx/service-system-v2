@@ -207,6 +207,7 @@ export const scheduleAPI = {
     api.put(`/schedule/${contractId}/${year}/${month}`, { note }),
   deleteCell: (contractId, year, month) =>
     api.delete(`/schedule/${contractId}/${year}/${month}`),
+  getContractVisits: (contractId) => api.get(`/schedule/visits/${contractId}`),
 }
 
 export default api

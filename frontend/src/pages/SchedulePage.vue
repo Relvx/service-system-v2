@@ -7,31 +7,31 @@
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Расписание</h1>
           <p class="text-gray-600 mt-1">
             <span v-if="viewMode === 'year'">{{ rows.length }} договоров в {{ currentYear }} году</span>
-            <span v-else>{{ monthItems.length }} договоров в {{ MONTHS[currentMonth - 1] }} {{ currentYear }}</span>
+            <span v-else>{{ monthItems.length }} договоров в {{ MONTHS_FULL[currentMonth - 1] }} {{ currentYear }}</span>
           </p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <!-- Переключатель вида -->
-          <div class="flex rounded-lg border border-gray-200 overflow-hidden">
+          <div class="flex rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
             <button
-              @click="viewMode = 'year'"
+              @click="setMode('year')"
               :class="viewMode === 'year' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
-              class="px-3 py-2 text-sm font-medium transition-colors"
+              class="px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap"
             >Год</button>
             <button
-              @click="viewMode = 'month'"
+              @click="setMode('month')"
               :class="viewMode === 'month' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'"
-              class="px-3 py-2 text-sm font-medium transition-colors"
+              class="px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap"
             >Месяц</button>
           </div>
 
           <!-- Навигация по году -->
-          <div class="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden">
+          <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden flex-shrink-0">
             <button @click="currentYear--; load()" class="px-2 py-2 hover:bg-gray-100 transition-colors">
               <ChevronLeft class="w-4 h-4" />
             </button>
-            <span class="px-3 py-2 text-sm font-semibold min-w-[60px] text-center">{{ currentYear }}</span>
+            <span class="px-3 py-2 text-sm font-semibold w-[52px] text-center">{{ currentYear }}</span>
             <button @click="currentYear++; load()" class="px-2 py-2 hover:bg-gray-100 transition-colors">
               <ChevronRight class="w-4 h-4" />
             </button>
@@ -42,16 +42,16 @@
             v-if="viewMode === 'month'"
             v-model="currentMonth"
             @change="load"
-            class="input text-sm min-w-[130px]"
+            class="input text-sm w-[140px] flex-shrink-0"
           >
-            <option v-for="(m, i) in MONTHS" :key="i" :value="i + 1">{{ m }}</option>
+            <option v-for="(m, i) in MONTHS_FULL" :key="i" :value="i + 1">{{ m }}</option>
           </select>
 
           <!-- Кнопка "Следующий месяц" -->
           <button
             v-if="viewMode === 'year'"
             @click="goNextMonth"
-            class="btn btn-secondary text-sm flex items-center gap-1"
+            class="btn btn-secondary text-sm flex items-center gap-1 flex-shrink-0"
           >
             <CalendarIcon class="w-4 h-4" />
             Следующий месяц
@@ -72,11 +72,11 @@
             <table class="w-full text-sm border-collapse">
               <thead>
                 <tr class="bg-gray-50 border-b border-gray-200">
-                  <th class="text-left px-3 py-2 font-medium text-gray-600 sticky left-0 bg-gray-50 z-10 min-w-[200px] border-r border-gray-200">
+                  <th class="text-left px-3 py-2 font-medium text-gray-600 sticky left-0 bg-gray-50 z-10 min-w-[220px] border-r border-gray-200">
                     Клиент / Договор
                   </th>
                   <th
-                    v-for="(m, i) in MONTHS"
+                    v-for="(m, i) in MONTHS_SHORT"
                     :key="i"
                     class="px-2 py-2 font-medium text-gray-600 text-center min-w-[90px] whitespace-nowrap"
                     :class="isCurrentMonth(i + 1) ? 'bg-primary-50 text-primary-700' : ''"
@@ -87,42 +87,42 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="row in filteredRows"
+                  v-for="row in rows"
                   :key="row.contract_id"
                   class="border-b border-gray-100 hover:bg-gray-50"
                 >
-                  <!-- Клиент / договор (sticky) -->
-                  <td class="px-3 py-2 sticky left-0 bg-white z-10 border-r border-gray-200" style="max-width:260px;">
+                  <!-- Клиент / договор (sticky) — клик открывает карточку клиента -->
+                  <td
+                    class="px-3 py-2 sticky left-0 bg-white z-10 border-r border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors"
+                    style="max-width:260px;"
+                    @click="openClientModal(row)"
+                  >
                     <div class="font-medium text-gray-900 truncate text-xs">{{ row.client_name }}</div>
                     <div class="text-gray-400 truncate text-xs">{{ row.contract_number }}</div>
                   </td>
                   <!-- Ячейки месяцев -->
                   <td
-                    v-for="(m, i) in MONTHS"
+                    v-for="(m, i) in MONTHS_SHORT"
                     :key="i"
                     class="px-1 py-1 text-center align-middle"
                     :class="isCurrentMonth(i + 1) ? 'bg-primary-50/40' : ''"
                   >
-                    <div
+                    <span
                       v-if="row.cells[i + 1]"
-                      class="group relative"
-                      @click="openEdit(row, i + 1, row.cells[i + 1])"
-                    >
-                      <span
-                        class="inline-block px-2 py-1 rounded text-xs font-medium cursor-pointer
-                               bg-green-100 text-green-800 hover:bg-green-200 transition-colors
-                               max-w-[84px] truncate leading-tight"
-                        :title="row.cells[i + 1]"
-                      >{{ row.cells[i + 1] }}</span>
-                    </div>
+                      class="inline-block px-2 py-1 rounded text-xs font-medium cursor-pointer
+                             bg-green-100 text-green-800 hover:bg-green-200 transition-colors
+                             max-w-[84px] truncate leading-tight"
+                      :title="row.cells[i + 1]"
+                      @click="openCellModal(row, i + 1, row.cells[i + 1])"
+                    >{{ row.cells[i + 1] }}</span>
                     <button
                       v-else-if="canEdit"
-                      @click="openEdit(row, i + 1, '')"
+                      @click="openEditModal(row, i + 1, '')"
                       class="w-full h-7 text-gray-200 hover:text-gray-400 hover:bg-gray-100 rounded transition-colors text-xs"
                     >+</button>
                   </td>
                 </tr>
-                <tr v-if="filteredRows.length === 0">
+                <tr v-if="rows.length === 0">
                   <td :colspan="13" class="text-center py-10 text-gray-400">Нет данных за {{ currentYear }} год</td>
                 </tr>
               </tbody>
@@ -133,20 +133,25 @@
         <!-- ======= РЕЖИМ: МЕСЯЦ (список) ======= -->
         <div v-else>
           <div v-if="monthItems.length === 0" class="card text-center py-12 text-gray-400">
-            Нет записей в {{ MONTHS[currentMonth - 1] }} {{ currentYear }}
+            Нет записей в {{ MONTHS_FULL[currentMonth - 1] }} {{ currentYear }}
           </div>
           <div v-else class="space-y-2">
             <div
               v-for="item in monthItems"
               :key="item.contract_id"
-              class="card flex items-center gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
-              @click="openEdit(item, currentMonth, item.note)"
+              class="card flex items-center gap-4"
             >
-              <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900">{{ item.client_name }}</div>
+              <div
+                class="flex-1 min-w-0 cursor-pointer"
+                @click="openClientModal(item)"
+              >
+                <div class="font-medium text-gray-900 hover:text-primary-600 transition-colors">{{ item.client_name }}</div>
                 <div class="text-sm text-gray-400">{{ item.contract_number }}</div>
               </div>
-              <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 flex-shrink-0">
+              <span
+                class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 flex-shrink-0 cursor-pointer hover:bg-green-200 transition-colors"
+                @click="openCellModal(item, currentMonth, item.note)"
+              >
                 {{ item.note }}
               </span>
             </div>
@@ -156,13 +161,88 @@
       </template>
     </div>
 
-    <!-- Модалка редактирования ячейки -->
-    <div v-if="editModal.open" class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.esc="editModal.open = false">
+    <!-- ===== Модалка: карточка клиента ===== -->
+    <div v-if="clientModal.open" class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.esc="clientModal.open = false">
+      <div class="absolute inset-0 bg-black/40" @click="clientModal.open = false" />
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg z-10 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h3 class="text-lg font-semibold text-gray-900 truncate pr-4">{{ clientModal.clientName }}</h3>
+          <button @click="clientModal.open = false" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+        <div class="px-6 py-4 space-y-3">
+          <div>
+            <p class="text-xs text-gray-400 mb-0.5">Договор</p>
+            <p class="text-sm text-gray-800 font-medium">{{ clientModal.contractNumber }}</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-between gap-2">
+          <button @click="openVisitsModal(clientModal)" class="btn btn-secondary text-sm flex items-center gap-1">
+            <MessageSquare class="w-4 h-4" />
+            Комментарии мастеров
+          </button>
+          <RouterLink
+            :to="`/clients/${clientModal.clientId}`"
+            @click="clientModal.open = false"
+            class="btn btn-primary text-sm flex items-center gap-1"
+          >
+            Открыть клиента
+            <ExternalLink class="w-4 h-4" />
+          </RouterLink>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Модалка: ячейка расписания (просмотр + редактирование) ===== -->
+    <div v-if="cellModal.open" class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.esc="cellModal.open = false">
+      <div class="absolute inset-0 bg-black/40" @click="cellModal.open = false" />
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md z-10">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900">{{ cellModal.clientName }}</h3>
+            <p class="text-xs text-gray-400 mt-0.5">{{ MONTHS_FULL[cellModal.month - 1] }} {{ currentYear }}</p>
+          </div>
+          <button @click="cellModal.open = false" class="text-gray-400 hover:text-gray-600">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+        <div class="px-6 py-4">
+          <!-- Текущая заметка -->
+          <div class="mb-4 px-3 py-2 bg-green-50 rounded-lg border border-green-100">
+            <p class="text-xs text-green-600 font-medium mb-0.5">Расписание</p>
+            <p class="text-sm text-green-900">{{ cellModal.note }}</p>
+          </div>
+
+          <!-- Кнопки действий -->
+          <div class="flex gap-2">
+            <button
+              @click="openEditFromCell"
+              v-if="canEdit"
+              class="btn btn-secondary text-sm flex-1 flex items-center justify-center gap-1"
+            >
+              <Pencil class="w-4 h-4" />
+              Изменить
+            </button>
+            <button
+              @click="openVisitsModal(cellModal)"
+              class="btn btn-secondary text-sm flex-1 flex items-center justify-center gap-1"
+            >
+              <MessageSquare class="w-4 h-4" />
+              Комментарии
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Модалка: редактирование ячейки ===== -->
+    <div v-if="editModal.open" class="fixed inset-0 z-[60] flex items-center justify-center p-4" @keydown.esc="editModal.open = false">
       <div class="absolute inset-0 bg-black/40" @click="editModal.open = false" />
       <div class="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-md z-10">
         <h3 class="text-lg font-semibold mb-1">Ячейка расписания</h3>
         <p class="text-sm text-gray-500 mb-1">{{ editModal.clientName }}</p>
-        <p class="text-xs text-gray-400 mb-4">{{ editModal.contractNumber }} — {{ MONTHS[editModal.month - 1] }} {{ currentYear }}</p>
+        <p class="text-xs text-gray-400 mb-4">{{ editModal.contractNumber }} — {{ MONTHS_FULL[editModal.month - 1] }} {{ currentYear }}</p>
 
         <label class="block text-sm font-medium text-gray-700 mb-1">Заметка</label>
         <textarea
@@ -170,7 +250,6 @@
           rows="3"
           class="input w-full resize-none"
           placeholder="ТО+доки через ЭДО, пролонг..."
-          autofocus
         />
 
         <div class="flex justify-between gap-2 mt-4">
@@ -188,20 +267,86 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== Модалка: комментарии мастеров ===== -->
+    <div v-if="visitsModal.open" class="fixed inset-0 z-[70] flex items-center justify-center p-4" @keydown.esc="visitsModal.open = false">
+      <div class="absolute inset-0 bg-black/40" @click="visitsModal.open = false" />
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl z-10 flex flex-col max-h-[80vh]">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900">Комментарии мастеров</h3>
+            <p class="text-xs text-gray-400 mt-0.5">{{ visitsModal.clientName }} — {{ visitsModal.contractNumber }}</p>
+          </div>
+          <button @click="visitsModal.open = false" class="text-gray-400 hover:text-gray-600">
+            <X class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div class="overflow-y-auto flex-1 px-6 py-4">
+          <div v-if="visitsModal.loading" class="flex justify-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          </div>
+          <div v-else-if="visitsModal.visits.length === 0" class="text-center py-8 text-gray-400">
+            Нет завершённых выездов с комментариями
+          </div>
+          <div v-else class="space-y-4">
+            <div
+              v-for="v in visitsModal.visits"
+              :key="v.visit_id"
+              class="border border-gray-100 rounded-lg p-4"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-700">{{ formatDate(v.planned_date) }}</span>
+                <span v-if="v.master_name" class="text-xs text-gray-400">{{ v.master_name }}</span>
+              </div>
+              <div v-if="v.work_summary" class="mb-2">
+                <p class="text-xs text-gray-400 font-medium mb-0.5">Итог работ</p>
+                <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ v.work_summary }}</p>
+              </div>
+              <div v-if="v.defects_present && v.defects_summary" class="mb-2">
+                <p class="text-xs text-red-400 font-medium mb-0.5">Дефекты</p>
+                <p class="text-sm text-red-700 whitespace-pre-wrap">{{ v.defects_summary }}</p>
+              </div>
+              <div v-if="v.recommendations">
+                <p class="text-xs text-gray-400 font-medium mb-0.5">Рекомендации</p>
+                <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ v.recommendations }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-100 flex-shrink-0 flex justify-between">
+          <RouterLink
+            :to="`/contracts/${visitsModal.contractId}`"
+            @click="visitsModal.open = false"
+            class="btn btn-secondary text-sm flex items-center gap-1"
+          >
+            Открыть договор
+            <ExternalLink class="w-4 h-4" />
+          </RouterLink>
+          <button @click="visitsModal.open = false" class="btn btn-secondary text-sm">Закрыть</button>
+        </div>
+      </div>
+    </div>
   </Layout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import Layout from '../components/Layout.vue'
 import { scheduleAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-vue-next'
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon,
+  X, ExternalLink, MessageSquare, Pencil,
+} from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const canEdit = computed(() => auth.hasGroup('admin_group') || auth.hasGroup('office_group'))
 
-const MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+const MONTHS_SHORT = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+const MONTHS_FULL  = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
 const now = new Date()
 const currentYear = ref(now.getFullYear())
@@ -209,15 +354,16 @@ const currentMonth = ref(now.getMonth() + 1)
 const viewMode = ref('year')
 const loading = ref(false)
 
-// Данные года
 const rows = ref([])
-// Данные месяца
 const monthItems = ref([])
-
-const filteredRows = computed(() => rows.value)
 
 function isCurrentMonth(month) {
   return currentYear.value === now.getFullYear() && month === (now.getMonth() + 1)
+}
+
+function setMode(mode) {
+  viewMode.value = mode
+  load()
 }
 
 function goNextMonth() {
@@ -243,19 +389,50 @@ async function load() {
   }
 }
 
-// Редактирование ячейки
-const editModal = ref({
-  open: false,
-  contractId: null,
-  contractNumber: '',
-  clientName: '',
-  month: null,
-  note: '',
-  originalNote: '',
-})
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-')
+  return `${d}.${m}.${y}`
+}
 
-function openEdit(row, month, note) {
-  if (!canEdit.value) return
+// ---- Модалка клиента ----
+const clientModal = ref({ open: false, clientId: null, clientName: '', contractNumber: '', contractId: null })
+
+function openClientModal(row) {
+  clientModal.value = {
+    open: true,
+    clientId: row.client_id,
+    clientName: row.client_name || '',
+    contractNumber: row.contract_number || '',
+    contractId: row.contract_id,
+  }
+}
+
+// ---- Модалка ячейки ----
+const cellModal = ref({ open: false, contractId: null, clientId: null, contractNumber: '', clientName: '', month: null, note: '' })
+
+function openCellModal(row, month, note) {
+  cellModal.value = {
+    open: true,
+    contractId: row.contract_id,
+    clientId: row.client_id,
+    contractNumber: row.contract_number || '',
+    clientName: row.client_name || '',
+    month,
+    note: note || '',
+  }
+}
+
+function openEditFromCell() {
+  const c = cellModal.value
+  cellModal.value.open = false
+  openEditModal(c, c.month, c.note)
+}
+
+// ---- Модалка редактирования ----
+const editModal = ref({ open: false, contractId: null, contractNumber: '', clientName: '', month: null, note: '', originalNote: '' })
+
+function openEditModal(row, month, note) {
   editModal.value = {
     open: true,
     contractId: row.contract_id,
@@ -279,6 +456,28 @@ async function deleteCell() {
   await scheduleAPI.deleteCell(contractId, currentYear.value, month)
   editModal.value.open = false
   await load()
+}
+
+// ---- Модалка комментариев мастеров ----
+const visitsModal = ref({ open: false, loading: false, contractId: null, contractNumber: '', clientName: '', visits: [] })
+
+async function openVisitsModal(source) {
+  clientModal.value.open = false
+  cellModal.value.open = false
+  visitsModal.value = {
+    open: true,
+    loading: true,
+    contractId: source.contractId,
+    contractNumber: source.contractNumber || source.contract_number || '',
+    clientName: source.clientName || source.client_name || '',
+    visits: [],
+  }
+  try {
+    const res = await scheduleAPI.getContractVisits(source.contractId || source.contract_id)
+    visitsModal.value.visits = res.data.visits
+  } finally {
+    visitsModal.value.loading = false
+  }
 }
 
 onMounted(load)

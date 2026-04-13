@@ -12,6 +12,8 @@ from app.dependencies import get_db, get_current_user
 from app.models.contract_schedule import ContractSchedule
 from app.models.contract import Contract
 from app.models.client import Client
+from app.models.visit import Visit
+from app.models.user import User
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 
@@ -29,9 +31,27 @@ class ScheduleCell(BaseModel):
 
 class ScheduleRow(BaseModel):
     contract_id: int
+    client_id: Optional[int]
     contract_number: str
     client_name: str
     cells: dict[int, str]  # month → note
+
+
+class VisitComment(BaseModel):
+    visit_id: int
+    planned_date: str
+    master_name: Optional[str]
+    work_summary: Optional[str]
+    recommendations: Optional[str]
+    defects_summary: Optional[str]
+    defects_present: bool
+
+
+class ContractVisitsOut(BaseModel):
+    contract_id: int
+    contract_number: str
+    client_name: str
+    visits: List[VisitComment]
 
 
 class ScheduleYearOut(BaseModel):
@@ -59,7 +79,7 @@ async def get_schedule_year(
 ):
     """Всё расписание за год: строки = договоры, столбцы = месяцы 1–12."""
     result = await db.execute(
-        select(ContractSchedule, Contract.contract_number, Client.name)
+        select(ContractSchedule, Contract.contract_number, Client.name, Client.id)
         .join(Contract, ContractSchedule.contract_id == Contract.id)
         .join(Client, Contract.client_id == Client.id)
         .where(ContractSchedule.year == year)
@@ -69,10 +89,11 @@ async def get_schedule_year(
 
     # Группируем по договору
     contract_rows: dict[int, ScheduleRow] = {}
-    for sched, contract_number, client_name in rows_raw:
+    for sched, contract_number, client_name, client_id in rows_raw:
         if sched.contract_id not in contract_rows:
             contract_rows[sched.contract_id] = ScheduleRow(
                 contract_id=sched.contract_id,
+                client_id=client_id,
                 contract_number=contract_number or "",
                 client_name=client_name or "",
                 cells={},
@@ -191,3 +212,54 @@ async def delete_schedule_cell(
         raise HTTPException(status_code=404, detail="Not found")
     await db.delete(cell)
     await db.commit()
+
+
+@router.get("/visits/{contract_id}", response_model=ContractVisitsOut)
+async def get_contract_visits(
+    contract_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Завершённые выезды по договору с комментариями мастера."""
+    contract_result = await db.execute(
+        select(Contract, Client.name)
+        .join(Client, Contract.client_id == Client.id)
+        .where(Contract.id == contract_id)
+    )
+    row = contract_result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    contract, client_name = row
+
+    visits_result = await db.execute(
+        select(Visit, User.full_name)
+        .outerjoin(User, Visit.assigned_user_id == User.id)
+        .where(
+            Visit.contract_id == contract_id,
+            Visit.status == "done",
+        )
+        .order_by(Visit.planned_date.desc())
+        .limit(50)
+    )
+    visits_raw = visits_result.all()
+
+    visits = [
+        VisitComment(
+            visit_id=v.id,
+            planned_date=str(v.planned_date),
+            master_name=master_name or v.master_name_raw,
+            work_summary=v.work_summary,
+            recommendations=v.recommendations,
+            defects_summary=v.defects_summary,
+            defects_present=v.defects_present,
+        )
+        for v, master_name in visits_raw
+        if v.work_summary or v.recommendations or v.defects_summary
+    ]
+
+    return ContractVisitsOut(
+        contract_id=contract_id,
+        contract_number=contract.contract_number or "",
+        client_name=client_name or "",
+        visits=visits,
+    )
