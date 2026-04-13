@@ -8,20 +8,47 @@
       </div>
 
       <!-- Filters -->
-      <div class="flex flex-wrap gap-3 mb-6">
-        <input
-          v-model="filterClient"
-          @input="onFilterChange"
-          placeholder="Клиент..."
-          class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-48"
-        />
+      <div class="flex flex-wrap gap-3 mb-6 items-end">
+        <!-- Клиент поиск -->
+        <div class="relative">
+          <input
+            v-model="clientQuery"
+            @input="onClientQueryInput"
+            @focus="clientDropdownOpen = true"
+            @blur="setTimeout(() => clientDropdownOpen = false, 150)"
+            placeholder="Поиск клиента..."
+            class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-52"
+          />
+          <button v-if="selectedClientId" @click="clearClient" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <X class="w-4 h-4" />
+          </button>
+          <div v-if="clientDropdownOpen && clientSuggestions.length" class="absolute z-20 top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+            <button
+              v-for="c in clientSuggestions" :key="c.id"
+              @mousedown.prevent="selectClient(c)"
+              class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 truncate"
+            >{{ c.name }}</button>
+          </div>
+        </div>
+
+        <!-- Дата от -->
+        <div class="flex flex-col gap-1">
+          <span class="text-xs text-gray-500 pl-1">Дата от</span>
+          <input v-model="dateFrom" @change="onFilterChange" type="date" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+        </div>
+
+        <!-- Дата до -->
+        <div class="flex flex-col gap-1">
+          <span class="text-xs text-gray-500 pl-1">Дата до</span>
+          <input v-model="dateTo" @change="onFilterChange" type="date" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+        </div>
+
+        <!-- Сброс -->
         <button
-          v-if="filterClient"
-          @click="filterClient = ''; onFilterChange()"
+          v-if="selectedClientId || dateFrom || dateTo"
+          @click="resetFilters"
           class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
-        >
-          Сбросить
-        </button>
+        >Сбросить</button>
       </div>
 
       <!-- Loading skeleton -->
@@ -174,10 +201,11 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+const setTimeout = window.setTimeout
 import { RouterLink } from 'vue-router'
 import { Images, X, Calendar, Building2, Users, Clock } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
-import { attachmentsAPI } from '../services/api.js'
+import { attachmentsAPI, clientsAPI } from '../services/api.js'
 
 const LIMIT = 20
 
@@ -185,37 +213,70 @@ const items = ref([])
 const total = ref(0)
 const loading = ref(false)
 const selected = ref(null)
-const filterClient = ref('')
+
+// Filters
+const clientQuery = ref('')
+const selectedClientId = ref(null)
+const clientSuggestions = ref([])
+const clientDropdownOpen = ref(false)
+const dateFrom = ref('')
+const dateTo = ref('')
 
 let filterTimeout = null
+let clientSearchTimer = null
+
+async function onClientQueryInput() {
+  selectedClientId.value = null
+  clearTimeout(clientSearchTimer)
+  clientSearchTimer = setTimeout(async () => {
+    const q = clientQuery.value.trim()
+    if (!q) { clientSuggestions.value = []; return }
+    const res = await clientsAPI.getAll({ active_only: true, limit: 30, search: q })
+    clientSuggestions.value = res.data.items
+  }, 250)
+}
+
+function selectClient(c) {
+  selectedClientId.value = c.id
+  clientQuery.value = c.name
+  clientDropdownOpen.value = false
+  load(true)
+}
+
+function clearClient() {
+  selectedClientId.value = null
+  clientQuery.value = ''
+  clientSuggestions.value = []
+  load(true)
+}
+
+function resetFilters() {
+  selectedClientId.value = null
+  clientQuery.value = ''
+  clientSuggestions.value = []
+  dateFrom.value = ''
+  dateTo.value = ''
+  load(true)
+}
 
 async function load(reset = false) {
   if (loading.value) return
   loading.value = true
   try {
     const params = { limit: LIMIT, offset: reset ? 0 : items.value.length }
-    if (filterClient.value.trim()) params.client_name = filterClient.value.trim()
+    if (selectedClientId.value) params.client_id = selectedClientId.value
+    if (dateFrom.value) params.date_from = dateFrom.value
+    if (dateTo.value) params.date_to = dateTo.value
     const res = await attachmentsAPI.getGallery(params)
-    if (reset) {
-      items.value = res.data.items
-    } else {
-      items.value.push(...res.data.items)
-    }
+    if (reset) items.value = res.data.items
+    else items.value.push(...res.data.items)
     total.value = res.data.total
-  } catch {
-    /* ignore */
-  } finally {
-    loading.value = false
-  }
-}
-
-function loadMore() {
-  load(false)
+  } catch { /* ignore */ } finally { loading.value = false }
 }
 
 function onFilterChange() {
   clearTimeout(filterTimeout)
-  filterTimeout = setTimeout(() => load(true), 350)
+  filterTimeout = setTimeout(() => load(true), 300)
 }
 
 function openModal(item) {

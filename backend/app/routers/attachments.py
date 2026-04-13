@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -21,6 +22,8 @@ async def get_gallery(
     site_id: Optional[int] = None,
     client_id: Optional[int] = None,
     client_name: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -48,6 +51,10 @@ async def get_gallery(
         base = base.where(Client.id == client_id)
     if client_name is not None:
         base = base.where(Client.name.ilike(f"%{client_name}%"))
+    if date_from is not None:
+        base = base.where(Visit.planned_date >= date_from)
+    if date_to is not None:
+        base = base.where(Visit.planned_date <= date_to)
 
     total_res = await db.execute(select(func.count()).select_from(base.subquery()))
     total = total_res.scalar() or 0

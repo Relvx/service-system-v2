@@ -402,9 +402,17 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Контакт на выезде</label>
-              <select v-if="clientContacts.length" v-model="selectedContactId" @change="onContactSelect" class="input mb-2">
+              <select
+                v-if="clientContacts.length"
+                v-model="selectedContactId"
+                @change="onContactSelect"
+                :size="clientContacts.length + 1"
+                class="w-full border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 mb-2"
+              >
                 <option value="">— не выбрано —</option>
-                <option v-for="c in clientContacts" :key="c.id" :value="c.id">{{ c.full_name }}</option>
+                <option v-for="c in clientContacts" :key="c.id" :value="c.id">
+                  {{ c.full_name }}{{ c.position ? ' · ' + c.position : '' }}{{ c.phone ? ' · ' + c.phone : '' }}
+                </option>
               </select>
               <input v-model="form.visit_contact" class="input" placeholder="Имя контактного лица" />
             </div>
