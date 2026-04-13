@@ -116,14 +116,30 @@
           </div>
         </div>
 
-        <!-- Правая колонка: объекты -->
+        <!-- Правая колонка: вкладки -->
         <div class="lg:col-span-2 space-y-4">
-          <div class="card">
+          <!-- Вкладки -->
+          <div class="flex border-b border-gray-200 gap-0">
+            <button
+              @click="rightTab = 'sites'"
+              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
+              :class="rightTab === 'sites' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+            >
+              Объекты <span class="ml-1 text-xs text-gray-400">({{ contract.sites.length }})</span>
+            </button>
+            <button
+              @click="rightTab = 'visits'; loadVisits()"
+              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
+              :class="rightTab === 'visits' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+            >
+              История выездов <span v-if="visits.length" class="ml-1 text-xs text-gray-400">({{ visits.length }})</span>
+            </button>
+          </div>
+
+          <!-- Объекты -->
+          <div v-if="rightTab === 'sites'" class="card">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="font-semibold text-gray-900">
-                Объекты по договору
-                <span class="ml-1 text-gray-400 font-normal text-sm">({{ contract.sites.length }})</span>
-              </h3>
+              <h3 class="font-semibold text-gray-900">Объекты по договору</h3>
               <button @click="addSiteModalOpen = true" class="btn btn-secondary text-sm flex items-center">
                 <Plus class="w-4 h-4 mr-1" />Добавить объект
               </button>
@@ -156,6 +172,43 @@
                 >
                   <X class="w-4 h-4" />
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- История выездов -->
+          <div v-if="rightTab === 'visits'">
+            <div v-if="visitsLoading" class="flex justify-center py-10">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            </div>
+            <div v-else-if="visits.length === 0" class="card text-center py-10 text-gray-400">
+              Нет завершённых выездов по этому договору
+            </div>
+            <div v-else class="space-y-3">
+              <div
+                v-for="v in visits"
+                :key="v.visit_id"
+                class="card"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-medium text-gray-800">{{ formatDate(v.planned_date) }}</span>
+                  <span v-if="v.master_name" class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{ v.master_name }}</span>
+                </div>
+                <div v-if="v.work_summary" class="mb-2">
+                  <p class="text-xs font-medium text-gray-400 mb-0.5">Итог работ</p>
+                  <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ v.work_summary }}</p>
+                </div>
+                <div v-if="v.defects_present && v.defects_summary" class="mb-2 p-2 bg-red-50 rounded-lg">
+                  <p class="text-xs font-medium text-red-400 mb-0.5">Дефекты</p>
+                  <p class="text-sm text-red-700 whitespace-pre-wrap">{{ v.defects_summary }}</p>
+                </div>
+                <div v-if="v.recommendations" class="p-2 bg-yellow-50 rounded-lg">
+                  <p class="text-xs font-medium text-yellow-600 mb-0.5">Рекомендации</p>
+                  <p class="text-sm text-yellow-800 whitespace-pre-wrap">{{ v.recommendations }}</p>
+                </div>
+                <div v-if="!v.work_summary && !v.recommendations && !v.defects_summary" class="text-xs text-gray-400 italic">
+                  Комментариев нет
+                </div>
               </div>
             </div>
           </div>
@@ -264,7 +317,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Edit, Plus, X, Building2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
-import { contractsAPI, sitesAPI } from '../services/api.js'
+import { contractsAPI, sitesAPI, scheduleAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
@@ -274,6 +327,23 @@ const saving = ref(false)
 
 const editModalOpen = ref(false)
 const editForm = ref({})
+
+const rightTab = ref('sites')
+const visits = ref([])
+const visitsLoading = ref(false)
+let visitsLoaded = false
+
+async function loadVisits() {
+  if (visitsLoaded) return
+  visitsLoading.value = true
+  try {
+    const res = await scheduleAPI.getContractVisits(route.params.id)
+    visits.value = res.data.visits
+    visitsLoaded = true
+  } finally {
+    visitsLoading.value = false
+  }
+}
 
 const addSiteModalOpen = ref(false)
 const siteSearch = ref('')

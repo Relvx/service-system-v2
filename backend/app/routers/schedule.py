@@ -267,7 +267,6 @@ async def get_contract_visits(
             defects_present=v.defects_present,
         )
         for v, master_name in visits_raw
-        if v.work_summary or v.recommendations or v.defects_summary
     ]
 
     return ContractVisitsOut(
