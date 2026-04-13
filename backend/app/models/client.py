@@ -18,8 +18,6 @@ class Client(Base):
     name = Column(Text, nullable=False)
     inn = Column(String(50), nullable=True)
     kpp = Column(String(50), nullable=True)
-    contacts = Column(Text, nullable=True)
-    contact_person = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     is_archived = Column(Boolean, default=False, nullable=False)

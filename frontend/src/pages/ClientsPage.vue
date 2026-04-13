@@ -96,11 +96,7 @@
 
           <!-- Контакт -->
           <template #contacts="{ row }">
-            <div class="min-w-0 cursor-pointer" @click.stop="openClientQuick(row)">
-              <div v-if="row.contact_person" class="truncate text-gray-800 hover:text-primary-600">{{ row.contact_person }}</div>
-              <div v-if="row.contacts" class="text-xs text-gray-500 truncate">{{ row.contacts.split(',')[0] }}</div>
-              <span v-if="!row.contact_person && !row.contacts" class="text-gray-300">—</span>
-            </div>
+            <span class="text-gray-300">—</span>
           </template>
 
           <!-- Объекты -->
@@ -211,14 +207,6 @@
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Контактное лицо</label>
-              <input v-model="form.contact_person" class="input" placeholder="Иванов Иван" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Контакты</label>
-              <input v-model="form.contacts" class="input" placeholder="8-495-123-45-67" />
-            </div>
-            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
               <textarea v-model="form.notes" class="input" rows="3" placeholder="Дополнительная информация..." />
             </div>
@@ -322,7 +310,7 @@ const modalOpen = ref(false)
 const editing = ref(null)
 const archiveConfirm = ref(null)
 const saving = ref(false)
-const form = ref({ name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' })
+const form = ref({ name: '', inn: '', kpp: '', notes: '' })
 const originalForm = ref(null)
 const errors = ref({})
 
@@ -482,14 +470,14 @@ function validate() {
 function openCreate() {
   editing.value = null
   errors.value = {}
-  form.value = { name: '', inn: '', kpp: '', contact_person: '', contacts: '', notes: '' }
+  form.value = { name: '', inn: '', kpp: '', notes: '' }
   modalOpen.value = true
 }
 
 function openEdit(c) {
   editing.value = c
   errors.value = {}
-  form.value = { name: c.name, inn: c.inn || '', kpp: c.kpp || '', contact_person: c.contact_person || '', contacts: c.contacts || '', notes: c.notes || '' }
+  form.value = { name: c.name, inn: c.inn || '', kpp: c.kpp || '', notes: c.notes || '' }
   originalForm.value = { ...form.value }
   modalOpen.value = true
 }

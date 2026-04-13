@@ -120,7 +120,6 @@ async def get_clients(
         stmt = stmt.where(
             Client.name.ilike(f"%{search}%")
             | Client.inn.ilike(f"%{search}%")
-            | Client.contact_person.ilike(f"%{search}%")
         )
     stmt = stmt.order_by(Client.name)
 

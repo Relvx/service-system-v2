@@ -9,6 +9,7 @@ from app.dependencies import get_db, get_current_user, require_groups
 from app.models.visit import Visit, VisitMaster
 from app.models.site import Site
 from app.models.client import Client
+from app.models.client_contact import ClientContact
 from app.models.contract import Contract
 from app.models.user import User
 from app.models.attachment import Attachment
@@ -56,6 +57,23 @@ def _build_visit_query(
         .scalar_subquery()
     )
 
+    primary_contact_subq = (
+        select(
+            func.concat_ws(
+                ", ",
+                func.nullif(ClientContact.full_name, ""),
+                func.nullif(ClientContact.phone, ""),
+            )
+        )
+        .where(
+            ClientContact.client_id == Client.id,
+            ClientContact.is_primary == True,
+        )
+        .limit(1)
+        .correlate(Client)
+        .scalar_subquery()
+    )
+
     stmt = (
         select(
             Visit,
@@ -66,7 +84,7 @@ def _build_visit_query(
             Site.access_notes,
             Site.onsite_contact,
             Client.name.label("client_name"),
-            Client.contacts.label("client_contacts"),
+            primary_contact_subq.label("client_contacts"),
             User.full_name.label("master_name"),
             User.phone.label("master_phone"),
             act_count.label("act_photos_count"),

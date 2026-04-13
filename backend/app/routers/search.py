@@ -49,8 +49,7 @@ async def global_search(
     client_filter = (
         Client.is_archived == False,
         Client.name.ilike(pattern) |
-        Client.inn.ilike(pattern) |
-        Client.contacts.ilike(pattern)
+        Client.inn.ilike(pattern)
     )
     clients_total_res = await db.execute(
         select(func.count()).where(*client_filter)

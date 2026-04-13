@@ -29,23 +29,6 @@
           </span>
         </div>
 
-        <!-- Контактное лицо -->
-        <div v-if="client.contact_person" class="flex items-start gap-3">
-          <User class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <p class="text-xs text-gray-400 mb-0.5">Контактное лицо</p>
-            <p class="text-sm text-gray-800">{{ client.contact_person }}</p>
-          </div>
-        </div>
-
-        <!-- Контакты (телефон) -->
-        <div v-if="client.contacts" class="flex items-start gap-3">
-          <Phone class="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-          <div>
-            <p class="text-xs text-gray-400 mb-0.5">Контакты</p>
-            <p class="text-sm text-gray-800">{{ client.contacts }}</p>
-          </div>
-        </div>
 
         <!-- КПП -->
         <div v-if="client.kpp" class="flex items-start gap-3">

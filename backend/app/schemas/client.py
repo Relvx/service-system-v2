@@ -10,8 +10,6 @@ class ClientOut(BaseModel):
     name: str
     inn: Optional[str] = None
     kpp: Optional[str] = None
-    contacts: Optional[str] = None
-    contact_person: Optional[str] = None
     notes: Optional[str] = None
     is_active: bool
     is_archived: bool
@@ -27,8 +25,6 @@ class ClientCreate(BaseModel):
     name: str
     inn: Optional[str] = None
     kpp: Optional[str] = None
-    contacts: Optional[str] = None
-    contact_person: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -36,8 +32,6 @@ class ClientUpdate(BaseModel):
     name: Optional[str] = None
     inn: Optional[str] = None
     kpp: Optional[str] = None
-    contacts: Optional[str] = None
-    contact_person: Optional[str] = None
     notes: Optional[str] = None
     is_active: Optional[bool] = None
 

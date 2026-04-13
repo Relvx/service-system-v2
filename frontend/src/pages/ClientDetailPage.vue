@@ -59,8 +59,6 @@
           <div><p class="text-sm text-gray-500">Название</p><p class="text-gray-900">{{ client.name }}</p></div>
           <div v-if="client.inn"><p class="text-sm text-gray-500">ИНН</p><p class="text-gray-900">{{ client.inn }}</p></div>
           <div v-if="client.kpp"><p class="text-sm text-gray-500">КПП</p><p class="text-gray-900">{{ client.kpp }}</p></div>
-          <div v-if="client.contact_person"><p class="text-sm text-gray-500">Контактное лицо</p><p class="text-gray-900">{{ client.contact_person }}</p></div>
-          <div v-if="client.contacts"><p class="text-sm text-gray-500">Контакты</p><p class="text-gray-900">{{ client.contacts }}</p></div>
           <div v-if="client.notes"><p class="text-sm text-gray-500">Заметки</p><p class="text-gray-900 whitespace-pre-wrap">{{ client.notes }}</p></div>
         </div>
 
@@ -255,8 +253,6 @@
             <div><label class="block text-sm font-medium text-gray-700 mb-1">ИНН</label><input v-model="editForm.inn" class="input" /></div>
             <div><label class="block text-sm font-medium text-gray-700 mb-1">КПП</label><input v-model="editForm.kpp" class="input" /></div>
           </div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Контактное лицо</label><input v-model="editForm.contact_person" class="input" /></div>
-          <div><label class="block text-sm font-medium text-gray-700 mb-1">Контакты</label><input v-model="editForm.contacts" class="input" /></div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label><textarea v-model="editForm.notes" class="input" rows="3" /></div>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="editModalOpen = false" class="btn btn-secondary">Отмена</button>
@@ -842,8 +838,6 @@ function openEdit() {
     name: client.value.name,
     inn: client.value.inn || '',
     kpp: client.value.kpp || '',
-    contact_person: client.value.contact_person || '',
-    contacts: client.value.contacts || '',
     notes: client.value.notes || '',
   }
   originalEditForm.value = { ...editForm.value }
