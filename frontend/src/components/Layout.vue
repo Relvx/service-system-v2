@@ -290,6 +290,7 @@ import {
   LayoutDashboard, Map, Calendar, Users, Building2,
   ClipboardList, AlertTriangle, ShoppingCart, LogOut, Bell, Settings, ScrollText,
   CheckSquare, BellRing, ChevronLeft, ChevronRight, FileText, Menu, X, Search, Images,
+  CalendarRange,
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth.js'
 import { notificationsAPI, searchAPI } from '../services/api.js'
@@ -328,6 +329,7 @@ const allNav = [
   { name: 'Мои выезды',  href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
   { name: 'Клиенты',     href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
   { name: 'Договоры',    href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group'] },
+  { name: 'Расписание',  href: '/schedule',   icon: CalendarRange,   groups: ['office_group', 'admin_group'] },
   { name: 'Объекты',     href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group'] },
   { name: 'Выезды',      href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group', 'master_group'] },
   { name: 'Дефекты',     href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },

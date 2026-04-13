@@ -19,6 +19,7 @@ from app.models.calendar_note import CalendarNote
 from app.models.contract import Contract, ContractSite
 from app.models.equipment import Equipment
 from app.models.service_schedule import ServiceSchedule
+from app.models.contract_schedule import ContractSchedule
 
 __all__ = [
     "Role", "VisitStatus", "VisitType", "Priority",
@@ -27,4 +28,5 @@ __all__ = [
     "User", "Client", "ClientContact", "ClientLegal", "Site", "Visit",
     "Defect", "Purchase", "Attachment", "Notification", "Task", "Reminder",
     "CalendarNote", "Contract", "ContractSite", "Equipment", "ServiceSchedule",
+    "ContractSchedule",
 ]

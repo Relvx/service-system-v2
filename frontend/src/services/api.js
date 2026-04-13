@@ -200,4 +200,13 @@ export const searchAPI = {
   search: (q, params = {}) => api.get('/search', { params: { q, ...params } }),
 }
 
+export const scheduleAPI = {
+  getYear: (year) => api.get(`/schedule/year/${year}`),
+  getMonth: (year, month) => api.get(`/schedule/month/${year}/${month}`),
+  upsertCell: (contractId, year, month, note) =>
+    api.put(`/schedule/${contractId}/${year}/${month}`, { note }),
+  deleteCell: (contractId, year, month) =>
+    api.delete(`/schedule/${contractId}/${year}/${month}`),
+}
+
 export default api

@@ -8,6 +8,7 @@ from app.routers import (
     calendar_notes, contracts, search,
 )
 from app.routers import admin, logs
+from app.routers import schedule
 
 
 @asynccontextmanager
@@ -59,6 +60,7 @@ app.include_router(calendar_notes.router, prefix="/api")
 app.include_router(contracts.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
+app.include_router(schedule.router, prefix="/api")
 
 
 @app.get("/api/health")
