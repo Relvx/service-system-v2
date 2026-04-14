@@ -243,10 +243,54 @@
               </button>
             </div>
             <div class="flex gap-3">
+              <button
+                v-if="detailVisit.status !== 'done' && detailVisit.status !== 'closed' && !detailVisit.is_archived && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                @click="openCompleteModal(detailVisit)"
+                class="btn bg-green-600 text-white hover:bg-green-700 flex items-center"
+              >
+                <CheckCircle class="w-4 h-4 mr-2" />Завершить
+              </button>
               <button v-if="!detailVisit.is_archived && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))" @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
               <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Complete Modal -->
+      <div v-if="completeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">Завершить выезд</h2>
+              <p class="text-sm text-gray-500 mt-0.5">{{ completeModal.site_title }}</p>
+            </div>
+            <button @click="completeModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="handleComplete" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Итог работ <span class="text-red-500">*</span></label>
+              <textarea v-model="completeForm.work_summary" required rows="4" class="input w-full resize-none" placeholder="Опишите выполненные работы..." />
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="defects_cb" v-model="completeForm.defects_present" type="checkbox" class="w-4 h-4 rounded border-gray-300" />
+              <label for="defects_cb" class="text-sm text-gray-700">Обнаружены дефекты</label>
+            </div>
+            <div v-if="completeForm.defects_present">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание дефектов</label>
+              <textarea v-model="completeForm.defects_summary" rows="3" class="input w-full resize-none" placeholder="Описание дефектов..." />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Рекомендации</label>
+              <textarea v-model="completeForm.recommendations" rows="2" class="input w-full resize-none" placeholder="Рекомендации..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" @click="completeModal = null" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Завершить' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -548,7 +592,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown, Filter } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown, Filter, CheckCircle } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
@@ -598,7 +642,35 @@ const errors = ref({})
 const visitPhotos = ref([])
 const selectedPhotos = ref([])
 
+const completeModal = ref(null)
+const completeForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
+
+function openCompleteModal(visit) {
+  completeForm.value = { work_summary: '', defects_present: false, defects_summary: '', recommendations: '' }
+  completeModal.value = visit
+  detailVisit.value = null
+}
+
+async function handleComplete() {
+  saving.value = true
+  try {
+    await visitsAPI.complete(completeModal.value.id, {
+      work_summary: completeForm.value.work_summary,
+      defects_present: completeForm.value.defects_present,
+      defects_summary: completeForm.value.defects_summary || null,
+      recommendations: completeForm.value.recommendations || null,
+    })
+    completeModal.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
 useEscClose([
+  { isOpen: () => !!completeModal.value,   close: () => { completeModal.value = null } },
   { isOpen: () => !!detailVisit.value,     close: () => { detailVisit.value = null } },
   { isOpen: () => modalOpen.value,         close: () => { closeModal() } },
   { isOpen: () => !!archiveConfirm.value,  close: () => { archiveConfirm.value = null } },
