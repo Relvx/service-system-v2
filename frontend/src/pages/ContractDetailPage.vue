@@ -407,15 +407,15 @@ const rightTab = ref('sites')
 const visits = ref([])
 const visitsLoading = ref(false)
 const selectedVisit = ref(null)
-let visitsLoaded = false
+const visitsLoaded = ref(false)
 
 async function loadVisits() {
-  if (visitsLoaded) return
+  if (visitsLoaded.value) return
   visitsLoading.value = true
   try {
     const res = await visitsAPI.getAll({ contract_id: route.params.id, limit: 200 })
     visits.value = res.data.items
-    visitsLoaded = true
+    visitsLoaded.value = true
   } finally {
     visitsLoading.value = false
   }
@@ -551,9 +551,28 @@ function formatDateTime(dt) {
 }
 function formatAmount(v) { return Number(v).toLocaleString('ru-RU') }
 
+function resetState() {
+  contract.value = null
+  rightTab.value = 'sites'
+  visits.value = []
+  visitsLoaded.value = false
+  selectedVisit.value = null
+}
+
+watch(() => route.params.id, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    resetState()
+    await load()
+    if (route.query.tab === 'visits') {
+      rightTab.value = 'visits'
+      await nextTick()
+      loadVisits()
+    }
+  }
+})
+
 onMounted(async () => {
   await load()
-  // Если в URL ?tab=visits — сразу открываем вкладку выездов
   if (route.query.tab === 'visits') {
     rightTab.value = 'visits'
     await nextTick()

@@ -173,8 +173,11 @@ async def get_visits(
     if not show_archived:
         stmt = stmt.where(Visit.is_archived == False)
 
-    # Фильтр по договору: выезды напрямую привязанные ИЛИ через объект договора
+    # Фильтр по договору:
+    # - выезды с явным contract_id == contract_id
+    # - ИЛИ выезды без contract_id (null), у которых site_id входит в договор
     if contract_id is not None:
+        from sqlalchemy import and_
         site_ids_res = await db.execute(
             select(ContractSite.site_id).where(ContractSite.contract_id == contract_id)
         )
@@ -182,7 +185,7 @@ async def get_visits(
         if site_ids:
             stmt = stmt.where(or_(
                 Visit.contract_id == contract_id,
-                Visit.site_id.in_(site_ids),
+                and_(Visit.contract_id.is_(None), Visit.site_id.in_(site_ids)),
             ))
         else:
             stmt = stmt.where(Visit.contract_id == contract_id)
