@@ -133,7 +133,7 @@ class TestVisitCRUD:
         comp = await http_client.post(f"/api/visits/{visit_id}/complete", headers=headers,
                                        json={"work_summary": "Выполнено ТО", "defects_present": False})
         assert comp.status_code == 200
-        assert comp.json()["status"] == "closed"
+        assert comp.json()["status"] == "done"
 
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
 

@@ -91,7 +91,7 @@ class TestDashboard:
         assert len(data["recent_completed"]) <= 5
 
         for v in data["recent_completed"]:
-            assert v["status"] == "closed"
+            assert v["status"] == "done"
             assert "id" in v
             assert "planned_date" in v
 

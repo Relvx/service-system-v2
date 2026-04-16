@@ -94,7 +94,7 @@ async def get_stats(
     # last 5 completed visits
     r6 = await db.execute(
         _visit_short_query()
-        .where(Visit.status == enums.visit_statuses.closed)
+        .where(Visit.status == "done")
         .order_by(Visit.completed_at.desc())
         .limit(5)
     )

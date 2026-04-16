@@ -204,7 +204,7 @@ class TestVisitBusinessLogic:
         assert res.status_code == 400
         await http_client.delete(f"/api/visits/{vid}", headers=auth_headers(admin_token))
 
-    async def test_visit_complete_sets_status_closed(
+    async def test_visit_complete_sets_status_done(
         self, http_client: AsyncClient, admin_token: str, office_token: str, site_id: int
     ):
         vr = await http_client.post("/api/visits", headers=auth_headers(admin_token), json={
@@ -216,7 +216,7 @@ class TestVisitBusinessLogic:
                                     headers=auth_headers(office_token),
                                     json={"work_summary": "выполнено", "defects_present": True,
                                           "defects_summary": "Обнаружена трещина"})
-        assert cr.json()["status"] == "closed"
+        assert cr.json()["status"] == "done"
         assert cr.json()["work_summary"] == "выполнено"
         assert cr.json()["defects_present"] is True
         await http_client.delete(f"/api/visits/{vid}", headers=auth_headers(admin_token))

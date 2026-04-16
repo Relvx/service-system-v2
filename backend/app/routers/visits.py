@@ -364,13 +364,13 @@ async def complete_visit(
     if not is_office_admin and visit.assigned_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="You can only complete your own assigned visit")
 
-    complete_vals = {"status": enums.visit_statuses.closed, "work_summary": body.work_summary,
+    complete_vals = {"status": "done", "work_summary": body.work_summary,
                      "checklist": body.checklist, "defects_present": body.defects_present or False,
                      "defects_summary": body.defects_summary, "recommendations": body.recommendations}
     await save_history(db, VisitHistory, visit, current_user.id,
                        method="update", new_values=complete_vals)
 
-    visit.status = enums.visit_statuses.closed
+    visit.status = "done"
     visit.work_summary = body.work_summary
     visit.checklist = body.checklist
     visit.defects_present = body.defects_present or False
@@ -410,7 +410,7 @@ async def cancel_visit(
     visit = result.scalar_one_or_none()
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
-    if visit.status == enums.visit_statuses.closed:
+    if visit.status == "done":
         raise HTTPException(status_code=400, detail="Cannot cancel a completed visit")
     if visit.status == enums.visit_statuses.cancelled:
         raise HTTPException(status_code=400, detail="Visit is already cancelled")
