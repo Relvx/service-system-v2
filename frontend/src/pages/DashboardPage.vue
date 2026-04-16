@@ -80,7 +80,7 @@
         <div v-if="stats?.recent_completed?.length" class="card mb-8">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900">Последние завершённые выезды</h2>
-            <RouterLink to="/visits?status=closed" class="text-sm text-primary-600 hover:underline">Все</RouterLink>
+            <RouterLink to="/visits?status=done" class="text-sm text-primary-600 hover:underline">Все</RouterLink>
           </div>
           <div class="space-y-3">
             <div

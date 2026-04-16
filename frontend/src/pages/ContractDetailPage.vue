@@ -422,11 +422,11 @@ async function loadVisits() {
 }
 
 function visitStatusClass(s) {
-  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-200 text-gray-600', closed: 'bg-gray-200 text-gray-600', cancelled: 'bg-red-100 text-red-700' }
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-200 text-gray-600', cancelled: 'bg-red-100 text-red-700' }
   return m[s] || 'bg-gray-100 text-gray-600'
 }
 function visitStatusLabel(s) {
-  const m = { planned: 'Запланирован', in_progress: 'В работе', done: 'Завершён', closed: 'Закрыт', cancelled: 'Отменён' }
+  const m = { planned: 'Запланирован', in_progress: 'В работе', done: 'Завершён', cancelled: 'Отменён' }
   return m[s] || s
 }
 

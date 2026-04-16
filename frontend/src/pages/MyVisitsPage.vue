@@ -289,14 +289,14 @@ const detailTabs = [
 
 const tabs = computed(() => [
   { id: 'active', label: 'Активные', count: visits.value.filter((v) => ['planned', 'in_progress'].includes(v.status)).length },
-  { id: 'closed', label: 'Завершённые', count: visits.value.filter((v) => ['closed', 'done'].includes(v.status)).length },
+  { id: 'closed', label: 'Завершённые', count: visits.value.filter((v) => v.status === 'done').length },
   { id: 'all', label: 'Все', count: visits.value.length },
 ])
 
 const filteredVisits = computed(() => {
   let result = visits.value
   if (activeTab.value === 'active') result = result.filter((v) => ['planned', 'in_progress'].includes(v.status))
-  else if (activeTab.value === 'closed') result = result.filter((v) => ['closed', 'done'].includes(v.status))
+  else if (activeTab.value === 'closed') result = result.filter((v) => v.status === 'done')
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase()
     result = result.filter((v) =>
@@ -363,7 +363,7 @@ async function handleComplete() {
 }
 
 function statusClass(s) {
-  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', closed: 'bg-gray-400 text-white', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
   return m[s] || 'bg-gray-100 text-gray-700'
 }
 function priorityClass(p) {

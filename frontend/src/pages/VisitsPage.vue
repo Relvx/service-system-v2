@@ -235,7 +235,7 @@
                 <User class="w-4 h-4 mr-1" />К клиенту
               </button>
               <button
-                v-if="(detailVisit.status === 'done' || detailVisit.status === 'closed') && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                v-if="detailVisit.status === 'done' && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
                 @click="openDefectCreate(detailVisit)"
                 class="btn btn-secondary flex items-center text-yellow-700 border-yellow-300 hover:bg-yellow-50 text-sm"
               >
@@ -244,7 +244,7 @@
             </div>
             <div class="flex gap-3">
               <button
-                v-if="detailVisit.status !== 'done' && detailVisit.status !== 'closed' && !detailVisit.is_archived && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                v-if="detailVisit.status !== 'done' && !detailVisit.is_archived && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
                 @click="openCompleteModal(detailVisit)"
                 class="btn bg-green-600 text-white hover:bg-green-700 flex items-center"
               >
@@ -1142,7 +1142,7 @@ function closeModal() { modalOpen.value = false; editing.value = null; errors.va
 function openUrl(url) { window.open(url, '_blank') }
 
 function statusClass(s) {
-  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', closed: 'bg-gray-400 text-white', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
   return m[s] || 'bg-gray-100 text-gray-700'
 }
 function priorityClass(p) {

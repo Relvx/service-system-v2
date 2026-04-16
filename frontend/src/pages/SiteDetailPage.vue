@@ -636,7 +636,7 @@ function visitStatusClass(s) {
   return {
     planned: 'bg-blue-50 text-blue-600',
     in_progress: 'bg-green-50 text-green-600',
-    closed: 'bg-gray-100 text-gray-500',
+    done: 'bg-gray-100 text-gray-500',
     cancelled: 'bg-red-50 text-red-500',
   }[s] || 'bg-gray-50 text-gray-500'
 }

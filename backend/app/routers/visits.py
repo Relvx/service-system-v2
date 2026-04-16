@@ -110,10 +110,7 @@ def _build_visit_query(
     if site_id:
         stmt = stmt.where(Visit.site_id == site_id)
     if status_:
-        if status_ == enums.visit_statuses.closed:
-            stmt = stmt.where(Visit.status.in_(["done", enums.visit_statuses.closed]))
-        else:
-            stmt = stmt.where(Visit.status == status_)
+        stmt = stmt.where(Visit.status == status_)
     if priority:
         stmt = stmt.where(Visit.priority == priority)
     if date_from:

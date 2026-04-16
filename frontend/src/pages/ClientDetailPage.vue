@@ -1041,7 +1041,7 @@ async function handleContactDelete() {
 }
 
 function statusClass(s) {
-  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', closed: 'bg-gray-400 text-white', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
   return m[s] || 'bg-gray-100 text-gray-700'
 }
 function priorityClass(p) {

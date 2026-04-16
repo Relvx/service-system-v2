@@ -561,7 +561,7 @@ async function openVisitsModal(source) {
     const res = await visitsAPI.getAll({ contract_id: contractId, limit: 20 })
     const items = res.data.items || []
     visitsModal.value.visits = items
-      .filter(v => ['done', 'closed'].includes(v.status) && (v.work_summary || v.recommendations || v.defects_present))
+      .filter(v => v.status === 'done' && (v.work_summary || v.recommendations || v.defects_present))
       .slice(0, 5)
     visitsModal.value.total = res.data.total || 0
   } finally {

@@ -241,7 +241,7 @@ async def get_contract_visits(
     # - явно привязанные к договору (contract_id == X)
     # - ИЛИ без привязки (contract_id IS NULL) у объектов этого договора
     from sqlalchemy import or_, and_
-    visit_filter = [Visit.status.in_(["done", "closed"])]
+    visit_filter = [Visit.status == "done"]
     if site_ids:
         visit_filter.append(or_(
             Visit.contract_id == contract_id,

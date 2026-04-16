@@ -201,7 +201,6 @@ const STATUS_COLORS = {
   planned: '#3b82f6',
   in_progress: '#22c55e',
   done: '#6b7280',
-  closed: '#6b7280',
   cancelled: '#ef4444',
 }
 
@@ -296,7 +295,6 @@ function statusClass(s) {
   const m = {
     planned: 'bg-blue-100 text-blue-700',
     in_progress: 'bg-green-100 text-green-700',
-    closed: 'bg-gray-400 text-white',
     done: 'bg-gray-400 text-white',
     cancelled: 'bg-red-100 text-red-700',
   }
