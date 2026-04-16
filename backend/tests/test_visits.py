@@ -322,3 +322,101 @@ class TestVisitBlock7:
             assert v["assigned_user_id"] == int(admin_user_id)
 
         await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+
+
+class TestVisitContractFilter:
+    """Фильтрация выездов по contract_id."""
+
+    async def test_filter_by_contract_id_direct(self, http_client: AsyncClient, admin_token: str,
+                                                  site_id: int, admin_user_id: str):
+        """GET /visits?contract_id=X возвращает выезды напрямую привязанные к договору."""
+        headers = auth_headers(admin_token)
+
+        # Создаём клиента и договор
+        cl_res = await http_client.post("/api/clients", headers=headers,
+                                         json={"name": "__test__ contract filter client"})
+        client_id = cl_res.json()["id"]
+
+        ct_res = await http_client.post("/api/contracts", headers=headers,
+                                         json={"client_id": client_id, "contract_number": "TEST-CF-001"})
+        contract_id = ct_res.json()["id"]
+
+        far_future = str(date.today() + timedelta(days=3700))
+
+        # Создаём выезд с явным contract_id
+        v_res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": site_id, "assigned_user_id": admin_user_id,
+            "planned_date": far_future, "visit_type": "maintenance",
+            "priority": "medium", "contract_id": contract_id,
+        })
+        assert v_res.status_code == 201
+        visit_id = v_res.json()["id"]
+
+        # Фильтр должен найти этот выезд
+        lst = await http_client.get(
+            f"/api/visits?contract_id={contract_id}",
+            headers=headers
+        )
+        assert lst.status_code == 200
+        ids = [v["id"] for v in lst.json()["items"]]
+        assert visit_id in ids
+
+        # Другой несуществующий contract_id не должен вернуть этот выезд
+        lst2 = await http_client.get("/api/visits?contract_id=999999", headers=headers)
+        ids2 = [v["id"] for v in lst2.json()["items"]]
+        assert visit_id not in ids2
+
+        # Cleanup
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+        await http_client.delete(f"/api/contracts/{contract_id}", headers=headers)
+        await http_client.delete(f"/api/clients/{client_id}", headers=headers)
+
+    async def test_filter_by_contract_id_via_site(self, http_client: AsyncClient, admin_token: str,
+                                                    admin_user_id: str):
+        """GET /visits?contract_id=X находит выезды через site_id → contract_sites."""
+        headers = auth_headers(admin_token)
+
+        # Создаём клиента, объект, договор, привязываем объект к договору
+        cl_res = await http_client.post("/api/clients", headers=headers,
+                                         json={"name": "__test__ contract site filter"})
+        client_id = cl_res.json()["id"]
+
+        site_res = await http_client.post("/api/sites", headers=headers,
+                                           json={"title": "__test__ site cf", "address": "Test",
+                                                 "client_id": client_id})
+        new_site_id = site_res.json()["id"]
+
+        ct_res = await http_client.post("/api/contracts", headers=headers,
+                                         json={"client_id": client_id, "contract_number": "TEST-CF-002"})
+        contract_id = ct_res.json()["id"]
+
+        # Привязываем объект к договору
+        link_res = await http_client.post(
+            f"/api/contracts/{contract_id}/sites/{new_site_id}", headers=headers
+        )
+        assert link_res.status_code in (200, 201)
+
+        far_future = str(date.today() + timedelta(days=3701))
+
+        # Создаём выезд без явного contract_id (только site_id)
+        v_res = await http_client.post("/api/visits", headers=headers, json={
+            "site_id": new_site_id, "assigned_user_id": admin_user_id,
+            "planned_date": far_future, "visit_type": "maintenance", "priority": "medium",
+        })
+        assert v_res.status_code == 201
+        visit_id = v_res.json()["id"]
+
+        # Фильтр по contract_id должен найти выезд через site
+        lst = await http_client.get(
+            f"/api/visits?contract_id={contract_id}",
+            headers=headers
+        )
+        assert lst.status_code == 200
+        ids = [v["id"] for v in lst.json()["items"]]
+        assert visit_id in ids
+
+        # Cleanup
+        await http_client.delete(f"/api/visits/{visit_id}", headers=headers)
+        await http_client.delete(f"/api/contracts/{contract_id}", headers=headers)
+        await http_client.delete(f"/api/sites/{new_site_id}", headers=headers)
+        await http_client.delete(f"/api/clients/{client_id}", headers=headers)

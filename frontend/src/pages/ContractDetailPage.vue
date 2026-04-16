@@ -132,7 +132,7 @@
               class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors"
               :class="rightTab === 'visits' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
             >
-              История выездов <span v-if="visits.length" class="ml-1 text-xs text-gray-400">({{ visits.length }})</span>
+              История выездов <span v-if="visits.length" class="ml-1 text-xs text-gray-400">({{ visits.length }})</span><span v-if="!visits.length && visitsLoaded" class="ml-1 text-xs text-gray-400">(0)</span>
             </button>
           </div>
 
@@ -182,33 +182,105 @@
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
             <div v-else-if="visits.length === 0" class="card text-center py-10 text-gray-400">
-              Нет завершённых выездов по этому договору
+              <CalendarIcon class="w-10 h-10 mx-auto mb-2 text-gray-300" />
+              <p>Выезды по этому договору не найдены</p>
             </div>
             <div v-else class="space-y-3">
               <div
                 v-for="v in visits"
-                :key="v.visit_id"
-                class="card"
+                :key="v.id"
+                class="card hover:shadow-md transition-shadow cursor-pointer"
+                @click="selectedVisit = v"
               >
-                <div class="flex items-center justify-between mb-2">
-                  <span class="font-medium text-gray-800">{{ formatDate(v.planned_date) }}</span>
-                  <span v-if="v.master_name" class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{{ v.master_name }}</span>
+                <!-- Шапка карточки -->
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium text-gray-900 truncate">{{ v.site_title || '—' }}</p>
+                    <p v-if="v.site_address" class="text-xs text-gray-400 truncate">{{ v.site_address }}</p>
+                  </div>
+                  <span class="inline-flex flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full" :class="visitStatusClass(v.status)">
+                    {{ visitStatusLabel(v.status) }}
+                  </span>
                 </div>
-                <div v-if="v.work_summary" class="mb-2">
-                  <p class="text-xs font-medium text-gray-400 mb-0.5">Итог работ</p>
-                  <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ v.work_summary }}</p>
+                <!-- Метаданные -->
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-2">
+                  <span class="flex items-center gap-1">
+                    <CalendarIcon class="w-3 h-3" />{{ formatDate(v.planned_date) }}
+                  </span>
+                  <span v-if="v.master_names && v.master_names.length" class="flex items-center gap-1">
+                    <User class="w-3 h-3" />{{ v.master_names.join(', ') }}
+                  </span>
+                  <span v-else-if="v.master_name" class="flex items-center gap-1">
+                    <User class="w-3 h-3" />{{ v.master_name }}
+                  </span>
+                  <span v-if="v.visit_type" class="bg-gray-100 px-1.5 py-0.5 rounded">{{ cfg.visitTypeLabel(v.visit_type) }}</span>
                 </div>
-                <div v-if="v.defects_present && v.defects_summary" class="mb-2 p-2 bg-red-50 rounded-lg">
-                  <p class="text-xs font-medium text-red-400 mb-0.5">Дефекты</p>
-                  <p class="text-sm text-red-700 whitespace-pre-wrap">{{ v.defects_summary }}</p>
+                <!-- Результат (для завершённых) -->
+                <template v-if="v.work_summary">
+                  <div class="border-t pt-2 mt-1">
+                    <p class="text-xs font-medium text-gray-400 mb-0.5">Итог работ</p>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap line-clamp-3">{{ v.work_summary }}</p>
+                  </div>
+                  <div v-if="v.defects_present" class="mt-2 flex items-center gap-1 text-xs text-orange-600 bg-orange-50 rounded px-2 py-1">
+                    <AlertTriangle class="w-3 h-3" />
+                    <span>Дефекты{{ v.defects_summary ? ': ' + v.defects_summary : '' }}</span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Детали выезда (модалка) -->
+          <div v-if="selectedVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div class="flex items-center justify-between p-5 border-b">
+                <div class="min-w-0 pr-2">
+                  <h2 class="font-semibold text-gray-900 truncate">{{ selectedVisit.site_title }}</h2>
+                  <p v-if="selectedVisit.site_address" class="text-xs text-gray-400 truncate">{{ selectedVisit.site_address }}</p>
                 </div>
-                <div v-if="v.recommendations" class="p-2 bg-yellow-50 rounded-lg">
-                  <p class="text-xs font-medium text-yellow-600 mb-0.5">Рекомендации</p>
-                  <p class="text-sm text-yellow-800 whitespace-pre-wrap">{{ v.recommendations }}</p>
+                <button @click="selectedVisit = null" class="text-gray-400 hover:text-gray-600 flex-shrink-0"><X class="w-5 h-5" /></button>
+              </div>
+              <div class="p-5 space-y-4">
+                <div class="flex flex-wrap gap-2">
+                  <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="visitStatusClass(selectedVisit.status)">
+                    {{ visitStatusLabel(selectedVisit.status) }}
+                  </span>
+                  <span v-if="selectedVisit.visit_type" class="inline-flex px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                    {{ cfg.visitTypeLabel(selectedVisit.visit_type) }}
+                  </span>
                 </div>
-                <div v-if="!v.work_summary && !v.recommendations && !v.defects_summary" class="text-xs text-gray-400 italic">
-                  Комментариев нет
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p class="text-xs text-gray-400">Дата</p>
+                    <p class="font-medium">{{ formatDate(selectedVisit.planned_date) }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-400">Мастер</p>
+                    <p class="font-medium">{{ (selectedVisit.master_names && selectedVisit.master_names.length) ? selectedVisit.master_names.join(', ') : (selectedVisit.master_name || '—') }}</p>
+                  </div>
                 </div>
+                <div v-if="selectedVisit.office_notes" class="bg-blue-50 rounded-lg p-3">
+                  <p class="text-xs font-medium text-blue-600 mb-1">Заметка офиса</p>
+                  <p class="text-sm text-blue-800">{{ selectedVisit.office_notes }}</p>
+                </div>
+                <template v-if="selectedVisit.work_summary">
+                  <div>
+                    <p class="text-xs font-medium text-gray-400 mb-1">Итог работ</p>
+                    <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ selectedVisit.work_summary }}</p>
+                  </div>
+                  <div v-if="selectedVisit.defects_present" class="bg-orange-50 rounded-lg p-3">
+                    <p class="text-xs font-medium text-orange-600 mb-1">⚠ Дефекты</p>
+                    <p v-if="selectedVisit.defects_summary" class="text-sm text-orange-800">{{ selectedVisit.defects_summary }}</p>
+                  </div>
+                  <div v-if="selectedVisit.recommendations" class="bg-yellow-50 rounded-lg p-3">
+                    <p class="text-xs font-medium text-yellow-600 mb-1">Рекомендации</p>
+                    <p class="text-sm text-yellow-800">{{ selectedVisit.recommendations }}</p>
+                  </div>
+                </template>
+                <div v-else class="text-sm text-gray-400 italic">Комментариев мастера нет</div>
+              </div>
+              <div class="flex justify-end p-5 border-t">
+                <button @click="selectedVisit = null" class="btn btn-primary">Закрыть</button>
               </div>
             </div>
           </div>
@@ -315,10 +387,13 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Edit, Plus, X, Building2 } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Plus, X, Building2, Calendar as CalendarIcon, User, AlertTriangle } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
-import { contractsAPI, sitesAPI, scheduleAPI } from '../services/api.js'
+import { contractsAPI, sitesAPI, visitsAPI } from '../services/api.js'
+import { useConfigStore } from '../stores/config.js'
 import { useEscClose } from '../composables/useEscClose.js'
+
+const cfg = useConfigStore()
 
 const route = useRoute()
 const contract = ref(null)
@@ -331,18 +406,28 @@ const editForm = ref({})
 const rightTab = ref('sites')
 const visits = ref([])
 const visitsLoading = ref(false)
+const selectedVisit = ref(null)
 let visitsLoaded = false
 
 async function loadVisits() {
   if (visitsLoaded) return
   visitsLoading.value = true
   try {
-    const res = await scheduleAPI.getContractVisits(route.params.id)
-    visits.value = res.data.visits
+    const res = await visitsAPI.getAll({ contract_id: route.params.id, limit: 200 })
+    visits.value = res.data.items
     visitsLoaded = true
   } finally {
     visitsLoading.value = false
   }
+}
+
+function visitStatusClass(s) {
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-200 text-gray-600', closed: 'bg-gray-200 text-gray-600', cancelled: 'bg-red-100 text-red-700' }
+  return m[s] || 'bg-gray-100 text-gray-600'
+}
+function visitStatusLabel(s) {
+  const m = { planned: 'Запланирован', in_progress: 'В работе', done: 'Завершён', closed: 'Закрыт', cancelled: 'Отменён' }
+  return m[s] || s
 }
 
 const addSiteModalOpen = ref(false)
@@ -351,6 +436,7 @@ const siteResults = ref([])
 const removeSiteConfirm = ref(null)
 
 useEscClose([
+  { isOpen: () => !!selectedVisit.value,        close: () => { selectedVisit.value = null } },
   { isOpen: () => editModalOpen.value,          close: () => { editModalOpen.value = false } },
   { isOpen: () => addSiteModalOpen.value,       close: () => { addSiteModalOpen.value = false; siteSearch.value = ''; siteResults.value = [] } },
   { isOpen: () => !!removeSiteConfirm.value,    close: () => { removeSiteConfirm.value = null } },

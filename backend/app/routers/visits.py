@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, exists
+from sqlalchemy import select, func, exists, or_
 from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user, require_groups
@@ -10,7 +10,7 @@ from app.models.visit import Visit, VisitMaster
 from app.models.site import Site
 from app.models.client import Client
 from app.models.client_contact import ClientContact
-from app.models.contract import Contract
+from app.models.contract import Contract, ContractSite
 from app.models.user import User
 from app.models.attachment import Attachment
 from app.models.history import VisitHistory
@@ -158,6 +158,7 @@ async def _sync_visit_masters(db: AsyncSession, visit_id: int, master_ids: List[
 async def get_visits(
     master_id: Optional[int] = None,
     site_id: Optional[int] = None,
+    contract_id: Optional[int] = None,
     status: Optional[str] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
@@ -171,6 +172,21 @@ async def get_visits(
     stmt = _build_visit_query(master_id, site_id, status, date_from, date_to, priority)
     if not show_archived:
         stmt = stmt.where(Visit.is_archived == False)
+
+    # Фильтр по договору: выезды напрямую привязанные ИЛИ через объект договора
+    if contract_id is not None:
+        site_ids_res = await db.execute(
+            select(ContractSite.site_id).where(ContractSite.contract_id == contract_id)
+        )
+        site_ids = [r.site_id for r in site_ids_res.all()]
+        if site_ids:
+            stmt = stmt.where(or_(
+                Visit.contract_id == contract_id,
+                Visit.site_id.in_(site_ids),
+            ))
+        else:
+            stmt = stmt.where(Visit.contract_id == contract_id)
+
     stmt = stmt.order_by(Visit.planned_date.desc(), Visit.planned_time_from)
 
     total_res = await db.execute(select(func.count()).select_from(stmt.subquery()))
