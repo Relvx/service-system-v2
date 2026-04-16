@@ -237,13 +237,16 @@ async def get_contract_visits(
     )
     site_ids = [r.site_id for r in site_ids_result.all()]
 
-    # Ищем завершённые выезды: напрямую по contract_id ИЛИ через site_id
-    from sqlalchemy import or_
+    # Ищем завершённые выезды:
+    # - явно привязанные к договору (contract_id == X)
+    # - ИЛИ без привязки (contract_id IS NULL) у объектов этого договора
+    from sqlalchemy import or_, and_
     visit_filter = [Visit.status == "done"]
     if site_ids:
-        visit_filter.append(
-            or_(Visit.contract_id == contract_id, Visit.site_id.in_(site_ids))
-        )
+        visit_filter.append(or_(
+            Visit.contract_id == contract_id,
+            and_(Visit.contract_id.is_(None), Visit.site_id.in_(site_ids)),
+        ))
     else:
         visit_filter.append(Visit.contract_id == contract_id)
 
