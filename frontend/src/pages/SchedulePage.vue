@@ -286,59 +286,103 @@
     <!-- ===== Модалка: комментарии мастеров ===== -->
     <div v-if="visitsModal.open" class="fixed inset-0 z-[70] flex items-center justify-center p-4" @keydown.esc="visitsModal.open = false">
       <div class="absolute inset-0 bg-black/40" @click="visitsModal.open = false" />
-      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl z-10 flex flex-col max-h-[80vh]">
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-2xl z-10 flex flex-col max-h-[85vh]">
+
+        <!-- Шапка -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <div>
-            <h3 class="text-base font-semibold text-gray-900">Комментарии мастеров</h3>
-            <p class="text-xs text-gray-400 mt-0.5">{{ visitsModal.clientName }} — {{ visitsModal.contractNumber }}</p>
+            <h3 class="text-base font-semibold text-gray-900">Последние итоги выездов</h3>
+            <p class="text-xs text-gray-400 mt-0.5">{{ visitsModal.clientName }} · {{ visitsModal.contractNumber }}</p>
           </div>
           <button @click="visitsModal.open = false" class="text-gray-400 hover:text-gray-600">
             <X class="w-5 h-5" />
           </button>
         </div>
 
+        <!-- Контент -->
         <div class="overflow-y-auto flex-1 px-6 py-4">
           <div v-if="visitsModal.loading" class="flex justify-center py-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
-          <div v-else-if="visitsModal.visits.length === 0" class="text-center py-8 text-gray-400">
-            Нет завершённых выездов с комментариями
+
+          <div v-else-if="visitsModal.visits.length === 0" class="text-center py-10">
+            <MessageSquare class="w-10 h-10 text-gray-300 mx-auto mb-2" />
+            <p class="text-gray-400 text-sm">Нет завершённых выездов с комментариями мастера</p>
+            <p v-if="visitsModal.total > 0" class="text-xs text-gray-400 mt-1">
+              Всего выездов по договору: {{ visitsModal.total }}
+            </p>
           </div>
+
           <div v-else class="space-y-4">
+            <!-- Подзаголовок с кол-вом -->
+            <p class="text-xs text-gray-400">
+              Показаны последние {{ visitsModal.visits.length }} из {{ visitsModal.total }} завершённых выездов
+            </p>
+
             <div
               v-for="v in visitsModal.visits"
-              :key="v.visit_id"
-              class="border border-gray-100 rounded-lg p-4"
+              :key="v.id"
+              class="border border-gray-100 rounded-xl p-4 space-y-3"
             >
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-medium text-gray-700">{{ formatDate(v.planned_date) }}</span>
-                <span v-if="v.master_name" class="text-xs text-gray-400">{{ v.master_name }}</span>
+              <!-- Шапка записи -->
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-800 truncate">{{ v.site_title || '—' }}</p>
+                  <div class="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <span class="text-xs text-gray-500">{{ formatDate(v.planned_date) }}</span>
+                    <span v-if="v.master_names && v.master_names.length" class="text-xs text-gray-400">
+                      {{ v.master_names.join(', ') }}
+                    </span>
+                    <span v-else-if="v.master_name" class="text-xs text-gray-400">{{ v.master_name }}</span>
+                    <span v-if="v.visit_type" class="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                      {{ cfg.visitTypeLabel(v.visit_type) }}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div v-if="v.work_summary" class="mb-2">
-                <p class="text-xs text-gray-400 font-medium mb-0.5">Итог работ</p>
+
+              <!-- Итог работ -->
+              <div v-if="v.work_summary">
+                <p class="text-xs text-gray-400 font-medium mb-1">Итог работ</p>
                 <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ v.work_summary }}</p>
               </div>
-              <div v-if="v.defects_present && v.defects_summary" class="mb-2">
-                <p class="text-xs text-red-400 font-medium mb-0.5">Дефекты</p>
-                <p class="text-sm text-red-700 whitespace-pre-wrap">{{ v.defects_summary }}</p>
+
+              <!-- Дефекты -->
+              <div v-if="v.defects_present" class="bg-orange-50 rounded-lg px-3 py-2">
+                <p class="text-xs font-medium text-orange-500 mb-0.5 flex items-center gap-1">
+                  <AlertTriangle class="w-3 h-3" />Дефекты
+                </p>
+                <p v-if="v.defects_summary" class="text-sm text-orange-800 whitespace-pre-wrap">{{ v.defects_summary }}</p>
               </div>
-              <div v-if="v.recommendations">
-                <p class="text-xs text-gray-400 font-medium mb-0.5">Рекомендации</p>
-                <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ v.recommendations }}</p>
+
+              <!-- Рекомендации -->
+              <div v-if="v.recommendations" class="bg-yellow-50 rounded-lg px-3 py-2">
+                <p class="text-xs font-medium text-yellow-600 mb-0.5">Рекомендации</p>
+                <p class="text-sm text-yellow-800 whitespace-pre-wrap">{{ v.recommendations }}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="px-6 py-4 border-t border-gray-100 flex-shrink-0 flex justify-between">
-          <RouterLink
-            :to="`/contracts/${visitsModal.contractId}`"
-            @click="visitsModal.open = false"
-            class="btn btn-secondary text-sm flex items-center gap-1"
-          >
-            Открыть договор
-            <ExternalLink class="w-4 h-4" />
-          </RouterLink>
+        <!-- Футер -->
+        <div class="px-6 py-4 border-t border-gray-100 flex-shrink-0 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button
+              @click="goToContractVisits"
+              class="btn btn-primary text-sm flex items-center gap-1.5"
+            >
+              История выездов
+              <ArrowRight class="w-4 h-4" />
+            </button>
+            <RouterLink
+              :to="`/contracts/${visitsModal.contractId}`"
+              @click="visitsModal.open = false"
+              class="btn btn-secondary text-sm flex items-center gap-1"
+            >
+              Договор
+              <ExternalLink class="w-4 h-4" />
+            </RouterLink>
+          </div>
           <button @click="visitsModal.open = false" class="btn btn-secondary text-sm">Закрыть</button>
         </div>
       </div>
@@ -348,14 +392,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import Layout from '../components/Layout.vue'
-import { scheduleAPI } from '../services/api.js'
+import { scheduleAPI, visitsAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
+import { useConfigStore } from '../stores/config.js'
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  X, ExternalLink, MessageSquare, Pencil, Search,
+  X, ExternalLink, MessageSquare, Pencil, Search, ArrowRight, AlertTriangle,
 } from 'lucide-vue-next'
+
+const router = useRouter()
+const cfg = useConfigStore()
 
 const auth = useAuthStore()
 const canEdit = computed(() => auth.hasGroup('admin_group') || auth.hasGroup('office_group'))
@@ -493,25 +541,35 @@ async function deleteCell() {
 }
 
 // ---- Модалка комментариев мастеров ----
-const visitsModal = ref({ open: false, loading: false, contractId: null, contractNumber: '', clientName: '', visits: [] })
+const visitsModal = ref({ open: false, loading: false, contractId: null, contractNumber: '', clientName: '', visits: [], total: 0 })
 
 async function openVisitsModal(source) {
   clientModal.value.open = false
   cellModal.value.open = false
+  const contractId = source.contractId || source.contract_id
   visitsModal.value = {
     open: true,
     loading: true,
-    contractId: source.contractId,
+    contractId,
     contractNumber: source.contractNumber || source.contract_number || '',
     clientName: source.clientName || source.client_name || '',
     visits: [],
+    total: 0,
   }
   try {
-    const res = await scheduleAPI.getContractVisits(source.contractId || source.contract_id)
-    visitsModal.value.visits = res.data.visits
+    // Берём последние 5 завершённых выездов по договору с комментариями мастера
+    const res = await visitsAPI.getAll({ contract_id: contractId, status: 'done', limit: 5 })
+    const items = res.data.items || []
+    visitsModal.value.visits = items.filter(v => v.work_summary || v.recommendations || v.defects_present)
+    visitsModal.value.total = res.data.total || 0
   } finally {
     visitsModal.value.loading = false
   }
+}
+
+function goToContractVisits() {
+  visitsModal.value.open = false
+  router.push(`/contracts/${visitsModal.value.contractId}?tab=visits`)
 }
 
 onMounted(load)
