@@ -335,15 +335,24 @@
                 <p v-if="errors.client" class="text-red-600 text-xs mt-1">{{ errors.client }}</p>
               </div>
 
-              <!-- Договор (появляется после выбора клиента) -->
-              <div v-if="selectedClient">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Договор</label>
-                <select v-model="selectedContractId" class="input" @change="onContractChange">
-                  <option value="">— Без договора (все объекты) —</option>
-                  <option v-for="c in clientContracts" :key="c.id" :value="c.id">
-                    {{ c.contract_number || 'Без номера' }}{{ c.subject ? ' — ' + c.subject : '' }}
-                  </option>
-                </select>
+              <!-- Договоры (появляются после выбора клиента) -->
+              <div v-if="selectedClient && clientContracts.length > 0">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Договоры <span class="text-gray-400 font-normal">({{ selectedContractIds.length ? `выбрано: ${selectedContractIds.length}` : 'все объекты' }})</span>
+                </label>
+                <div class="border border-gray-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100">
+                  <label
+                    v-for="c in clientContracts"
+                    :key="c.id"
+                    class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                  >
+                    <input type="checkbox" :value="c.id" v-model="selectedContractIds" class="mt-0.5 rounded flex-shrink-0" @change="onContractChange" />
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900">{{ contractLabel(c) }}</p>
+                      <p v-if="c.subject" class="text-xs text-gray-500 truncate">{{ c.subject }}</p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <!-- Объекты (появляются после выбора клиента) -->
@@ -371,12 +380,22 @@
                 <p v-if="errors.sites" class="text-red-600 text-xs mt-1">{{ errors.sites }}</p>
               </div>
 
-              <!-- Режим создания при 2+ объектах -->
-              <div v-if="selectedSiteIds.length > 1" class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-                <p class="text-sm font-medium text-blue-800">Выбрано {{ selectedSiteIds.length }} объекта — как создать?</p>
+              <!-- Режим создания при 2+ объектах или 2+ договорах -->
+              <div v-if="selectedSiteIds.length > 1 || selectedContractIds.length > 1" class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                <p class="text-sm font-medium text-blue-800">
+                  <template v-if="selectedContractIds.length > 1 && selectedSiteIds.length > 1">
+                    Выбрано {{ selectedContractIds.length }} договора и {{ selectedSiteIds.length }} объектов — как создать?
+                  </template>
+                  <template v-else-if="selectedContractIds.length > 1">
+                    Выбрано {{ selectedContractIds.length }} договора — как создать?
+                  </template>
+                  <template v-else>
+                    Выбрано {{ selectedSiteIds.length }} объектов — как создать?
+                  </template>
+                </p>
                 <label class="flex items-center gap-2 cursor-pointer text-sm text-blue-700">
                   <input type="radio" v-model="createMode" value="separate" class="text-blue-600" />
-                  {{ selectedSiteIds.length }} отдельных выезда (по одному на каждый объект)
+                  {{ selectedSiteIds.length > 1 ? selectedSiteIds.length + ' отдельных выезда (по одному на каждый объект)' : 'Отдельные выезды по каждому договору' }}
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer text-sm text-blue-700">
                   <input type="radio" v-model="createMode" value="single" class="text-blue-600" />
@@ -429,6 +448,20 @@
                     <input type="checkbox" :value="t.sysname" v-model="form.visit_types" class="rounded flex-shrink-0" />
                     <span class="text-sm text-gray-900">{{ t.display_name }}</span>
                   </label>
+                  <!-- Другое — свободный ввод -->
+                  <label class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" value="other" v-model="form.visit_types" class="mt-0.5 rounded flex-shrink-0" />
+                    <div class="flex-1 min-w-0">
+                      <span class="text-sm text-gray-900">Другое</span>
+                      <input
+                        v-if="form.visit_types.includes('other')"
+                        v-model="form.customVisitType"
+                        class="input mt-1 text-sm w-full"
+                        placeholder="Укажите тип выезда..."
+                        @click.stop
+                      />
+                    </div>
+                  </label>
                 </div>
               </div>
               <div>
@@ -475,7 +508,7 @@
             <div class="flex justify-end gap-3 pt-4">
               <button type="button" @click="closeModal" class="btn btn-secondary">Отмена</button>
               <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
-                {{ saving ? 'Сохранение...' : editing ? 'Сохранить' : selectedSiteIds.length > 1 && createMode === 'separate' ? `Создать ${selectedSiteIds.length} выезда` : 'Создать выезд' }}
+                {{ saving ? 'Сохранение...' : editing ? 'Сохранить' : (selectedSiteIds.length > 1 || selectedContractIds.length > 1) && createMode === 'separate' ? `Создать ${Math.max(selectedSiteIds.length, 1)} выезда` : 'Создать выезд' }}
               </button>
             </div>
           </form>
@@ -688,7 +721,8 @@ const clientQuery = ref('')
 const clientDropdownOpen = ref(false)
 const selectedClient = ref(null)
 const clientContracts = ref([])
-const selectedContractId = ref('')
+const selectedContractIds = ref([])
+const siteContractMap = ref({}) // site_id → contract_id
 const clientSites = ref([])
 const clientSitesLoading = ref(false)
 const selectedSiteIds = ref([])
@@ -703,7 +737,7 @@ async function onClientQueryInput() {
   clientDropdownOpen.value = true
   selectedClient.value = null
   clientContracts.value = []
-  selectedContractId.value = ''
+  selectedContractIds.value = []
   clientSites.value = []
   selectedSiteIds.value = []
   clearTimeout(clientSearchTimer)
@@ -719,7 +753,8 @@ async function selectClient(client) {
   clientQuery.value = client.name
   clientDropdownOpen.value = false
   selectedSiteIds.value = []
-  selectedContractId.value = ''
+  selectedContractIds.value = []
+  siteContractMap.value = {}
   clientContracts.value = []
   clientSites.value = []
   clientContacts.value = []
@@ -739,17 +774,14 @@ async function selectClient(client) {
   try {
     const cr = await contractsAPI.getByClient(client.id)
     clientContracts.value = cr.data?.items ?? cr.data ?? []
-    // Если 1 договор — подставляем автоматически
+    // Если 1 договор — автовыбираем
     if (clientContracts.value.length === 1) {
-      selectedContractId.value = clientContracts.value[0].id
-      await onContractChange()
-      return
+      selectedContractIds.value = [clientContracts.value[0].id]
     }
   } catch {
     clientContracts.value = []
   }
-  // По умолчанию (без договора) — все объекты клиента
-  await loadSitesByContract('')
+  await loadSitesForContracts()
 }
 
 function applyContact(contact) {
@@ -771,18 +803,37 @@ function onContactSelect() {
 
 async function onContractChange() {
   selectedSiteIds.value = []
-  await loadSitesByContract(selectedContractId.value)
+  await loadSitesForContracts()
 }
 
-async function loadSitesByContract(contractId) {
+async function loadSitesForContracts() {
   clientSitesLoading.value = true
+  siteContractMap.value = {}
   try {
-    if (contractId) {
-      const res = await contractsAPI.getById(contractId)
-      clientSites.value = res.data.sites || []
-    } else {
+    if (selectedContractIds.value.length === 0) {
+      // Нет фильтра — все объекты клиента
       const res = await sitesAPI.getAll({ client_id: selectedClient.value.id, active_only: true, limit: 500 })
       clientSites.value = res.data.items
+    } else if (selectedContractIds.value.length === 1) {
+      const cid = selectedContractIds.value[0]
+      const res = await contractsAPI.getById(cid)
+      clientSites.value = res.data.sites || []
+      for (const s of clientSites.value) siteContractMap.value[s.id] = cid
+    } else {
+      // Несколько договоров — объединяем объекты, без дублей
+      const allSites = []
+      const seenIds = new Set()
+      for (const cid of selectedContractIds.value) {
+        const res = await contractsAPI.getById(cid)
+        for (const s of (res.data.sites || [])) {
+          if (!seenIds.has(s.id)) {
+            seenIds.add(s.id)
+            allSites.push(s)
+            siteContractMap.value[s.id] = cid
+          }
+        }
+      }
+      clientSites.value = allSites
     }
   } catch {
     clientSites.value = []
@@ -795,6 +846,12 @@ function toggleSite(id) {
   const idx = selectedSiteIds.value.indexOf(id)
   if (idx === -1) selectedSiteIds.value.push(id)
   else selectedSiteIds.value.splice(idx, 1)
+}
+
+function contractLabel(c) {
+  let label = c.contract_number || 'Без номера'
+  if (c.contract_date) label += ' от ' + formatDate(c.contract_date)
+  return label
 }
 
 const columns = [
@@ -813,6 +870,7 @@ const form = ref({
   site_id: '', master_ids: [], planned_date: '', planned_time_from: '',
   planned_time_to: '', visit_types: ['maintenance'], priority: 'medium',
   office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '', visit_contact_phone: '',
+  customVisitType: '',
 })
 const originalForm = ref(null)
 
@@ -881,11 +939,12 @@ function validate() {
 function openCreate() {
   editing.value = null
   errors.value = {}
-  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '', visit_contact_phone: '' }
+  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '', visit_contact_phone: '', customVisitType: '' }
   clientQuery.value = ''
   selectedClient.value = null
   clientContracts.value = []
-  selectedContractId.value = ''
+  selectedContractIds.value = []
+  siteContractMap.value = {}
   clientSites.value = []
   selectedSiteIds.value = []
   createMode.value = 'separate'
@@ -911,6 +970,7 @@ async function openEdit(v) {
     visit_contact: v.visit_contact || '',
     visit_contact_position: v.visit_contact_position || '',
     visit_contact_phone: v.visit_contact_phone || '',
+    customVisitType: '',
   }
   originalForm.value = { ...form.value, master_ids: [...form.value.master_ids], visit_types: [...form.value.visit_types] }
   detailVisit.value = null
@@ -941,7 +1001,11 @@ async function handleSave() {
   saving.value = true
   try {
     const masterIds = form.value.master_ids.length ? form.value.master_ids : null
-    const visitTypes = form.value.visit_types.length ? form.value.visit_types : ['maintenance']
+    // Обрабатываем тип "Другое": заменяем 'other' на введённый текст
+    const rawTypes = form.value.visit_types.length ? form.value.visit_types : ['maintenance']
+    const visitTypes = rawTypes
+      .map(t => t === 'other' ? (form.value.customVisitType?.trim() || null) : t)
+      .filter(Boolean)
     const base = {
       master_ids: masterIds,
       visit_types: visitTypes,
@@ -974,16 +1038,22 @@ async function handleSave() {
       if (noChange) { closeModal(); return }
       await visitsAPI.update(editing.value.id, { ...base, site_id: form.value.site_id, status: form.value.status })
     } else {
-      const contractId = selectedContractId.value || null
+      // Функция получения contract_id для конкретного объекта
+      const contractForSite = (sid) =>
+        siteContractMap.value[sid] ||
+        (selectedContractIds.value.length === 1 ? selectedContractIds.value[0] : null)
       if (createMode.value === 'single') {
         const siteIds = selectedSiteIds.value
         const siteNames = siteIds.map(sid => clientSites.value.find(s => s.id === sid)?.title).filter(Boolean)
         const notes = siteNames.length > 1
           ? [base.office_notes, 'Объекты: ' + siteNames.join(', ')].filter(Boolean).join('\n')
           : base.office_notes
+        const contractId = contractForSite(siteIds[0])
         await visitsAPI.create({ ...base, site_id: siteIds[0], office_notes: notes || null, contract_id: contractId })
       } else {
-        await Promise.all(selectedSiteIds.value.map(sid => visitsAPI.create({ ...base, site_id: sid, contract_id: contractId })))
+        await Promise.all(selectedSiteIds.value.map(sid =>
+          visitsAPI.create({ ...base, site_id: sid, contract_id: contractForSite(sid) })
+        ))
       }
     }
     closeModal()

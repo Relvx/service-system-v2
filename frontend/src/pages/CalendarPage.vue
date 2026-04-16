@@ -390,6 +390,16 @@ const calendarOptions = computed(() => ({
     ? { center: 'dayGridMonth,timeGridWeek,timeGridDay' }
     : false,
   events: allEvents.value,
+  editable: true,
+  eventDrop: async ({ event, revert }) => {
+    if (event.extendedProps._type === 'note') { revert(); return }
+    const newDate = event.startStr.slice(0, 10)
+    try {
+      await visitsAPI.update(event.extendedProps.id, { planned_date: newDate })
+    } catch {
+      revert()
+    }
+  },
   eventClick: ({ event }) => {
     if (event.extendedProps._type === 'note') {
       openNoteEdit(event.extendedProps)

@@ -472,7 +472,7 @@
             <select v-model="historicalVisitForm.contract_id" class="input" @change="onHistoricalContractChange">
               <option value="">— Без договора (все объекты) —</option>
               <option v-for="c in contracts" :key="c.id" :value="c.id">
-                {{ c.contract_number || 'Без номера' }}{{ c.subject ? ' — ' + c.subject : '' }}
+                {{ c.contract_number || 'Без номера' }}{{ c.contract_date ? ' от ' + formatDate(c.contract_date) : '' }}{{ c.subject ? ' — ' + c.subject : '' }}
               </option>
             </select>
             <p v-if="historicalVisitSitesLoading" class="text-xs text-gray-400 mt-1">Загрузка объектов...</p>
