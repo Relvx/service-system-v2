@@ -394,8 +394,29 @@ const calendarOptions = computed(() => ({
   eventDrop: async ({ event, revert }) => {
     if (event.extendedProps._type === 'note') { revert(); return }
     const newDate = event.startStr.slice(0, 10)
+    const newTimeFrom = event.allDay ? null : event.startStr.slice(11, 16) || null
+    const newTimeTo = event.end && !event.allDay ? event.endStr.slice(11, 16) || null : null
     try {
-      await visitsAPI.update(event.extendedProps.id, { planned_date: newDate })
+      await visitsAPI.update(event.extendedProps.id, {
+        planned_date: newDate,
+        planned_time_from: newTimeFrom,
+        planned_time_to: newTimeTo,
+      })
+    } catch {
+      revert()
+    }
+  },
+  eventResize: async ({ event, revert }) => {
+    if (event.extendedProps._type === 'note') { revert(); return }
+    const newDate = event.startStr.slice(0, 10)
+    const newTimeFrom = event.allDay ? null : event.startStr.slice(11, 16) || null
+    const newTimeTo = event.end && !event.allDay ? event.endStr.slice(11, 16) || null : null
+    try {
+      await visitsAPI.update(event.extendedProps.id, {
+        planned_date: newDate,
+        planned_time_from: newTimeFrom,
+        planned_time_to: newTimeTo,
+      })
     } catch {
       revert()
     }
