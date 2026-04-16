@@ -557,10 +557,12 @@ async function openVisitsModal(source) {
     total: 0,
   }
   try {
-    // Берём последние 5 завершённых выездов по договору с комментариями мастера
-    const res = await visitsAPI.getAll({ contract_id: contractId, status: 'done', limit: 5 })
+    // Берём последние 20 завершённых выездов, фильтруем с комментариями, показываем 5
+    const res = await visitsAPI.getAll({ contract_id: contractId, status: 'done', limit: 20 })
     const items = res.data.items || []
-    visitsModal.value.visits = items.filter(v => v.work_summary || v.recommendations || v.defects_present)
+    visitsModal.value.visits = items
+      .filter(v => v.work_summary || v.recommendations || v.defects_present)
+      .slice(0, 5)
     visitsModal.value.total = res.data.total || 0
   } finally {
     visitsModal.value.loading = false
