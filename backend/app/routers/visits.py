@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, exists, or_
+from sqlalchemy import select, func, exists
 from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user, require_groups
@@ -10,7 +10,7 @@ from app.models.visit import Visit, VisitMaster
 from app.models.site import Site
 from app.models.client import Client
 from app.models.client_contact import ClientContact
-from app.models.contract import Contract, ContractSite
+from app.models.contract import Contract
 from app.models.user import User
 from app.models.attachment import Attachment
 from app.models.history import VisitHistory
@@ -173,22 +173,10 @@ async def get_visits(
     if not show_archived:
         stmt = stmt.where(Visit.is_archived == False)
 
-    # Фильтр по договору:
-    # - выезды с явным contract_id == contract_id
-    # - ИЛИ выезды без contract_id (null), у которых site_id входит в договор
+    # Фильтр по договору — только прямая привязка.
+    # Старые выезды без contract_id заполняются скриптом backfill_visit_contract.py
     if contract_id is not None:
-        from sqlalchemy import and_
-        site_ids_res = await db.execute(
-            select(ContractSite.site_id).where(ContractSite.contract_id == contract_id)
-        )
-        site_ids = [r.site_id for r in site_ids_res.all()]
-        if site_ids:
-            stmt = stmt.where(or_(
-                Visit.contract_id == contract_id,
-                and_(Visit.contract_id.is_(None), Visit.site_id.in_(site_ids)),
-            ))
-        else:
-            stmt = stmt.where(Visit.contract_id == contract_id)
+        stmt = stmt.where(Visit.contract_id == contract_id)
 
     stmt = stmt.order_by(Visit.planned_date.desc(), Visit.planned_time_from)
 
