@@ -56,6 +56,16 @@
             <CalendarIcon class="w-4 h-4" />
             Следующий месяц
           </button>
+
+          <!-- Кнопка печати -->
+          <button
+            @click="printMonth"
+            class="btn btn-secondary text-sm flex items-center gap-1 flex-shrink-0"
+            title="Распечатать расписание на месяц"
+          >
+            <Printer class="w-4 h-4" />
+            Распечатать месяц
+          </button>
         </div>
       </div>
 
@@ -399,7 +409,7 @@ import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
-  X, ExternalLink, MessageSquare, Pencil, Search, ArrowRight, AlertTriangle,
+  X, ExternalLink, MessageSquare, Pencil, Search, ArrowRight, AlertTriangle, Printer,
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -446,6 +456,12 @@ function isCurrentMonth(month) {
 function setMode(mode) {
   viewMode.value = mode
   load()
+}
+
+function printMonth() {
+  const y = currentYear.value
+  const m = viewMode.value === 'month' ? currentMonth.value : currentMonth.value
+  window.open(`/print/schedule/${y}/${m}`, '_blank')
 }
 
 function goNextMonth() {

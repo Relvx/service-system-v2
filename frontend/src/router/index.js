@@ -100,6 +100,11 @@ const routes = [
     meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
+    path: '/print/schedule/:year/:month',
+    component: () => import('../pages/PrintSchedulePage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
     path: '/admin',
     component: () => import('../pages/AdminPage.vue'),
     meta: { requiresAuth: true, allowedGroups: ['admin_group'] },
