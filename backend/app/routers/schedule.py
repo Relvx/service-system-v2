@@ -12,6 +12,7 @@ from app.dependencies import get_db, get_current_user
 from app.models.contract_schedule import ContractSchedule
 from app.models.contract import Contract, ContractSite
 from app.models.client import Client
+from app.models.client_contact import ClientContact
 from app.models.visit import Visit
 from app.models.user import User
 
@@ -27,6 +28,8 @@ class ScheduleCell(BaseModel):
     year: int
     month: int
     note: str
+    contact_name: Optional[str] = None
+    contact_phone: Optional[str] = None
 
 
 class ScheduleRow(BaseModel):
@@ -116,9 +119,19 @@ async def get_schedule_month(
         raise HTTPException(status_code=400, detail="month must be 1–12")
 
     result = await db.execute(
-        select(ContractSchedule, Contract.contract_number, Client.name)
+        select(
+            ContractSchedule,
+            Contract.contract_number,
+            Client.name,
+            ClientContact.full_name,
+            ClientContact.phone,
+        )
         .join(Contract, ContractSchedule.contract_id == Contract.id)
         .join(Client, Contract.client_id == Client.id)
+        .outerjoin(
+            ClientContact,
+            (ClientContact.client_id == Client.id) & (ClientContact.is_primary == True),
+        )
         .where(ContractSchedule.year == year, ContractSchedule.month == month)
         .where(ContractSchedule.note.isnot(None), ContractSchedule.note != "")
         .order_by(Client.name, Contract.contract_number)
@@ -133,8 +146,10 @@ async def get_schedule_month(
             year=year,
             month=month,
             note=s.note,
+            contact_name=contact_name or None,
+            contact_phone=contact_phone or None,
         )
-        for s, cn, cl in rows
+        for s, cn, cl, contact_name, contact_phone in rows
     ]
     return ScheduleMonthOut(year=year, month=month, items=items)
 

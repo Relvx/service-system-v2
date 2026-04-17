@@ -23,6 +23,7 @@
           <th class="col-num">#</th>
           <th class="col-client">Клиент</th>
           <th class="col-contract">Договор</th>
+          <th class="col-contact">Контакт</th>
           <th class="col-note">Пометки</th>
           <th class="col-visits">Последние выезды</th>
         </tr>
@@ -32,6 +33,13 @@
           <td class="col-num">{{ idx + 1 }}</td>
           <td class="col-client">{{ row.client_name }}</td>
           <td class="col-contract">{{ row.contract_number }}</td>
+          <td class="col-contact">
+            <div v-if="row.contact_name || row.contact_phone">
+              <div v-if="row.contact_name">{{ row.contact_name }}</div>
+              <div v-if="row.contact_phone" class="contact-phone">{{ row.contact_phone }}</div>
+            </div>
+            <span v-else class="no-visits">—</span>
+          </td>
           <td class="col-note">{{ row.note || '' }}</td>
           <td class="col-visits">
             <div v-if="row.visits && row.visits.length" class="visits-list">
@@ -44,7 +52,7 @@
           </td>
         </tr>
         <tr v-if="rows.length === 0">
-          <td colspan="5" class="empty-row">Нет договоров в этом месяце</td>
+          <td colspan="6" class="empty-row">Нет договоров в этом месяце</td>
         </tr>
       </tbody>
     </table>
@@ -154,10 +162,13 @@ body { margin: 0; font-family: Arial, sans-serif; font-size: 11pt; color: #000; 
 .print-table th { background: #f0f0f0; font-weight: bold; font-size: 10pt; }
 
 .col-num      { width: 6mm; text-align: center; }
-.col-client   { width: 22%; }
-.col-contract { width: 18%; }
-.col-note     { width: 18%; }
+.col-client   { width: 20%; }
+.col-contract { width: 16%; }
+.col-contact  { width: 16%; }
+.col-note     { width: 14%; }
 .col-visits   { width: auto; }
+
+.contact-phone { font-size: 9pt; color: #555; }
 
 .visits-list { display: flex; flex-direction: column; gap: 1mm; }
 .visit-date { font-weight: 600; }
