@@ -134,6 +134,13 @@
             >
               История выездов <span v-if="visits.length" class="ml-1 text-xs text-gray-400">({{ visits.length }})</span><span v-if="!visits.length && visitsLoaded" class="ml-1 text-xs text-gray-400">(0)</span>
             </button>
+            <button
+              @click="rightTab = 'schedule'; if (!scheduleLoaded) loadSchedule()"
+              class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5"
+              :class="rightTab === 'schedule' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+            >
+              <CalendarDays class="w-4 h-4" />Расписание
+            </button>
           </div>
 
           <!-- Объекты -->
@@ -227,6 +234,50 @@
                   </div>
                 </template>
               </div>
+            </div>
+          </div>
+
+          <!-- Расписание -->
+          <div v-if="rightTab === 'schedule'" class="card space-y-4">
+            <!-- Навигация по году -->
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-gray-900">Расписание</h3>
+              <div class="flex items-center gap-2">
+                <button @click="scheduleYear--; scheduleLoaded = false; loadSchedule()" class="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+                  <ChevronLeft class="w-4 h-4" />
+                </button>
+                <span class="text-sm font-semibold text-gray-800 w-12 text-center">{{ scheduleYear }}</span>
+                <button @click="scheduleYear++; scheduleLoaded = false; loadSchedule()" class="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+                  <ChevronRight class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div v-if="scheduleLoading" class="flex justify-center py-8">
+              <div class="animate-spin rounded-full h-7 w-7 border-b-2 border-primary-600"></div>
+            </div>
+
+            <div v-else class="space-y-2">
+              <p class="text-xs text-gray-400">Нажмите на месяц чтобы добавить или изменить запись в расписании.</p>
+              <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <button
+                  v-for="(name, idx) in MONTH_NAMES"
+                  :key="idx + 1"
+                  @click="openScheduleCell(idx + 1)"
+                  class="flex flex-col items-start px-3 py-2.5 rounded-lg border text-left transition-colors"
+                  :class="(idx + 1) in scheduleCells
+                    ? 'bg-blue-50 border-blue-300 hover:bg-blue-100'
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'"
+                >
+                  <span class="text-xs font-semibold" :class="(idx + 1) in scheduleCells ? 'text-blue-700' : 'text-gray-500'">{{ name }}</span>
+                  <span v-if="(idx + 1) in scheduleCells && scheduleCells[idx + 1]" class="text-xs text-blue-600 mt-0.5 line-clamp-1 w-full">{{ scheduleCells[idx + 1] }}</span>
+                  <span v-else-if="(idx + 1) in scheduleCells" class="text-xs text-blue-400 mt-0.5">✓ в расписании</span>
+                  <span v-else class="text-xs text-gray-300 mt-0.5">+ добавить</span>
+                </button>
+              </div>
+              <p class="text-xs text-gray-400 pt-1">
+                В расписании: <span class="font-medium text-gray-600">{{ Object.keys(scheduleCells).length }} мес.</span> за {{ scheduleYear }} год
+              </p>
             </div>
           </div>
 
@@ -370,6 +421,38 @@
       </div>
     </div>
 
+    <!-- Модалка ячейки расписания -->
+    <div v-if="scheduleCellModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900">
+            {{ MONTH_NAMES[scheduleCellModal.month - 1] }} {{ scheduleYear }}
+          </h3>
+          <button @click="scheduleCellModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Заметка (необязательно)</label>
+            <textarea v-model="scheduleCellNote" class="input" rows="3" placeholder="ТО, осмотр, плановый визит..." />
+          </div>
+          <div class="flex gap-2 pt-1">
+            <button
+              @click="saveScheduleCell"
+              :disabled="scheduleCellSaving"
+              class="btn btn-primary flex-1 disabled:opacity-50"
+            >{{ scheduleCellSaving ? 'Сохранение...' : (scheduleCellModal.exists ? 'Сохранить' : 'Добавить в расписание') }}</button>
+            <button
+              v-if="scheduleCellModal.exists"
+              @click="deleteScheduleCell"
+              :disabled="scheduleCellSaving"
+              class="p-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
+              title="Удалить из расписания"
+            ><Trash2 class="w-4 h-4" /></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Подтверждение удаления объекта -->
     <div v-if="removeSiteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
@@ -387,9 +470,9 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Edit, Plus, X, Building2, Calendar as CalendarIcon, User, AlertTriangle } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Plus, X, Building2, Calendar as CalendarIcon, User, AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Trash2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
-import { contractsAPI, sitesAPI, visitsAPI } from '../services/api.js'
+import { contractsAPI, sitesAPI, visitsAPI, scheduleAPI } from '../services/api.js'
 import { useConfigStore } from '../stores/config.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
@@ -435,11 +518,61 @@ const siteSearch = ref('')
 const siteResults = ref([])
 const removeSiteConfirm = ref(null)
 
+// Расписание
+const scheduleYear = ref(new Date().getFullYear())
+const scheduleCells = ref({}) // { month: note|null }
+const scheduleLoading = ref(false)
+const scheduleLoaded = ref(false)
+const scheduleCellModal = ref(null) // { month, exists }
+const scheduleCellNote = ref('')
+const scheduleCellSaving = ref(false)
+const MONTH_NAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
+
+async function loadSchedule() {
+  scheduleLoading.value = true
+  try {
+    const res = await scheduleAPI.getContractSchedule(route.params.id, scheduleYear.value)
+    scheduleCells.value = res.data.cells
+    scheduleLoaded.value = true
+  } finally {
+    scheduleLoading.value = false
+  }
+}
+
+function openScheduleCell(month) {
+  const exists = month in scheduleCells.value
+  scheduleCellModal.value = { month, exists }
+  scheduleCellNote.value = exists ? (scheduleCells.value[month] || '') : ''
+}
+
+async function saveScheduleCell() {
+  scheduleCellSaving.value = true
+  try {
+    await scheduleAPI.upsertCell(route.params.id, scheduleYear.value, scheduleCellModal.value.month, scheduleCellNote.value || null)
+    await loadSchedule()
+    scheduleCellModal.value = null
+  } finally {
+    scheduleCellSaving.value = false
+  }
+}
+
+async function deleteScheduleCell() {
+  scheduleCellSaving.value = true
+  try {
+    await scheduleAPI.deleteCell(route.params.id, scheduleYear.value, scheduleCellModal.value.month)
+    await loadSchedule()
+    scheduleCellModal.value = null
+  } finally {
+    scheduleCellSaving.value = false
+  }
+}
+
 useEscClose([
   { isOpen: () => !!selectedVisit.value,        close: () => { selectedVisit.value = null } },
   { isOpen: () => editModalOpen.value,          close: () => { editModalOpen.value = false } },
   { isOpen: () => addSiteModalOpen.value,       close: () => { addSiteModalOpen.value = false; siteSearch.value = ''; siteResults.value = [] } },
   { isOpen: () => !!removeSiteConfirm.value,    close: () => { removeSiteConfirm.value = null } },
+  { isOpen: () => !!scheduleCellModal.value,    close: () => { scheduleCellModal.value = null } },
 ])
 
 const statuses = [

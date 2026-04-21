@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -70,6 +70,11 @@ class ScheduleMonthOut(BaseModel):
 
 class ScheduleNoteUpdate(BaseModel):
     note: Optional[str] = None
+
+
+class ContractYearCells(BaseModel):
+    year: int
+    cells: dict[int, Optional[str]]  # month → note (None = entry exists, no note)
 
 
 # ---------- Endpoints ----------
@@ -227,6 +232,23 @@ async def delete_schedule_cell(
         raise HTTPException(status_code=404, detail="Not found")
     await db.delete(cell)
     await db.commit()
+
+
+@router.get("/contract/{contract_id}", response_model=ContractYearCells)
+async def get_contract_schedule(
+    contract_id: int,
+    year: int = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Ячейки расписания конкретного договора за год."""
+    result = await db.execute(
+        select(ContractSchedule)
+        .where(ContractSchedule.contract_id == contract_id, ContractSchedule.year == year)
+    )
+    rows = result.scalars().all()
+    cells = {r.month: r.note for r in rows}
+    return ContractYearCells(year=year, cells=cells)
 
 
 @router.get("/visits/{contract_id}", response_model=ContractVisitsOut)
