@@ -269,6 +269,71 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
               <textarea v-model="form.notes" class="input" rows="2" />
             </div>
+            <!-- Расписание -->
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                @click="scheduleEnabled = !scheduleEnabled"
+                class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                :class="scheduleEnabled ? 'bg-blue-50 text-blue-700 hover:bg-blue-50' : ''"
+              >
+                <span class="flex items-center gap-2">
+                  <CalendarDays class="w-4 h-4" />
+                  Добавить в расписание
+                </span>
+                <span class="text-xs px-2 py-0.5 rounded-full" :class="scheduleEnabled ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'">
+                  {{ scheduleEnabled ? 'Включено' : 'Выключено' }}
+                </span>
+              </button>
+
+              <div v-if="scheduleEnabled" class="px-4 pb-4 pt-3 space-y-3 border-t border-gray-100">
+                <!-- Год -->
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Год</label>
+                  <select v-model="scheduleYear" class="input text-sm">
+                    <option v-for="y in SCHEDULE_YEARS" :key="y" :value="y">{{ y }}</option>
+                  </select>
+                </div>
+
+                <!-- Месяцы -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="text-xs font-medium text-gray-600">Месяцы</label>
+                    <div class="flex gap-2 text-xs text-blue-600">
+                      <button type="button" @click="scheduleMonths = [1,2,3,4,5,6,7,8,9,10,11,12]" class="hover:underline">Все</button>
+                      <span class="text-gray-300">|</span>
+                      <button type="button" @click="scheduleMonths = []" class="hover:underline">Сбросить</button>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-3 gap-1.5">
+                    <label
+                      v-for="(name, idx) in MONTH_NAMES"
+                      :key="idx + 1"
+                      class="flex items-center gap-2 px-2.5 py-1.5 rounded-md border cursor-pointer text-sm transition-colors"
+                      :class="scheduleMonths.includes(idx + 1)
+                        ? 'bg-blue-50 border-blue-300 text-blue-700'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'"
+                    >
+                      <input
+                        type="checkbox"
+                        :value="idx + 1"
+                        v-model="scheduleMonths"
+                        class="rounded border-gray-300 text-blue-600 w-3.5 h-3.5"
+                      />
+                      {{ name }}
+                    </label>
+                  </div>
+                  <p v-if="scheduleMonths.length" class="text-xs text-gray-500 mt-1.5">Выбрано: {{ scheduleMonths.length }} мес.</p>
+                </div>
+
+                <!-- Заметка -->
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Заметка для всех месяцев (необязательно)</label>
+                  <textarea v-model="scheduleNote" class="input text-sm" rows="2" placeholder="ТО, осмотр, плановый визит..." />
+                </div>
+              </div>
+            </div>
+
             <div class="flex justify-end gap-3 pt-2">
               <button type="button" @click="createModalOpen = false" class="btn btn-secondary">Отмена</button>
               <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
@@ -301,13 +366,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, FileText, X, Search, MapPin, Eye, Trash2, Filter, ChevronDown } from 'lucide-vue-next'
+import { Plus, FileText, X, Search, MapPin, Eye, Trash2, Filter, ChevronDown, CalendarDays } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import ContractQuickModal from '../components/modals/ContractQuickModal.vue'
 import SiteQuickModal from '../components/modals/SiteQuickModal.vue'
 import ClientQuickModal from '../components/modals/ClientQuickModal.vue'
-import { contractsAPI, sitesAPI, clientsAPI } from '../services/api.js'
+import { contractsAPI, sitesAPI, clientsAPI, scheduleAPI } from '../services/api.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
@@ -334,6 +399,14 @@ const clientDropRef = ref(null)
 const clientSites = ref([])
 const selectedSiteIds = ref([])
 const sitesLoading = ref(false)
+
+// Schedule в создании договора
+const scheduleEnabled = ref(false)
+const scheduleYear = ref(new Date().getFullYear())
+const scheduleMonths = ref([])
+const scheduleNote = ref('')
+const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+const SCHEDULE_YEARS = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i)
 
 let clientSearchTimer = null
 async function onClientSearch() {
@@ -470,6 +543,10 @@ function openCreate() {
   clientOptions.value = []
   clientSites.value = []
   selectedSiteIds.value = []
+  scheduleEnabled.value = false
+  scheduleYear.value = new Date().getFullYear()
+  scheduleMonths.value = []
+  scheduleNote.value = ''
   createModalOpen.value = true
 }
 
@@ -490,6 +567,13 @@ async function handleCreate() {
     // Привязываем выбранные объекты
     for (const siteId of selectedSiteIds.value) {
       await contractsAPI.addSite(newId, siteId)
+    }
+    // Создаём ячейки расписания
+    if (scheduleEnabled.value && scheduleMonths.value.length) {
+      const note = scheduleNote.value.trim() || null
+      for (const month of scheduleMonths.value) {
+        await scheduleAPI.upsertCell(newId, scheduleYear.value, month, note)
+      }
     }
     createModalOpen.value = false
     await load()
