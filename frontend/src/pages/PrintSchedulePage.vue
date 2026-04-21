@@ -23,6 +23,7 @@
           <th class="col-num">#</th>
           <th class="col-client">Клиент</th>
           <th class="col-contract">Договор</th>
+          <th class="col-addresses">Адреса объектов</th>
           <th class="col-contact">Контакт</th>
           <th class="col-note">Пометки</th>
           <th class="col-visits">Последние выезды</th>
@@ -33,6 +34,12 @@
           <td class="col-num">{{ idx + 1 }}</td>
           <td class="col-client">{{ row.client_name }}</td>
           <td class="col-contract">{{ row.contract_number }}</td>
+          <td class="col-addresses">
+            <div v-if="row.site_addresses && row.site_addresses.length" class="addresses-list">
+              <div v-for="addr in row.site_addresses" :key="addr" class="address-item">{{ addr }}</div>
+            </div>
+            <span v-else class="no-visits">—</span>
+          </td>
           <td class="col-contact">
             <div v-if="row.contact_name || row.contact_phone">
               <div v-if="row.contact_name">{{ row.contact_name }}</div>
@@ -52,7 +59,7 @@
           </td>
         </tr>
         <tr v-if="rows.length === 0">
-          <td colspan="6" class="empty-row">Нет договоров в этом месяце</td>
+          <td colspan="7" class="empty-row">Нет договоров в этом месяце</td>
         </tr>
       </tbody>
     </table>
@@ -161,12 +168,16 @@ body { margin: 0; font-family: Arial, sans-serif; font-size: 11pt; color: #000; 
 }
 .print-table th { background: #f0f0f0; font-weight: bold; font-size: 10pt; }
 
-.col-num      { width: 6mm; text-align: center; }
-.col-client   { width: 20%; }
-.col-contract { width: 16%; }
-.col-contact  { width: 16%; }
-.col-note     { width: 14%; }
-.col-visits   { width: auto; }
+.col-num       { width: 6mm; text-align: center; }
+.col-client    { width: 16%; }
+.col-contract  { width: 13%; }
+.col-addresses { width: 20%; }
+.col-contact   { width: 13%; }
+.col-note      { width: 11%; }
+.col-visits    { width: auto; }
+
+.addresses-list { display: flex; flex-direction: column; gap: 0.5mm; }
+.address-item { font-size: 9pt; }
 
 .contact-phone { font-size: 9pt; color: #555; }
 

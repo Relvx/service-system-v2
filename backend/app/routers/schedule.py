@@ -13,6 +13,7 @@ from app.models.contract_schedule import ContractSchedule
 from app.models.contract import Contract, ContractSite
 from app.models.client import Client
 from app.models.client_contact import ClientContact
+from app.models.site import Site
 from app.models.visit import Visit
 from app.models.user import User
 
@@ -30,6 +31,7 @@ class ScheduleCell(BaseModel):
     note: str
     contact_name: Optional[str] = None
     contact_phone: Optional[str] = None
+    site_addresses: List[str] = []
 
 
 class ScheduleRow(BaseModel):
@@ -143,6 +145,21 @@ async def get_schedule_month(
     )
     rows = result.all()
 
+    contract_ids = [s.contract_id for s, *_ in rows]
+
+    # Адреса объектов по договорам
+    sites_map: dict[int, list[str]] = {}
+    if contract_ids:
+        sites_result = await db.execute(
+            select(ContractSite.contract_id, Site.address)
+            .join(Site, ContractSite.site_id == Site.id)
+            .where(ContractSite.contract_id.in_(contract_ids), Site.is_archived == False)
+            .order_by(ContractSite.contract_id, Site.address)
+        )
+        for contract_id, address in sites_result.all():
+            if address:
+                sites_map.setdefault(contract_id, []).append(address)
+
     items = [
         ScheduleCell(
             contract_id=s.contract_id,
@@ -153,6 +170,7 @@ async def get_schedule_month(
             note=s.note,
             contact_name=contact_name or None,
             contact_phone=contact_phone or None,
+            site_addresses=sites_map.get(s.contract_id, []),
         )
         for s, cn, cl, contact_name, contact_phone in rows
     ]
