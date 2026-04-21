@@ -303,6 +303,9 @@ async def update_visit(
         if master_ids:
             changed["assigned_user_id"] = master_ids[0]
         await _sync_visit_masters(db, visit_id, master_ids)
+    elif "assigned_user_id" in changed:
+        new_aid = changed["assigned_user_id"]
+        await _sync_visit_masters(db, visit_id, [new_aid] if new_aid else [])
 
     # Обработка типов
     if body.visit_types is not None:
@@ -359,10 +362,20 @@ async def complete_visit(
     if visit is None:
         raise HTTPException(status_code=404, detail="Visit not found")
 
+    if visit.status == "done":
+        raise HTTPException(status_code=400, detail="Visit already completed")
+
     user_groups = {g.sysname for g in current_user.groups}
     is_office_admin = bool(user_groups & {"office_group", "admin_group"})
-    if not is_office_admin and visit.assigned_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You can only complete your own assigned visit")
+    if not is_office_admin:
+        master_check = await db.execute(
+            select(VisitMaster).where(
+                VisitMaster.visit_id == visit_id,
+                VisitMaster.user_id == current_user.id,
+            )
+        )
+        if master_check.scalar_one_or_none() is None:
+            raise HTTPException(status_code=403, detail="You can only complete your own assigned visit")
 
     complete_vals = {"status": "done", "work_summary": body.work_summary,
                      "checklist": body.checklist, "defects_present": body.defects_present or False,

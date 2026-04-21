@@ -712,8 +712,10 @@ useEscClose([
 ])
 
 // Реактивный пересчёт при изменении фильтров
-watch(filters, () => { page.value = 1; loadVisits() }, { deep: true })
-watch(showArchived, () => { page.value = 1; loadVisits() })
+watch(
+  () => [filters.value.status, filters.value.priority, filters.value.date_from, filters.value.date_to, filters.value.master_id, showArchived.value],
+  () => { page.value = 1; loadVisits() }
+)
 
 // Create form: client search + multi-site
 const allClients = ref([])
@@ -895,6 +897,8 @@ async function loadVisits() {
     })
     visits.value = res.data.items
     total.value = res.data.total
+  } catch (e) {
+    console.error('loadVisits error:', e?.response?.data || e)
   } finally {
     loading.value = false
   }
