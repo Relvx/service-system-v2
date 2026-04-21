@@ -36,11 +36,38 @@
         >
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
-        <div class="card fc-no-transition" style="min-height: 400px">
-          <FullCalendar
-            ref="calendarRef"
-            :options="calendarOptions"
-          />
+
+        <!-- Zoom controls -->
+        <div class="flex items-center gap-2 mb-2 justify-end">
+          <span class="text-xs text-gray-400">Ширина колонок:</span>
+          <button
+            @click="calendarZoom = Math.max(100, calendarZoom - 10)"
+            class="w-6 h-6 rounded border border-gray-200 text-gray-500 hover:bg-gray-100 text-sm leading-none flex items-center justify-center"
+            title="Уменьшить"
+          >−</button>
+          <span class="text-xs text-gray-600 w-10 text-center">{{ calendarZoom }}%</span>
+          <button
+            @click="calendarZoom = Math.min(250, calendarZoom + 10)"
+            class="w-6 h-6 rounded border border-gray-200 text-gray-500 hover:bg-gray-100 text-sm leading-none flex items-center justify-center"
+            title="Увеличить"
+          >+</button>
+          <button
+            v-if="calendarZoom !== 100"
+            @click="calendarZoom = 100"
+            class="text-xs text-gray-400 hover:text-gray-600 px-1"
+            title="Сбросить"
+          >сброс</button>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl">
+          <div :style="{ width: calendarZoom + '%', minWidth: '600px' }">
+            <div class="card fc-no-transition" style="min-height: 400px">
+              <FullCalendar
+                ref="calendarRef"
+                :options="calendarOptions"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -142,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { X, RefreshCw, CalendarPlus, StickyNote } from 'lucide-vue-next'
 import FullCalendar from '@fullcalendar/vue3'
@@ -367,6 +394,11 @@ async function deleteNote() {
   }
 }
 
+// Zoom (ширина колонок)
+const ZOOM_KEY = 'calendar-zoom'
+const calendarZoom = ref(parseInt(localStorage.getItem(ZOOM_KEY) || '100'))
+watch(calendarZoom, (v) => localStorage.setItem(ZOOM_KEY, v))
+
 const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768
 
 const calendarOptions = computed(() => ({
@@ -472,6 +504,13 @@ onMounted(async () => {
 .fc-no-transition th {
   transition: none !important;
   animation: none !important;
+}
+
+/* При расширении — показывать полный текст события */
+.fc-daygrid-event .fc-event-title {
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
 }
 
 /* Мобильный адаптив FullCalendar */
