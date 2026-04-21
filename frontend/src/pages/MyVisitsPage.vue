@@ -287,7 +287,7 @@ const detailTabs = [
   { key: 'visit_files', label: 'Файлы выезда' },
 ]
 
-const todayStr = new Date().toISOString().slice(0, 10)
+const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
 
 const tabs = computed(() => [
   { id: 'today',    label: 'Сегодня',        count: visits.value.filter((v) => v.planned_date === todayStr).length },
