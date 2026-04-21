@@ -241,6 +241,13 @@
               >
                 <AlertTriangle class="w-4 h-4 mr-1" />Дефект
               </button>
+              <button
+                v-if="detailVisit.status === 'done' && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                @click="openEditResult(detailVisit)"
+                class="btn btn-secondary flex items-center text-blue-700 border-blue-300 hover:bg-blue-50 text-sm"
+              >
+                <ClipboardEdit class="w-4 h-4 mr-1" />Итог работ
+              </button>
             </div>
             <div class="flex gap-3">
               <button
@@ -288,6 +295,43 @@
               <button type="button" @click="completeModal = null" class="btn btn-secondary">Отмена</button>
               <button type="submit" :disabled="saving" class="btn bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
                 {{ saving ? 'Сохранение...' : 'Завершить' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Edit Result Modal -->
+      <div v-if="editResultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">Редактировать итог работ</h2>
+              <p class="text-sm text-gray-500 mt-0.5">{{ editResultModal.site_title }}</p>
+            </div>
+            <button @click="editResultModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="handleEditResult" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Итог работ</label>
+              <textarea v-model="editResultForm.work_summary" rows="4" class="input w-full resize-none" placeholder="Опишите выполненные работы..." />
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="edit_defects_cb" v-model="editResultForm.defects_present" type="checkbox" class="w-4 h-4 rounded border-gray-300" />
+              <label for="edit_defects_cb" class="text-sm text-gray-700">Обнаружены дефекты</label>
+            </div>
+            <div v-if="editResultForm.defects_present">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание дефектов</label>
+              <textarea v-model="editResultForm.defects_summary" rows="3" class="input w-full resize-none" placeholder="Описание дефектов..." />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Рекомендации</label>
+              <textarea v-model="editResultForm.recommendations" rows="2" class="input w-full resize-none" placeholder="Рекомендации..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" @click="editResultModal = null" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Сохранить' }}
               </button>
             </div>
           </form>
@@ -625,7 +669,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown, Filter, CheckCircle } from 'lucide-vue-next'
+import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown, Filter, CheckCircle, ClipboardEdit } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
@@ -678,6 +722,38 @@ const selectedPhotos = ref([])
 const completeModal = ref(null)
 const completeForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
 
+const editResultModal = ref(null)
+const editResultForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
+
+function openEditResult(visit) {
+  editResultForm.value = {
+    work_summary: visit.work_summary || '',
+    defects_present: visit.defects_present || false,
+    defects_summary: visit.defects_summary || '',
+    recommendations: visit.recommendations || '',
+  }
+  editResultModal.value = visit
+  detailVisit.value = null
+}
+
+async function handleEditResult() {
+  saving.value = true
+  try {
+    await visitsAPI.update(editResultModal.value.id, {
+      work_summary: editResultForm.value.work_summary || null,
+      defects_present: editResultForm.value.defects_present,
+      defects_summary: editResultForm.value.defects_summary || null,
+      recommendations: editResultForm.value.recommendations || null,
+    })
+    editResultModal.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
 function openCompleteModal(visit) {
   completeForm.value = { work_summary: '', defects_present: false, defects_summary: '', recommendations: '' }
   completeModal.value = visit
@@ -703,12 +779,13 @@ async function handleComplete() {
 }
 
 useEscClose([
-  { isOpen: () => !!completeModal.value,   close: () => { completeModal.value = null } },
-  { isOpen: () => !!detailVisit.value,     close: () => { detailVisit.value = null } },
-  { isOpen: () => modalOpen.value,         close: () => { closeModal() } },
-  { isOpen: () => !!archiveConfirm.value,  close: () => { archiveConfirm.value = null } },
-  { isOpen: () => !!cancelConfirm.value,   close: () => { cancelConfirm.value = null } },
-  { isOpen: () => defectModalOpen.value,   close: () => { defectModalOpen.value = false } },
+  { isOpen: () => !!completeModal.value,    close: () => { completeModal.value = null } },
+  { isOpen: () => !!editResultModal.value,  close: () => { editResultModal.value = null } },
+  { isOpen: () => !!detailVisit.value,      close: () => { detailVisit.value = null } },
+  { isOpen: () => modalOpen.value,          close: () => { closeModal() } },
+  { isOpen: () => !!archiveConfirm.value,   close: () => { archiveConfirm.value = null } },
+  { isOpen: () => !!cancelConfirm.value,    close: () => { cancelConfirm.value = null } },
+  { isOpen: () => defectModalOpen.value,    close: () => { defectModalOpen.value = false } },
 ])
 
 // Реактивный пересчёт при изменении фильтров
