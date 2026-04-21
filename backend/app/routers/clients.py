@@ -300,7 +300,7 @@ async def unarchive_client(
 async def delete_client(
     client_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_groups("admin_group")),
+    current_user=Depends(require_groups("admin_group", "office_group")),
 ):
     result = await db.execute(select(Client).where(Client.id == client_id))
     client = result.scalar_one_or_none()

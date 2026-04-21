@@ -122,15 +122,14 @@ class TestDeleteAuthorization:
         assert res.status_code == 403
         await http_client.delete(f"/api/clients/{cid}", headers=auth_headers(admin_token))
 
-    async def test_office_cannot_delete_client(
+    async def test_office_can_delete_client(
         self, http_client: AsyncClient, admin_token: str, office_token: str
     ):
         cr = await http_client.post("/api/clients", headers=auth_headers(admin_token),
                                     json={"name": "__test__ delete auth client2"})
         cid = cr.json()["id"]
         res = await http_client.delete(f"/api/clients/{cid}", headers=auth_headers(office_token))
-        assert res.status_code == 403
-        await http_client.delete(f"/api/clients/{cid}", headers=auth_headers(admin_token))
+        assert res.status_code == 204
 
     async def test_admin_can_delete_client(
         self, http_client: AsyncClient, admin_token: str

@@ -299,7 +299,7 @@ async def unarchive_site(
 async def delete_site(
     site_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_groups("admin_group")),
+    current_user=Depends(require_groups("admin_group", "office_group")),
 ):
     result = await db.execute(select(Site).where(Site.id == site_id))
     site = result.scalar_one_or_none()

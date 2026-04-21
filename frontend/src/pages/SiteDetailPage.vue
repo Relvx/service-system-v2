@@ -23,7 +23,7 @@
             <Edit class="w-4 h-4 mr-2" />Редактировать
           </button>
           <button
-            v-if="auth.hasGroup('admin_group')"
+            v-if="auth.hasGroup('admin_group') || auth.hasGroup('office_group')"
             @click="deleteSiteConfirm = true"
             class="btn flex items-center text-red-600 border border-red-200 hover:bg-red-50"
             title="Удалить объект"
