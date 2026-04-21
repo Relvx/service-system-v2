@@ -155,30 +155,54 @@
           </div>
         </div>
 
-        <!-- ======= РЕЖИМ: МЕСЯЦ (список) ======= -->
+        <!-- ======= РЕЖИМ: МЕСЯЦ (таблица) ======= -->
         <div v-else>
           <div v-if="filteredMonthItems.length === 0" class="card text-center py-12 text-gray-400">
             {{ search ? 'Ничего не найдено' : `Нет записей в ${MONTHS_FULL[currentMonth - 1]} ${currentYear}` }}
           </div>
-          <div v-else class="space-y-2">
-            <div
-              v-for="item in filteredMonthItems"
-              :key="item.contract_id"
-              class="card flex items-center gap-4"
-            >
-              <div
-                class="flex-1 min-w-0 cursor-pointer"
-                @click="openClientModal(item)"
-              >
-                <div class="font-medium text-gray-900 hover:text-primary-600 transition-colors">{{ item.client_name }}</div>
-                <div class="text-sm text-gray-400">{{ item.contract_number }}</div>
-              </div>
-              <span
-                class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 flex-shrink-0 cursor-pointer hover:bg-green-200 transition-colors"
-                @click="openCellModal(item, currentMonth, item.note)"
-              >
-                {{ item.note }}
-              </span>
+          <div v-else class="card p-0 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm border-collapse" style="table-layout: fixed;">
+                <thead>
+                  <tr class="bg-gray-50 border-b border-gray-200">
+                    <th
+                      class="text-left px-3 py-2 font-medium text-gray-600 relative select-none"
+                      :style="`width: ${monthColWidth}px; min-width: 120px;`"
+                    >
+                      Клиент / Договор
+                      <div
+                        class="absolute right-0 top-0 h-full w-2 cursor-col-resize flex items-center justify-center group"
+                        @mousedown.prevent="startMonthColResize"
+                      >
+                        <div class="w-0.5 h-4 bg-gray-300 group-hover:bg-primary-400 transition-colors rounded-full" />
+                      </div>
+                    </th>
+                    <th class="text-left px-3 py-2 font-medium text-gray-600">Пометки</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="item in filteredMonthItems"
+                    :key="item.contract_id"
+                    class="border-b border-gray-100 hover:bg-gray-50"
+                  >
+                    <td
+                      class="px-3 py-2.5 cursor-pointer align-top"
+                      :style="`width: ${monthColWidth}px; min-width: 120px; word-break: break-word;`"
+                      @click="openClientModal(item)"
+                    >
+                      <div class="font-medium text-gray-900 hover:text-primary-600 transition-colors">{{ item.client_name }}</div>
+                      <div class="text-sm text-gray-400">{{ item.contract_number }}</div>
+                    </td>
+                    <td class="px-3 py-2.5 align-top">
+                      <span
+                        class="inline-block px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors"
+                        @click="openCellModal(item, currentMonth, item.note)"
+                      >{{ item.note }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -588,6 +612,25 @@ async function openVisitsModal(source) {
 function goToContractVisits() {
   visitsModal.value.open = false
   router.push(`/contracts/${visitsModal.value.contractId}?tab=visits`)
+}
+
+// ---- Resize колонки месячного вида ----
+const MONTH_COL_KEY = 'schedule-month-col-width'
+const monthColWidth = ref(parseInt(localStorage.getItem(MONTH_COL_KEY) || '300'))
+
+function startMonthColResize(e) {
+  const startX = e.clientX
+  const startW = monthColWidth.value
+  const onMove = (ev) => {
+    monthColWidth.value = Math.max(120, Math.min(800, startW + ev.clientX - startX))
+  }
+  const onUp = () => {
+    localStorage.setItem(MONTH_COL_KEY, monthColWidth.value)
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 }
 
 onMounted(load)
