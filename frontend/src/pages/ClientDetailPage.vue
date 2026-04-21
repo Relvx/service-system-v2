@@ -434,6 +434,61 @@
             <div><label class="block text-sm font-medium text-gray-700 mb-1">Сумма акта</label><input v-model="contractForm.act_amount" type="number" step="0.01" class="input" /></div>
           </div>
           <div><label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label><textarea v-model="contractForm.notes" class="input" rows="2" /></div>
+
+          <!-- Расписание -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              @click="contractScheduleEnabled = !contractScheduleEnabled"
+              class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              :class="contractScheduleEnabled ? 'bg-blue-50 text-blue-700 hover:bg-blue-50' : ''"
+            >
+              <span class="flex items-center gap-2">
+                <CalendarDays class="w-4 h-4" />
+                Добавить в расписание
+              </span>
+              <span class="text-xs px-2 py-0.5 rounded-full" :class="contractScheduleEnabled ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'">
+                {{ contractScheduleEnabled ? 'Включено' : 'Выключено' }}
+              </span>
+            </button>
+            <div v-if="contractScheduleEnabled" class="px-4 pb-4 pt-3 space-y-3 border-t border-gray-100">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Год</label>
+                <select v-model="contractScheduleYear" class="input text-sm">
+                  <option v-for="y in SCHEDULE_YEARS" :key="y" :value="y">{{ y }}</option>
+                </select>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="text-xs font-medium text-gray-600">Месяцы</label>
+                  <div class="flex gap-2 text-xs text-blue-600">
+                    <button type="button" @click="contractScheduleMonths = [1,2,3,4,5,6,7,8,9,10,11,12]" class="hover:underline">Все</button>
+                    <span class="text-gray-300">|</span>
+                    <button type="button" @click="contractScheduleMonths = []" class="hover:underline">Сбросить</button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <label
+                    v-for="(name, idx) in MONTH_NAMES"
+                    :key="idx + 1"
+                    class="flex items-center gap-2 px-2.5 py-1.5 rounded-md border cursor-pointer text-sm transition-colors"
+                    :class="contractScheduleMonths.includes(idx + 1)
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'"
+                  >
+                    <input type="checkbox" :value="idx + 1" v-model="contractScheduleMonths" class="rounded border-gray-300 text-blue-600 w-3.5 h-3.5" />
+                    {{ name }}
+                  </label>
+                </div>
+                <p v-if="contractScheduleMonths.length" class="text-xs text-gray-500 mt-1.5">Выбрано: {{ contractScheduleMonths.length }} мес.</p>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Заметка для всех месяцев (необязательно)</label>
+                <textarea v-model="contractScheduleNote" class="input text-sm" rows="2" placeholder="ТО, осмотр, плановый визит..." />
+              </div>
+            </div>
+          </div>
+
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="contractCreateModalOpen = false" class="btn btn-secondary">Отмена</button>
             <button type="submit" :disabled="contractSaving" class="btn btn-primary disabled:opacity-50">{{ contractSaving ? 'Сохранение...' : 'Создать' }}</button>
@@ -623,12 +678,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2, FileText, Images, Clock } from 'lucide-vue-next'
+import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2, FileText, Images, Clock, CalendarDays } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
-import { clientsAPI, sitesAPI, contractsAPI, visitsAPI, usersAPI, attachmentsAPI } from '../services/api.js'
+import { clientsAPI, sitesAPI, contractsAPI, visitsAPI, usersAPI, attachmentsAPI, scheduleAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
@@ -664,6 +719,14 @@ const contractsLoading = ref(false)
 const contractCreateModalOpen = ref(false)
 const contractForm = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
 const contractSaving = ref(false)
+
+// Schedule при создании договора
+const contractScheduleEnabled = ref(false)
+const contractScheduleYear = ref(new Date().getFullYear())
+const contractScheduleMonths = ref([])
+const contractScheduleNote = ref('')
+const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+const SCHEDULE_YEARS = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() + i)
 
 // Photos tab
 const photos = ref([])
@@ -860,6 +923,10 @@ async function loadContracts() {
 
 function openContractCreate() {
   contractForm.value = { contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' }
+  contractScheduleEnabled.value = false
+  contractScheduleYear.value = new Date().getFullYear()
+  contractScheduleMonths.value = []
+  contractScheduleNote.value = ''
   contractCreateModalOpen.value = true
 }
 
@@ -870,7 +937,14 @@ async function handleContractCreate() {
     if (!payload.contract_date) delete payload.contract_date
     if (!payload.amount) delete payload.amount
     if (!payload.act_amount) delete payload.act_amount
-    await contractsAPI.create(payload)
+    const res = await contractsAPI.create(payload)
+    const newId = res.data.id
+    if (contractScheduleEnabled.value && contractScheduleMonths.value.length) {
+      const note = contractScheduleNote.value.trim() || null
+      for (const month of contractScheduleMonths.value) {
+        await scheduleAPI.upsertCell(newId, contractScheduleYear.value, month, note)
+      }
+    }
     contractCreateModalOpen.value = false
     await loadContracts()
   } catch (e) {
