@@ -169,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { X, RefreshCw, CalendarPlus, StickyNote } from 'lucide-vue-next'
 import FullCalendar from '@fullcalendar/vue3'
@@ -397,7 +397,11 @@ async function deleteNote() {
 // Zoom (ширина колонок)
 const ZOOM_KEY = 'calendar-zoom'
 const calendarZoom = ref(parseInt(localStorage.getItem(ZOOM_KEY) || '100'))
-watch(calendarZoom, (v) => localStorage.setItem(ZOOM_KEY, v))
+watch(calendarZoom, async (v) => {
+  localStorage.setItem(ZOOM_KEY, v)
+  await nextTick()
+  calendarRef.value?.getApi().updateSize()
+})
 
 const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768
 
