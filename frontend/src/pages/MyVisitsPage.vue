@@ -269,7 +269,7 @@ const actionLoading = ref(null)
 const completeModal = ref(null)
 const detailVisit = ref(null)
 const saving = ref(false)
-const activeTab = ref('active')
+const activeTab = ref('today')
 const photos = ref([])
 
 useEscClose([
@@ -287,16 +287,24 @@ const detailTabs = [
   { key: 'visit_files', label: 'Файлы выезда' },
 ]
 
+const todayStr = new Date().toISOString().slice(0, 10)
+
 const tabs = computed(() => [
-  { id: 'active', label: 'Активные', count: visits.value.filter((v) => ['planned', 'in_progress'].includes(v.status)).length },
-  { id: 'closed', label: 'Завершённые', count: visits.value.filter((v) => v.status === 'done').length },
-  { id: 'all', label: 'Все', count: visits.value.length },
+  { id: 'today',    label: 'Сегодня',        count: visits.value.filter((v) => v.planned_date === todayStr).length },
+  { id: 'planned',  label: 'Запланированные', count: visits.value.filter((v) => v.planned_date > todayStr && ['planned', 'in_progress'].includes(v.status)).length },
+  { id: 'past',     label: 'Прошлые',         count: visits.value.filter((v) => v.planned_date < todayStr || (v.status === 'done' && v.planned_date !== todayStr)).length },
+  { id: 'all',      label: 'Все',             count: visits.value.length },
 ])
 
 const filteredVisits = computed(() => {
   let result = visits.value
-  if (activeTab.value === 'active') result = result.filter((v) => ['planned', 'in_progress'].includes(v.status))
-  else if (activeTab.value === 'closed') result = result.filter((v) => v.status === 'done')
+  if (activeTab.value === 'today') {
+    result = result.filter((v) => v.planned_date === todayStr)
+  } else if (activeTab.value === 'planned') {
+    result = result.filter((v) => v.planned_date > todayStr && ['planned', 'in_progress'].includes(v.status))
+  } else if (activeTab.value === 'past') {
+    result = result.filter((v) => v.planned_date < todayStr || (v.status === 'done' && v.planned_date !== todayStr))
+  }
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase()
     result = result.filter((v) =>
