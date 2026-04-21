@@ -29,9 +29,19 @@
             </p>
           </div>
         </div>
-        <button @click="openEdit" class="btn btn-secondary flex items-center">
-          <Edit class="w-4 h-4 mr-2" />Редактировать
-        </button>
+        <div class="flex items-center gap-2">
+          <button @click="openEdit" class="btn btn-secondary flex items-center">
+            <Edit class="w-4 h-4 mr-2" />Редактировать
+          </button>
+          <button
+            v-if="auth.hasGroup('admin_group')"
+            @click="deleteContractConfirm = true"
+            class="btn flex items-center text-red-600 border border-red-200 hover:bg-red-50"
+            title="Удалить договор"
+          >
+            <Trash2 class="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -453,6 +463,21 @@
       </div>
     </div>
 
+    <!-- Delete Contract Confirm -->
+    <div v-if="deleteContractConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+        <h3 class="text-lg font-semibold mb-2 text-red-700">Удалить договор?</h3>
+        <p class="text-sm text-gray-600 mb-1">Договор <strong>{{ contract.contract_number || '—' }}</strong> будет удалён безвозвратно.</p>
+        <p class="text-xs text-gray-400 mb-5">Все связанные данные (расписание, выезды) также будут удалены.</p>
+        <div class="flex gap-3">
+          <button @click="handleDeleteContract" :disabled="deletingContract" class="btn bg-red-600 text-white hover:bg-red-700 flex-1 disabled:opacity-50">
+            {{ deletingContract ? 'Удаление...' : 'Удалить' }}
+          </button>
+          <button @click="deleteContractConfirm = false" class="btn btn-secondary flex-1">Отмена</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Подтверждение удаления объекта -->
     <div v-if="removeSiteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
@@ -469,16 +494,19 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Edit, Plus, X, Building2, Calendar as CalendarIcon, User, AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Trash2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { contractsAPI, sitesAPI, visitsAPI, scheduleAPI } from '../services/api.js'
 import { useConfigStore } from '../stores/config.js'
+import { useAuthStore } from '../stores/auth.js'
 import { useEscClose } from '../composables/useEscClose.js'
 
 const cfg = useConfigStore()
+const auth = useAuthStore()
 
 const route = useRoute()
+const router = useRouter()
 const contract = ref(null)
 const loading = ref(true)
 const saving = ref(false)
@@ -567,7 +595,23 @@ async function deleteScheduleCell() {
   }
 }
 
+const deleteContractConfirm = ref(false)
+const deletingContract = ref(false)
+
+async function handleDeleteContract() {
+  deletingContract.value = true
+  try {
+    await contractsAPI.delete(contract.value.id)
+    router.push('/contracts')
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    deletingContract.value = false
+  }
+}
+
 useEscClose([
+  { isOpen: () => deleteContractConfirm.value,  close: () => { deleteContractConfirm.value = false } },
   { isOpen: () => !!selectedVisit.value,        close: () => { selectedVisit.value = null } },
   { isOpen: () => editModalOpen.value,          close: () => { editModalOpen.value = false } },
   { isOpen: () => addSiteModalOpen.value,       close: () => { addSiteModalOpen.value = false; siteSearch.value = ''; siteResults.value = [] } },

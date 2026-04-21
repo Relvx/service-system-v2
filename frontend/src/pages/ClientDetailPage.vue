@@ -32,6 +32,14 @@
           <button v-if="!client.is_archived" @click="openEdit" class="btn btn-secondary flex items-center">
             <Edit class="w-4 h-4 mr-2" />Редактировать
           </button>
+          <button
+            v-if="auth.hasGroup('admin_group')"
+            @click="deleteClientConfirm = true"
+            class="btn flex items-center text-red-600 border border-red-200 hover:bg-red-50"
+            title="Удалить клиента"
+          >
+            <Trash2 class="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -497,6 +505,21 @@
       </div>
     </div>
 
+    <!-- Delete Client Confirm -->
+    <div v-if="deleteClientConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+        <h3 class="text-lg font-semibold mb-2 text-red-700">Удалить клиента?</h3>
+        <p class="text-sm text-gray-600 mb-1">Клиент <strong>{{ client.name }}</strong> будет удалён безвозвратно.</p>
+        <p class="text-xs text-gray-400 mb-5">Все связанные данные (объекты, договоры, выезды) также будут удалены.</p>
+        <div class="flex gap-3">
+          <button @click="handleDeleteClient" :disabled="deletingClient" class="btn bg-red-600 text-white hover:bg-red-700 flex-1 disabled:opacity-50">
+            {{ deletingClient ? 'Удаление...' : 'Удалить' }}
+          </button>
+          <button @click="deleteClientConfirm = false" class="btn btn-secondary flex-1">Отмена</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Contact Delete Confirm -->
     <div v-if="contactDeleteConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
@@ -677,7 +700,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Edit, Plus, X, Phone, Mail, Building2, MapPin, Calendar, User, Trash2, FileText, Images, Clock, CalendarDays } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
@@ -687,6 +710,7 @@ import { clientsAPI, sitesAPI, contractsAPI, visitsAPI, usersAPI, attachmentsAPI
 import { useEscClose } from '../composables/useEscClose.js'
 
 const route = useRoute()
+const router = useRouter()
 const cfg = useConfigStore()
 const auth = useAuthStore()
 
@@ -719,6 +743,22 @@ const contractsLoading = ref(false)
 const contractCreateModalOpen = ref(false)
 const contractForm = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '', notes: '' })
 const contractSaving = ref(false)
+
+// Удаление клиента
+const deleteClientConfirm = ref(false)
+const deletingClient = ref(false)
+
+async function handleDeleteClient() {
+  deletingClient.value = true
+  try {
+    await clientsAPI.delete(client.value.id)
+    router.push('/clients')
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    deletingClient.value = false
+  }
+}
 
 // Schedule при создании договора
 const contractScheduleEnabled = ref(false)
@@ -880,6 +920,7 @@ const contactDeleteConfirm = ref(null)
 const contactForm = ref({ full_name: '', position: '', phone: '', email: '', is_primary: false })
 
 useEscClose([
+  { isOpen: () => deleteClientConfirm.value,           close: () => { deleteClientConfirm.value = false } },
   { isOpen: () => editModalOpen.value,                 close: () => { editModalOpen.value = false } },
   { isOpen: () => legalModalOpen.value,                close: () => { legalModalOpen.value = false } },
   { isOpen: () => siteModalOpen.value,                 close: () => { siteModalOpen.value = false } },
