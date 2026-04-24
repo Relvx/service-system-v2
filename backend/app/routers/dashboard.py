@@ -48,7 +48,7 @@ def _row_to_visit_short(row) -> VisitShort:
 @router.get("/stats", response_model=DashboardStats)
 async def get_stats(
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_groups("admin_group", "office_group")),
+    _=Depends(require_groups("admin_group", "office_group", "viewer_group")),
 ):
     today = date.today()
     week_end = today + timedelta(days=7)

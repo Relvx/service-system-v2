@@ -12,7 +12,7 @@ from app.schemas.log import LogOut, LogPage
 
 router = APIRouter(prefix="/logs", tags=["logs"])
 
-_office_or_admin = Depends(require_groups("admin_group", "office_group"))
+_office_or_admin = Depends(require_groups("admin_group", "office_group", "viewer_group"))
 
 
 @router.get("", response_model=LogPage)

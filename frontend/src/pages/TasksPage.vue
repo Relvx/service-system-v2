@@ -6,7 +6,7 @@
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Задачи</h1>
           <p class="text-gray-600 mt-1">{{ tasks.length }} задач</p>
         </div>
-        <button @click="openCreate" class="btn btn-primary flex items-center">
+        <button v-if="!auth.isViewer" @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Создать задачу
         </button>
       </div>
@@ -46,7 +46,7 @@
           </button>
 
           <!-- Content -->
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0" :class="{ 'blur-sm select-none': auth.isViewer }">
             <p class="font-medium text-gray-900" :class="{ 'line-through text-gray-400': task.is_done }">{{ task.title }}</p>
             <p v-if="task.description" class="text-sm text-gray-500 mt-0.5 line-clamp-2">{{ task.description }}</p>
             <div class="flex items-center gap-4 mt-1.5 text-xs text-gray-400">
@@ -145,6 +145,9 @@ import Layout from '../components/Layout.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { tasksAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
+import { useAuthStore } from '../stores/auth.js'
+
+const auth = useAuthStore()
 
 const tasks = ref([])
 const loading = ref(true)

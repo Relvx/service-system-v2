@@ -120,6 +120,7 @@
         <DataTable
           :columns="columns"
           :rows="logs"
+          :masked="auth.isViewer"
           storage-key="logs-table-v1"
           :total="total"
           :page="page"
@@ -221,6 +222,9 @@ import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
 import { logsAPI, configAPI } from '../services/api.js'
 import { useEscClose } from '../composables/useEscClose.js'
+import { useAuthStore } from '../stores/auth.js'
+
+const auth = useAuthStore()
 
 const logs = ref([])
 const total = ref(0)

@@ -82,7 +82,8 @@ ON CONFLICT (sysname) DO NOTHING;
 INSERT INTO permission_groups (sysname, display_name, default_redirect) VALUES
     ('admin_group',  'Администраторы', '/dashboard'),
     ('office_group', 'Офис',           '/dashboard'),
-    ('master_group', 'Мастера',        '/my-visits')
+    ('master_group', 'Мастера',        '/my-visits'),
+    ('viewer_group', 'Просмотр',       '/dashboard')
 ON CONFLICT (sysname) DO NOTHING;
 
 -- ─── Permissions ──────────────────────────────────────────────────────────────
@@ -155,6 +156,20 @@ WHERE sysname IN (
     'visits:view','visits:complete',
     'defects:view','defects:create',
     'my_visits:view','config:view'
+)
+ON CONFLICT DO NOTHING;
+
+-- ─── Assign viewer_group permissions ─────────────────────────────────────────
+
+INSERT INTO permission_group_permissions (group_id, permission_id)
+SELECT
+    (SELECT id FROM permission_groups WHERE sysname = 'viewer_group'),
+    id
+FROM permissions
+WHERE sysname IN (
+    'visits:view','clients:view','sites:view',
+    'defects:view','purchases:view',
+    'users:view','dashboard:view','config:view'
 )
 ON CONFLICT DO NOTHING;
 

@@ -42,6 +42,7 @@
         v-else
         :columns="columns"
         :rows="defects"
+        :masked="auth.isViewer"
         storage-key="defects_table"
         :total="total"
         :page="page"

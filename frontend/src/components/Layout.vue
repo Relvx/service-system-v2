@@ -276,6 +276,11 @@
       class="transition-all duration-300 ease-in-out pt-14 md:pt-14"
       :class="collapsed ? 'md:ml-16' : 'md:ml-64'"
     >
+      <!-- Viewer mode banner -->
+      <div v-if="isViewer" class="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2 text-sm text-amber-800">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+        <span><strong>Режим просмотра</strong> — данные скрыты, редактирование недоступно</span>
+      </div>
       <main class="p-3 md:p-8">
         <slot />
       </main>
@@ -296,6 +301,7 @@ import { useAuthStore } from '../stores/auth.js'
 import { notificationsAPI, searchAPI } from '../services/api.js'
 
 const auth = useAuthStore()
+const isViewer = computed(() => auth.isViewer)
 const route = useRoute()
 const router = useRouter()
 const user = computed(() => auth.user)
@@ -314,6 +320,7 @@ const GROUP_LABELS = {
   admin_group: 'Администратор',
   office_group: 'Офис',
   master_group: 'Мастер',
+  viewer_group: 'Просмотр',
 }
 
 const userGroupLabel = computed(() => {
@@ -324,20 +331,20 @@ const userGroupLabel = computed(() => {
 
 const allNav = [
   { name: 'Дашборд',     href: '/dashboard', icon: LayoutDashboard, groups: ['office_group', 'admin_group'] },
-  { name: 'Карта',       href: '/map',        icon: Map,             groups: ['office_group', 'admin_group', 'master_group'] },
-  { name: 'Календарь',   href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group'] },
+  { name: 'Карта',       href: '/map',        icon: Map,             groups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
+  { name: 'Календарь',   href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
   { name: 'Мои выезды',  href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
-  { name: 'Клиенты',     href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group'] },
-  { name: 'Договоры',    href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group'] },
-  { name: 'Расписание',  href: '/schedule',   icon: CalendarRange,   groups: ['office_group', 'admin_group'] },
-  { name: 'Объекты',     href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group'] },
-  { name: 'Выезды',      href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group', 'master_group'] },
-  { name: 'Дефекты',     href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group'] },
-  { name: 'Закупки',     href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group'] },
-  { name: 'Задачи',      href: '/tasks',      icon: CheckSquare,     groups: ['office_group', 'admin_group'] },
-  { name: 'Напоминания', href: '/reminders',  icon: BellRing,        groups: ['office_group', 'admin_group'] },
-  { name: 'Галерея',     href: '/photos',     icon: Images,          groups: ['office_group', 'admin_group'] },
-  { name: 'Журнал',      href: '/logs',       icon: ScrollText,      groups: ['office_group', 'admin_group'] },
+  { name: 'Клиенты',     href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Договоры',    href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Расписание',  href: '/schedule',   icon: CalendarRange,   groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Объекты',     href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Выезды',      href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
+  { name: 'Дефекты',     href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Закупки',     href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Задачи',      href: '/tasks',      icon: CheckSquare,     groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Напоминания', href: '/reminders',  icon: BellRing,        groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Галерея',     href: '/photos',     icon: Images,          groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Журнал',      href: '/logs',       icon: ScrollText,      groups: ['office_group', 'admin_group', 'viewer_group'] },
   { name: 'Админ',       href: '/admin',      icon: Settings,        groups: ['admin_group'] },
 ]
 

@@ -14,7 +14,7 @@ router = APIRouter(prefix="/reminders", tags=["reminders"])
 @router.get("", response_model=List[ReminderOut])
 async def get_reminders(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_groups("office_group", "admin_group")),
+    current_user: User = Depends(require_groups("office_group", "admin_group", "viewer_group")),
 ):
     """Return shared reminders + current user's personal reminders."""
     stmt = (

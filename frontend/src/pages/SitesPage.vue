@@ -6,7 +6,7 @@
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Объекты</h1>
           <p class="text-gray-600 mt-1">Показано: {{ sites.length }} из {{ total }}</p>
         </div>
-        <button @click="openCreate" class="btn btn-primary flex items-center">
+        <button v-if="!auth.isViewer" @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Добавить объект
         </button>
       </div>
@@ -61,6 +61,7 @@
         <DataTable
           :columns="columns"
           :rows="filteredSites"
+          :masked="auth.isViewer"
           storage-key="sites-table-v1"
           :row-class="rowClass"
           :total="total"

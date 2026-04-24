@@ -73,7 +73,7 @@
             </th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-100">
+        <tbody class="bg-white divide-y divide-gray-100" :class="{ 'dt-masked': masked }">
           <tr
             v-for="row in sortedRows"
             :key="row.id"
@@ -168,6 +168,7 @@ const props = defineProps({
   rows:     { type: Array, default: () => [] },
   storageKey: { type: String, default: null },
   rowClass: { type: Function, default: null },
+  masked:   { type: Boolean, default: false },
   // pagination (pass null to hide paginator)
   total:    { type: Number, default: null },
   page:     { type: Number, default: 1 },
@@ -318,3 +319,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', stopResize)
 })
 </script>
+
+<style scoped>
+.dt-masked td {
+  filter: blur(5px);
+  user-select: none;
+}
+</style>

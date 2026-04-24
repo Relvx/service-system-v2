@@ -29,7 +29,7 @@ def _row_to_out(task: Task, creator: Optional[User] = None) -> TaskOut:
 async def get_tasks(
     filter: Optional[str] = None,  # 'active' | 'done'
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_groups("office_group", "admin_group")),
+    current_user: User = Depends(require_groups("office_group", "admin_group", "viewer_group")),
 ):
     stmt = select(Task).order_by(Task.is_done, Task.deadline.asc().nullslast(), Task.created_at.desc())
     if filter == "active":

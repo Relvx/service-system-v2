@@ -12,7 +12,7 @@
         </h2>
 
         <!-- Add form -->
-        <form @submit.prevent="addReminder(false)" class="flex gap-2 mb-4">
+        <form v-if="!auth.isViewer" @submit.prevent="addReminder(false)" class="flex gap-2 mb-4">
           <input
             v-model="newShared"
             class="input flex-1"
@@ -29,9 +29,10 @@
             v-for="r in shared" :key="r.id"
             class="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0"
           >
-            <span class="flex-1 text-gray-800 text-sm">{{ r.text }}</span>
-            <span class="text-xs text-gray-400 flex-shrink-0 mt-0.5">{{ r.created_by_name }}</span>
+            <span class="flex-1 text-gray-800 text-sm" :class="{ 'blur-sm select-none': auth.isViewer }">{{ r.text }}</span>
+            <span class="text-xs text-gray-400 flex-shrink-0 mt-0.5" :class="{ 'blur-sm select-none': auth.isViewer }">{{ r.created_by_name }}</span>
             <button
+              v-if="!auth.isViewer"
               @click="deleteReminder(r.id)"
               class="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"
               title="Удалить"
@@ -43,7 +44,7 @@
       </div>
 
       <!-- Личные напоминания -->
-      <div class="card">
+      <div v-if="!auth.isViewer" class="card">
         <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Lock class="w-5 h-5 text-amber-500" />
           Личные
@@ -88,6 +89,9 @@ import { ref, computed, onMounted } from 'vue'
 import { Plus, X, Globe, Lock } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import { remindersAPI } from '../services/api.js'
+import { useAuthStore } from '../stores/auth.js'
+
+const auth = useAuthStore()
 
 const reminders = ref([])
 const newShared = ref('')

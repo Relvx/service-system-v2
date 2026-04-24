@@ -7,12 +7,12 @@ const routes = [
   {
     path: '/dashboard',
     component: () => import('../pages/DashboardPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/map',
     component: () => import('../pages/MapPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'master_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
   },
   {
     path: '/calendar',
@@ -22,37 +22,37 @@ const routes = [
   {
     path: '/clients',
     component: () => import('../pages/ClientsPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/clients/:id',
     component: () => import('../pages/ClientDetailPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/contracts',
     component: () => import('../pages/ContractsPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/contracts/:id',
     component: () => import('../pages/ContractDetailPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/sites',
     component: () => import('../pages/SitesPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/sites/:id',
     component: () => import('../pages/SiteDetailPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/visits',
     component: () => import('../pages/VisitsPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'master_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
   },
   {
     path: '/my-visits',
@@ -62,12 +62,12 @@ const routes = [
   {
     path: '/defects',
     component: () => import('../pages/DefectsPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/purchases',
     component: () => import('../pages/PurchasesPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/notifications',
@@ -77,32 +77,32 @@ const routes = [
   {
     path: '/tasks',
     component: () => import('../pages/TasksPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/reminders',
     component: () => import('../pages/RemindersPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/logs',
     component: () => import('../pages/LogsPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['admin_group', 'office_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['admin_group', 'office_group', 'viewer_group'] },
   },
   {
     path: '/photos',
     component: () => import('../pages/PhotoGalleryPage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/schedule',
     component: () => import('../pages/SchedulePage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/print/schedule/:year/:month',
     component: () => import('../pages/PrintSchedulePage.vue'),
-    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'viewer_group'] },
   },
   {
     path: '/admin',
@@ -137,6 +137,7 @@ router.beforeEach(async (to) => {
   if (to.meta.allowedGroups && !to.meta.allowedGroups.some((g) => userGroups.includes(g))) {
     // Redirect to default page for first group, or notifications
     if (userGroups.includes('master_group')) return '/my-visits'
+    if (userGroups.includes('viewer_group')) return '/dashboard'
     if (userGroups.includes('office_group')) return '/dashboard'
     return '/notifications'
   }

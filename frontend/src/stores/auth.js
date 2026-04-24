@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const groups = computed(() => user.value?.groups || [])
+  const isViewer = computed(() => groups.value.includes('viewer_group') && !groups.value.includes('admin_group') && !groups.value.includes('office_group'))
 
   function hasGroup(sysname) {
     return groups.value.includes(sysname)
@@ -39,5 +40,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { token, user, isAuthenticated, groups, hasGroup, login, logout, fetchMe }
+  return { token, user, isAuthenticated, groups, isViewer, hasGroup, login, logout, fetchMe }
 })

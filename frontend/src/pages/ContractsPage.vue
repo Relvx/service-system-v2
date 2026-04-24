@@ -6,7 +6,7 @@
           <h1 class="text-xl md:text-3xl font-bold text-gray-900">Договоры</h1>
           <p class="text-gray-600 mt-1">Показано: {{ contracts.length }} из {{ total }}</p>
         </div>
-        <button @click="openCreate" class="btn btn-primary flex items-center">
+        <button v-if="!auth.isViewer" @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-4 h-4 mr-2" />Новый договор
         </button>
       </div>
@@ -53,6 +53,7 @@
         <DataTable
           :columns="columns"
           :rows="contracts"
+          :masked="auth.isViewer"
           storage-key="contracts-table-v1"
           :total="total"
           :page="page"

@@ -76,6 +76,7 @@
         v-else
         :columns="columns"
         :rows="visits"
+        :masked="auth.isViewer"
         storage-key="visits_table"
         :row-class="() => 'cursor-pointer'"
         :total="total"

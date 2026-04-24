@@ -22,7 +22,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-sm text-gray-600">{{ stat.name }}</p>
-                <p class="text-2xl md:text-3xl font-bold text-gray-900 mt-2">{{ stat.value }}</p>
+                <p class="text-2xl md:text-3xl font-bold text-gray-900 mt-2" :class="{ 'blur-sm select-none': auth.isViewer }">{{ stat.value }}</p>
               </div>
               <div :class="`${stat.color} p-3 rounded-lg`">
                 <component :is="stat.icon" class="h-6 w-6 text-white" />
@@ -45,7 +45,7 @@
                 :key="v.id"
                 class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
               >
-                <div class="min-w-0">
+                <div class="min-w-0" :class="{ 'blur-sm select-none': auth.isViewer }">
                   <p class="text-sm font-medium text-gray-900 truncate">{{ v.site_title || '—' }}</p>
                   <p class="text-xs text-gray-500 truncate">{{ v.client_name || '—' }} · {{ v.master_name || 'Без мастера' }}</p>
                 </div>
