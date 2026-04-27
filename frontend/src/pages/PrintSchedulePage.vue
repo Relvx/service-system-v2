@@ -41,11 +41,9 @@
             <span v-else class="no-visits">—</span>
           </td>
           <td class="col-contact">
-            <div v-if="row.contacts && row.contacts.length" class="contacts-list">
-              <div v-for="(c, ci) in row.contacts" :key="ci" class="contact-item">
-                <div v-if="c.name">{{ c.name }}</div>
-                <div v-if="c.phone" class="contact-phone">{{ c.phone }}</div>
-              </div>
+            <div v-if="row.contact_name || row.contact_phone">
+              <div v-if="row.contact_name">{{ row.contact_name }}</div>
+              <div v-if="row.contact_phone" class="contact-phone">{{ row.contact_phone }}</div>
             </div>
             <span v-else class="no-visits">—</span>
           </td>
@@ -181,8 +179,6 @@ body { margin: 0; font-family: Arial, sans-serif; font-size: 11pt; color: #000; 
 .addresses-list { display: flex; flex-direction: column; gap: 0.5mm; }
 .address-item { font-size: 9pt; }
 
-.contacts-list { display: flex; flex-direction: column; gap: 1.5mm; }
-.contact-item + .contact-item { border-top: 1px dashed #ddd; padding-top: 1mm; }
 .contact-phone { font-size: 9pt; color: #555; }
 
 .visits-list { display: flex; flex-direction: column; gap: 1mm; }
