@@ -17,10 +17,12 @@
       </div>
 
       <!-- Tabs -->
-      <div class="flex border-b border-gray-200 mb-6">
+      <div role="tablist" class="flex border-b border-gray-200 mb-6">
         <button
           v-for="tab in tabs"
           :key="tab.id"
+          role="tab"
+          :aria-selected="activeTab === tab.id"
           @click="activeTab = tab.id"
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
           :class="activeTab === tab.id ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
@@ -88,19 +90,19 @@
 
       <!-- Detail Modal -->
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
+        <div role="dialog" aria-modal="true" aria-labelledby="mv-detail-title" class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
           <!-- Header -->
           <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
             <div>
-              <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+              <h2 id="mv-detail-title" class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
               <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
             </div>
-            <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <button @click="detailVisit = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
 
           <!-- Tabs -->
-          <div class="flex border-b flex-shrink-0 px-6">
-            <button v-for="t in detailTabs" :key="t.key" @click="detailTab = t.key"
+          <div role="tablist" class="flex border-b flex-shrink-0 px-6">
+            <button v-for="t in detailTabs" :key="t.key" role="tab" :aria-selected="detailTab === t.key" @click="detailTab = t.key"
               class="py-3 mr-6 text-sm font-medium border-b-2 transition-colors"
               :class="detailTab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
               {{ t.label }}
@@ -205,10 +207,10 @@
 
       <!-- Complete Modal -->
       <div v-if="completeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="mv-complete-title" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">Завершить выезд</h2>
-            <button @click="completeModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <h2 id="mv-complete-title" class="text-xl font-semibold text-gray-900">Завершить выезд</h2>
+            <button @click="completeModal = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleComplete" class="p-6 space-y-4">
             <div>

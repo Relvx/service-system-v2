@@ -20,7 +20,7 @@
         <div :class="filtersOpen ? 'flex' : 'hidden md:flex'" class="flex-wrap gap-3 items-end">
           <!-- Статус -->
           <div class="min-w-[160px]">
-            <label class="block text-xs text-gray-400 mb-1">Статус</label>
+            <label class="block text-xs text-gray-600 mb-1">Статус</label>
             <select v-model="filterStatus" @change="loadPurchases" class="input text-sm">
               <option value="">Все статусы</option>
               <option v-for="s in cfg.purchaseStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
@@ -28,7 +28,7 @@
           </div>
           <!-- Объект -->
           <div class="min-w-[200px] flex-1 max-w-xs relative">
-            <label class="block text-xs text-gray-400 mb-1">Объект</label>
+            <label class="block text-xs text-gray-600 mb-1">Объект</label>
             <input
               v-model="filterSiteQuery"
               type="text"
@@ -149,15 +149,15 @@
 
       <!-- Detail / Edit Modal -->
       <div v-if="detailPurchase" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="p-detail-title" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <div>
-              <h2 class="text-xl font-semibold text-gray-900">{{ detailPurchase.item }}</h2>
+              <h2 id="p-detail-title" class="text-xl font-semibold text-gray-900">{{ detailPurchase.item }}</h2>
               <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full mt-1" :class="statusBadgeClass(detailPurchase.status)">
                 {{ cfg.purchaseStatusLabel(detailPurchase.status) }}
               </span>
             </div>
-            <button @click="detailPurchase = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <button @click="detailPurchase = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleEditSave" class="p-4 md:p-6 space-y-4">
             <div>
@@ -266,10 +266,10 @@
 
       <!-- Create Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="p-create-title" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-4 md:p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">Добавить закупку</h2>
-            <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <h2 id="p-create-title" class="text-xl font-semibold text-gray-900">Добавить закупку</h2>
+            <button @click="modalOpen = false" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
             <div>
@@ -359,8 +359,8 @@
 
     <!-- Delete purchase confirm -->
     <div v-if="deletePurchaseConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
-        <h3 class="text-lg font-semibold mb-2">Удалить закупку?</h3>
+      <div role="dialog" aria-modal="true" aria-labelledby="p-delete-title" class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+        <h3 id="p-delete-title" class="text-lg font-semibold mb-2">Удалить закупку?</h3>
         <p class="text-sm text-gray-600 mb-5">
           Закупка <strong>«{{ deletePurchaseConfirm.item }}»</strong> будет удалена безвозвратно.
         </p>

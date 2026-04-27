@@ -20,7 +20,7 @@
         <div :class="filtersOpen ? 'flex' : 'hidden md:flex'" class="flex-wrap gap-3 items-end">
           <!-- Статус -->
           <div class="min-w-[150px]">
-            <label class="block text-xs text-gray-400 mb-1">Статус</label>
+            <label class="block text-xs text-gray-600 mb-1">Статус</label>
             <select v-model="filters.status" class="input text-sm">
               <option value="">Все статусы</option>
               <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
@@ -28,7 +28,7 @@
           </div>
           <!-- Приоритет -->
           <div class="min-w-[140px]">
-            <label class="block text-xs text-gray-400 mb-1">Приоритет</label>
+            <label class="block text-xs text-gray-600 mb-1">Приоритет</label>
             <select v-model="filters.priority" class="input text-sm">
               <option value="">Все приоритеты</option>
               <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
@@ -36,7 +36,7 @@
           </div>
           <!-- Мастер -->
           <div class="min-w-[160px]">
-            <label class="block text-xs text-gray-400 mb-1">Мастер</label>
+            <label class="block text-xs text-gray-600 mb-1">Мастер</label>
             <select v-model="filters.master_id" class="input text-sm">
               <option value="">Все мастера</option>
               <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
@@ -44,12 +44,12 @@
           </div>
           <!-- Дата с -->
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Дата с</label>
+            <label class="block text-xs text-gray-600 mb-1">Дата с</label>
             <input v-model="filters.date_from" type="date" class="input text-sm" />
           </div>
           <!-- Дата по -->
           <div>
-            <label class="block text-xs text-gray-400 mb-1">Дата по</label>
+            <label class="block text-xs text-gray-600 mb-1">Дата по</label>
             <input v-model="filters.date_to" type="date" class="input text-sm" />
           </div>
           <!-- Архивные -->
@@ -148,23 +148,27 @@
 
       <!-- Detail Modal -->
       <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+        <div role="dialog" aria-modal="true" aria-labelledby="v-detail-title" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
           <!-- Header: фиксированный -->
           <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
             <div>
-              <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+              <h2 id="v-detail-title" class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
               <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
             </div>
-            <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <button @click="detailVisit = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <!-- Tabs: фиксированные -->
-          <div class="flex border-b flex-shrink-0">
+          <div role="tablist" class="flex border-b flex-shrink-0">
             <button
+              role="tab"
+              :aria-selected="detailTab === 'info'"
               @click="detailTab = 'info'"
               class="flex-1 py-2.5 text-sm font-medium transition-colors"
               :class="detailTab === 'info' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'"
             >Информация</button>
             <button
+              role="tab"
+              :aria-selected="detailTab === 'files'"
               @click="detailTab = 'files'"
               class="flex-1 py-2.5 text-sm font-medium transition-colors"
               :class="detailTab === 'files' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'"
@@ -267,13 +271,13 @@
 
       <!-- Complete Modal -->
       <div v-if="completeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="v-complete-title" class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b">
             <div>
-              <h2 class="text-xl font-semibold text-gray-900">Завершить выезд</h2>
+              <h2 id="v-complete-title" class="text-xl font-semibold text-gray-900">Завершить выезд</h2>
               <p class="text-sm text-gray-500 mt-0.5">{{ completeModal.site_title }}</p>
             </div>
-            <button @click="completeModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <button @click="completeModal = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleComplete" class="p-6 space-y-4">
             <div>
@@ -304,13 +308,13 @@
 
       <!-- Edit Result Modal -->
       <div v-if="editResultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="v-editresult-title" class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b">
             <div>
-              <h2 class="text-xl font-semibold text-gray-900">Редактировать итог работ</h2>
+              <h2 id="v-editresult-title" class="text-xl font-semibold text-gray-900">Редактировать итог работ</h2>
               <p class="text-sm text-gray-500 mt-0.5">{{ editResultModal.site_title }}</p>
             </div>
-            <button @click="editResultModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <button @click="editResultModal = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleEditResult" class="p-6 space-y-4">
             <div>
@@ -341,10 +345,10 @@
 
       <!-- Create / Edit Modal -->
       <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="v-create-title" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-4 md:p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">{{ editing ? 'Редактировать выезд' : 'Создать выезд' }}</h2>
-            <button @click="closeModal" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <h2 id="v-create-title" class="text-xl font-semibold text-gray-900">{{ editing ? 'Редактировать выезд' : 'Создать выезд' }}</h2>
+            <button @click="closeModal" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
             <!-- CREATE: клиент + мультивыбор объектов -->
@@ -562,8 +566,8 @@
 
       <!-- Archive Confirm -->
       <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">Отправить в архив?</h2>
+        <div role="dialog" aria-modal="true" aria-labelledby="v-archive-title" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
+          <h2 id="v-archive-title" class="text-xl font-semibold text-gray-900 mb-2">Отправить в архив?</h2>
           <p class="text-gray-600 mb-1">Выезд <strong>{{ archiveConfirm.site_title }}</strong> будет скрыт из основного списка.</p>
           <p class="text-sm text-gray-500 mb-6">Все данные сохранятся.</p>
           <div class="flex justify-end gap-3">
@@ -575,10 +579,10 @@
 
       <!-- Defect Create Modal -->
       <div v-if="defectModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="v-defect-title" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-4 md:p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">Добавить дефект</h2>
-            <button @click="defectModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <h2 id="v-defect-title" class="text-xl font-semibold text-gray-900">Добавить дефект</h2>
+            <button @click="defectModalOpen = false" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <form @submit.prevent="handleDefectSave" class="p-4 md:p-6 space-y-4">
             <div class="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
@@ -653,8 +657,8 @@
 
       <!-- Cancel Confirm -->
       <div v-if="cancelConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
-          <h2 class="text-xl font-semibold text-gray-900 mb-2">Отменить выезд?</h2>
+        <div role="dialog" aria-modal="true" aria-labelledby="v-cancel-title" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
+          <h2 id="v-cancel-title" class="text-xl font-semibold text-gray-900 mb-2">Отменить выезд?</h2>
           <p class="text-gray-600 mb-1">Выезд на объект <strong>{{ cancelConfirm.site_title }}</strong> будет переведён в статус «Отменён».</p>
           <p class="text-sm text-gray-500 mb-6">Это действие нельзя отменить.</p>
           <div class="flex justify-end gap-3">

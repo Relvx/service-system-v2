@@ -13,18 +13,18 @@
       <!-- Login Form -->
       <div class="bg-white rounded-lg shadow-xl p-8">
         <form @submit.prevent="handleSubmit" class="space-y-6">
-          <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div v-if="error" role="alert" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {{ error }}
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Логин</label>
-            <input v-model="username" type="text" class="input" placeholder="Введите логин" required autofocus autocomplete="username" />
+            <label for="login-username" class="block text-sm font-medium text-gray-700 mb-2">Логин</label>
+            <input id="login-username" v-model="username" type="text" class="input" placeholder="Введите логин" required autofocus autocomplete="username" />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
-            <input v-model="password" type="password" class="input" placeholder="••••••••" required autocomplete="current-password" />
+            <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
+            <input id="login-password" v-model="password" type="password" class="input" placeholder="••••••••" required autocomplete="current-password" />
           </div>
 
           <button type="submit" :disabled="loading" class="w-full btn btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed">

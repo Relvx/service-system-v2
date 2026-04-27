@@ -100,10 +100,10 @@
 
       <!-- ─── Create Defect Modal ────────────────────────────────────────── -->
       <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="d-create-title" class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-4 md:p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">Новый дефект</h2>
-            <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <h2 id="d-create-title" class="text-xl font-semibold text-gray-900">Новый дефект</h2>
+            <button @click="showCreateModal = false" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <div class="p-4 md:p-6 space-y-4">
             <div class="relative">
@@ -171,10 +171,10 @@
 
       <!-- ─── Detail Modal ───────────────────────────────────────────────── -->
       <div v-if="selectedDefect" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
+        <div role="dialog" aria-modal="true" aria-labelledby="d-detail-title" class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
           <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
-            <h2 class="text-xl font-semibold text-gray-900">{{ selectedDefect.title }}</h2>
-            <button @click="closeDetail" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <h2 id="d-detail-title" class="text-xl font-semibold text-gray-900">{{ selectedDefect.title }}</h2>
+            <button @click="closeDetail" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
 
           <div class="p-4 md:p-6 space-y-4 text-sm overflow-y-auto flex-1">

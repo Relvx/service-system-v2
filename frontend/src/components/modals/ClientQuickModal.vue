@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.self="$emit('close')">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+    <div role="dialog" aria-modal="true" aria-labelledby="cqm-title" class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
       <!-- Header -->
       <div class="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b">
         <div class="flex items-center gap-3">
@@ -8,11 +8,11 @@
             <Building2 class="w-5 h-5 text-primary-600" />
           </div>
           <div>
-            <h2 class="font-semibold text-gray-900 text-base leading-tight">{{ client.name }}</h2>
-            <p v-if="client.inn" class="text-xs text-gray-400">ИНН: {{ client.inn }}</p>
+            <h2 id="cqm-title" class="font-semibold text-gray-900 text-base leading-tight">{{ client.name }}</h2>
+            <p v-if="client.inn" class="text-xs text-gray-600">ИНН: {{ client.inn }}</p>
           </div>
         </div>
-        <button @click="$emit('close')" class="text-gray-400 hover:text-gray-600 p-1">
+        <button @click="$emit('close')" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600 p-1">
           <X class="w-5 h-5" />
         </button>
       </div>

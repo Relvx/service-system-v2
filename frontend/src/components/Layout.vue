@@ -22,11 +22,11 @@
             placeholder="Поиск..."
             class="w-full pl-8 pr-7 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
-          <button v-if="searchQuery" @click="closeSearch" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+          <button v-if="searchQuery" @click="closeSearch" aria-label="Очистить поиск" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
             <X class="w-3.5 h-3.5" />
           </button>
         </div>
-        <RouterLink to="/notifications" class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg flex-shrink-0">
+        <RouterLink to="/notifications" aria-label="Уведомления" class="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg flex-shrink-0">
           <Bell class="h-5 w-5" />
           <span
             v-if="unreadCount > 0"
@@ -64,7 +64,7 @@
               <p class="text-sm font-medium text-gray-900 truncate">{{ r.title }}</p>
               <p v-if="r.subtitle" class="text-xs text-gray-500 truncate">{{ r.subtitle }}</p>
             </div>
-            <span class="text-xs text-gray-400 flex-shrink-0">
+            <span class="text-xs text-gray-600 flex-shrink-0">
               {{ r.type === 'client' ? 'Клиент' : r.type === 'site' ? 'Объект' : 'Договор' }}
             </span>
           </div>
@@ -93,7 +93,7 @@
             placeholder="Поиск клиентов, объектов, договоров..."
             class="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm"
           />
-          <button v-if="searchQuery" @click="closeSearch" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          <button v-if="searchQuery" @click="closeSearch" aria-label="Очистить поиск" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <X class="w-4 h-4" />
           </button>
         </div>
@@ -182,7 +182,7 @@
       <!-- Mobile sidebar header -->
       <div class="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-200">
         <h1 class="text-base font-bold text-primary-600">Service System</h1>
-        <button @click="mobileOpen = false" class="p-1 text-gray-400 hover:text-gray-600">
+        <button @click="mobileOpen = false" aria-label="Закрыть меню" class="p-1 text-gray-400 hover:text-gray-600">
           <X class="w-5 h-5" />
         </button>
       </div>

@@ -35,7 +35,7 @@
               </div>
               <p class="text-sm text-gray-600">{{ n.message }}</p>
               <div class="flex items-center gap-3 mt-1">
-                <p class="text-xs text-gray-400">{{ formatDate(n.created_at) }}</p>
+                <p class="text-xs text-gray-600">{{ formatDate(n.created_at) }}</p>
                 <span v-if="notifRoute(n)" class="text-xs text-primary-500 flex items-center gap-1">
                   <ExternalLink class="w-3 h-3" />{{ notifLinkLabel(n) }}
                 </span>
@@ -43,7 +43,7 @@
             </div>
             <button
               @click.stop="toggleRead(n)"
-              class="ml-4 text-xs text-gray-400 hover:text-primary-600 transition-colors whitespace-nowrap flex-shrink-0"
+              class="ml-4 text-xs text-gray-600 hover:text-primary-600 transition-colors whitespace-nowrap flex-shrink-0"
             >
               {{ n.is_read ? 'Непрочитанное' : 'Прочитать' }}
             </button>

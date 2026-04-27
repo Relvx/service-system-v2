@@ -73,13 +73,13 @@
 
       <!-- Visit Detail Modal -->
       <div v-if="selectedVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="cal-visit-title" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-4 md:p-6 border-b">
             <div class="min-w-0 pr-2">
-              <h2 class="text-lg font-semibold text-gray-900 leading-tight">{{ selectedVisit.client_name || selectedVisit.site_title }}</h2>
+              <h2 id="cal-visit-title" class="text-lg font-semibold text-gray-900 leading-tight">{{ selectedVisit.client_name || selectedVisit.site_title }}</h2>
               <p v-if="selectedVisit.client_name" class="text-sm text-gray-500 mt-0.5 truncate">{{ selectedVisit.site_address }}</p>
             </div>
-            <button @click="selectedVisit = null" class="text-gray-400 hover:text-gray-600 flex-shrink-0"><X class="w-6 h-6" /></button>
+            <button @click="selectedVisit = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600 flex-shrink-0"><X class="w-6 h-6" /></button>
           </div>
           <div class="p-4 md:p-6 space-y-3 text-sm">
             <div class="flex gap-2">
@@ -105,10 +105,10 @@
 
       <!-- Day click choice modal (office/admin only) -->
       <div v-if="dayChoiceDate" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-xs mx-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="cal-day-title" class="bg-white rounded-lg shadow-xl w-full max-w-xs mx-4">
           <div class="flex items-center justify-between p-5 border-b">
-            <h2 class="text-base font-semibold text-gray-900">{{ formatDate(dayChoiceDate) }}</h2>
-            <button @click="dayChoiceDate = null" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+            <h2 id="cal-day-title" class="text-base font-semibold text-gray-900">{{ formatDate(dayChoiceDate) }}</h2>
+            <button @click="dayChoiceDate = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
           </div>
           <div class="p-5 flex flex-col gap-3">
             <button @click="chooseCreateVisit" class="btn btn-secondary w-full flex items-center justify-center gap-2">
@@ -123,12 +123,12 @@
 
       <!-- Note create/edit modal -->
       <div v-if="noteModal.open" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div role="dialog" aria-modal="true" aria-labelledby="cal-note-title" class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-4 md:p-6 border-b">
-            <h2 class="text-xl font-semibold text-gray-900">
+            <h2 id="cal-note-title" class="text-xl font-semibold text-gray-900">
               {{ noteModal.isEdit ? 'Редактировать заметку' : 'Новая заметка' }}
             </h2>
-            <button @click="closeNoteModal" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+            <button @click="closeNoteModal" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
           <div class="p-4 md:p-6 space-y-4">
             <div>
