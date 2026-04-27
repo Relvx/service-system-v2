@@ -22,15 +22,20 @@ router = APIRouter(prefix="/schedule", tags=["schedule"])
 
 # ---------- Schemas ----------
 
+class ContactInfo(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+
+
 class ScheduleCell(BaseModel):
     contract_id: int
     contract_number: str
     client_name: str
+    client_id: Optional[int] = None
     year: int
     month: int
     note: str
-    contact_name: Optional[str] = None
-    contact_phone: Optional[str] = None
+    contacts: List[ContactInfo] = []
     site_addresses: List[str] = []
 
 
@@ -130,15 +135,10 @@ async def get_schedule_month(
             ContractSchedule,
             Contract.contract_number,
             Client.name,
-            ClientContact.full_name,
-            ClientContact.phone,
+            Client.id,
         )
         .join(Contract, ContractSchedule.contract_id == Contract.id)
         .join(Client, Contract.client_id == Client.id)
-        .outerjoin(
-            ClientContact,
-            (ClientContact.client_id == Client.id) & (ClientContact.is_primary == True),
-        )
         .where(ContractSchedule.year == year, ContractSchedule.month == month)
         .where(ContractSchedule.note.isnot(None), ContractSchedule.note != "")
         .order_by(Client.name, Contract.contract_number)
@@ -146,6 +146,7 @@ async def get_schedule_month(
     rows = result.all()
 
     contract_ids = [s.contract_id for s, *_ in rows]
+    client_ids = list({cid for _, _, _, cid in rows if cid})
 
     # Адреса объектов по договорам
     sites_map: dict[int, list[str]] = {}
@@ -160,19 +161,32 @@ async def get_schedule_month(
             if address:
                 sites_map.setdefault(contract_id, []).append(address)
 
+    # Все контакты клиентов (все, не только primary)
+    contacts_map: dict[int, list[ContactInfo]] = {}
+    if client_ids:
+        contacts_result = await db.execute(
+            select(ClientContact.client_id, ClientContact.full_name, ClientContact.phone)
+            .where(ClientContact.client_id.in_(client_ids))
+            .order_by(ClientContact.client_id, ClientContact.is_primary.desc(), ClientContact.id)
+        )
+        for cid, full_name, phone in contacts_result.all():
+            contacts_map.setdefault(cid, []).append(
+                ContactInfo(name=full_name or None, phone=phone or None)
+            )
+
     items = [
         ScheduleCell(
             contract_id=s.contract_id,
             contract_number=cn or "",
             client_name=cl or "",
+            client_id=cid,
             year=year,
             month=month,
             note=s.note,
-            contact_name=contact_name or None,
-            contact_phone=contact_phone or None,
+            contacts=contacts_map.get(cid, []),
             site_addresses=sites_map.get(s.contract_id, []),
         )
-        for s, cn, cl, contact_name, contact_phone in rows
+        for s, cn, cl, cid in rows
     ]
     return ScheduleMonthOut(year=year, month=month, items=items)
 
