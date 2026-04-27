@@ -2,17 +2,25 @@
   <Layout>
     <div>
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Мои выезды</h1>
+        <h1 class="text-xl md:text-3xl font-bold text-gray-900">Мои выезды</h1>
         <p class="text-gray-600 mt-1">Привет, {{ user?.full_name }}</p>
       </div>
 
+      <!-- Search -->
+      <div class="mb-4">
+        <input
+          v-model="searchQuery"
+          type="text"
+          class="input max-w-sm"
+          placeholder="Поиск по объекту, клиенту, адресу..."
+        />
+      </div>
+
       <!-- Tabs -->
-      <div role="tablist" class="flex border-b border-gray-200 mb-6">
+      <div class="flex border-b border-gray-200 mb-6">
         <button
           v-for="tab in tabs"
           :key="tab.id"
-          role="tab"
-          :aria-selected="activeTab === tab.id"
           @click="activeTab = tab.id"
           class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
           :class="activeTab === tab.id ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
@@ -46,7 +54,7 @@
                 </div>
               </div>
               <p v-if="v.office_notes" class="mt-2 text-sm text-primary-700 bg-primary-50 p-2 rounded">
-                <span aria-label="Заметка" role="img">💬</span> {{ v.office_notes }}
+                💬 {{ v.office_notes }}
               </p>
             </div>
             <div class="ml-4 flex flex-col gap-2">
@@ -79,96 +87,240 @@
       </div>
 
       <!-- Detail Modal -->
-      <BaseModal v-if="detailVisit" :title="detailVisit.site_title" @close="detailVisit = null">
-        <div class="p-6 space-y-3 text-sm">
-          <div><p class="text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
-          <div><p class="text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
-          <div v-if="detailVisit.access_notes"><p class="text-gray-500">Доступ</p><p class="text-gray-900">{{ detailVisit.access_notes }}</p></div>
-          <div v-if="detailVisit.onsite_contact"><p class="text-gray-500">Контакт на месте</p><p class="text-gray-900">{{ detailVisit.onsite_contact }}</p></div>
-          <div v-if="detailVisit.office_notes"><p class="text-gray-500">Заметки офиса</p><p class="text-gray-900">{{ detailVisit.office_notes }}</p></div>
-          <div v-if="detailVisit.client_contacts"><p class="text-gray-500">Контакты клиента</p><p class="text-gray-900">{{ detailVisit.client_contacts }}</p></div>
-        </div>
-        <div class="p-6 border-t flex justify-end">
-          <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
-        </div>
-      </BaseModal>
+      <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]">
+          <!-- Header -->
+          <div class="flex items-center justify-between p-6 border-b flex-shrink-0">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+              <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
+            </div>
+            <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
 
-      <!-- Complete Modal -->
-      <BaseModal v-if="completeModal" title="Завершить выезд" @close="completeModal = null">
-        <form @submit.prevent="handleComplete" class="p-6 space-y-4">
-          <div>
-            <label for="complete-summary" class="block text-sm font-medium text-gray-700 mb-1">Итог работ *</label>
-            <textarea id="complete-summary" v-model="completeForm.work_summary" required class="input" rows="4" placeholder="Опишите выполненные работы..." />
-          </div>
-          <div>
-            <label class="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-              <input v-model="completeForm.defects_present" type="checkbox" class="w-4 h-4 rounded border-gray-300" />
-              Обнаружены дефекты
-            </label>
-          </div>
-          <div v-if="completeForm.defects_present">
-            <label for="complete-defects" class="block text-sm font-medium text-gray-700 mb-1">Описание дефектов</label>
-            <textarea id="complete-defects" v-model="completeForm.defects_summary" class="input" rows="3" placeholder="Описание дефектов..." />
-          </div>
-          <div>
-            <label for="complete-recommendations" class="block text-sm font-medium text-gray-700 mb-1">Рекомендации</label>
-            <textarea id="complete-recommendations" v-model="completeForm.recommendations" class="input" rows="2" placeholder="Рекомендации..." />
-          </div>
-          <PhotoUpload v-model="photos" label="Фото акта" />
-          <div class="flex justify-end gap-3 pt-4">
-            <button type="button" @click="completeModal = null" class="btn btn-secondary">Отмена</button>
-            <button type="submit" :disabled="saving" class="btn bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
-              {{ saving ? 'Сохранение...' : 'Завершить выезд' }}
+          <!-- Tabs -->
+          <div class="flex border-b flex-shrink-0 px-6">
+            <button v-for="t in detailTabs" :key="t.key" @click="detailTab = t.key"
+              class="py-3 mr-6 text-sm font-medium border-b-2 transition-colors"
+              :class="detailTab === t.key ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+              {{ t.label }}
             </button>
           </div>
-        </form>
-      </BaseModal>
+
+          <!-- Content -->
+          <div class="overflow-y-auto flex-1 p-6">
+
+            <!-- Вкладка: Выезд -->
+            <div v-if="detailTab === 'visit'" class="space-y-4 text-sm">
+              <div class="flex gap-2 flex-wrap">
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
+                <span
+                  v-for="vt in (detailVisit.visit_types?.length ? detailVisit.visit_types : [detailVisit.visit_type])"
+                  :key="vt"
+                  class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+                >{{ cfg.visitTypeLabel(vt) }}</span>
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
+              </div>
+              <div>
+                <p class="text-gray-500 mb-0.5">Дата и время</p>
+                <p class="text-gray-900 font-medium">
+                  {{ formatDate(detailVisit.planned_date) }}
+                  <span v-if="detailVisit.planned_time_from"> · {{ detailVisit.planned_time_from.slice(0,5) }}</span>
+                  <span v-if="detailVisit.planned_time_to"> — {{ detailVisit.planned_time_to.slice(0,5) }}</span>
+                </p>
+              </div>
+              <div v-if="detailVisit.contract_number">
+                <p class="text-gray-500 mb-0.5">Договор</p>
+                <p class="text-gray-900 font-medium">{{ detailVisit.contract_number }}</p>
+              </div>
+              <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded-lg p-3">
+                <p class="text-xs font-medium text-primary-700 mb-1">💬 Заметка офиса</p>
+                <p class="text-primary-900 whitespace-pre-wrap">{{ detailVisit.office_notes }}</p>
+              </div>
+              <template v-if="detailVisit.work_summary">
+                <div class="border-t pt-4">
+                  <p class="text-gray-500 mb-1">Итог работ</p>
+                  <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+                </div>
+                <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded-lg p-3 text-xs">
+                  ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+                </div>
+                <div v-if="detailVisit.recommendations">
+                  <p class="text-gray-500">Рекомендации</p>
+                  <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.recommendations }}</p>
+                </div>
+              </template>
+            </div>
+
+            <!-- Вкладка: Объект -->
+            <div v-if="detailTab === 'site'" class="space-y-4 text-sm">
+              <div>
+                <p class="text-gray-500 mb-0.5">Адрес</p>
+                <p class="text-gray-900 font-medium">{{ detailVisit.site_address }}</p>
+              </div>
+              <div v-if="detailVisit.onsite_contact">
+                <p class="text-gray-500 mb-0.5">Контакт на месте</p>
+                <p class="text-gray-900 font-medium">{{ detailVisit.onsite_contact }}</p>
+              </div>
+              <div v-if="detailVisit.access_notes">
+                <p class="text-gray-500 mb-0.5">Доступ на объект</p>
+                <p class="text-gray-900 whitespace-pre-wrap bg-yellow-50 rounded-lg p-3">{{ detailVisit.access_notes }}</p>
+              </div>
+              <div v-if="detailVisit.client_contacts">
+                <p class="text-gray-500 mb-0.5">Контакты клиента</p>
+                <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.client_contacts }}</p>
+              </div>
+              <div v-if="detailVisit.latitude && detailVisit.longitude">
+                <p class="text-gray-500 mb-0.5">Координаты</p>
+                <p class="text-gray-900 font-mono text-xs">{{ detailVisit.latitude }}, {{ detailVisit.longitude }}</p>
+              </div>
+            </div>
+
+            <!-- Вкладка: Фото объекта -->
+            <div v-if="detailTab === 'files'">
+              <AttachmentsTab entity-type="site" :entity-id="detailVisit.site_id" :readonly="true" />
+            </div>
+
+            <!-- Вкладка: Файлы выезда -->
+            <div v-if="detailTab === 'visit_files'">
+              <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" :readonly="true" />
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div class="p-6 border-t flex justify-between items-center flex-shrink-0 flex-wrap gap-2">
+            <button
+              v-if="detailVisit.client_id"
+              @click="router.push(`/clients/${detailVisit.client_id}`); detailVisit = null"
+              class="btn btn-secondary flex items-center text-sm"
+            >
+              К клиенту
+            </button>
+            <div v-else />
+            <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Complete Modal -->
+      <div v-if="completeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <h2 class="text-xl font-semibold text-gray-900">Завершить выезд</h2>
+            <button @click="completeModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="handleComplete" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Итог работ *</label>
+              <textarea v-model="completeForm.work_summary" required class="input" rows="4" placeholder="Опишите выполненные работы..." />
+            </div>
+            <div>
+              <label class="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                <input v-model="completeForm.defects_present" type="checkbox" class="w-4 h-4 rounded border-gray-300" />
+                Обнаружены дефекты
+              </label>
+            </div>
+            <div v-if="completeForm.defects_present">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание дефектов</label>
+              <textarea v-model="completeForm.defects_summary" class="input" rows="3" placeholder="Описание дефектов..." />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Рекомендации</label>
+              <textarea v-model="completeForm.recommendations" class="input" rows="2" placeholder="Рекомендации..." />
+            </div>
+            <PhotoUpload v-model="photos" label="Фото акта" />
+            <div class="flex justify-end gap-3 pt-4">
+              <button type="button" @click="completeModal = null" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Завершить выезд' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </Layout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Calendar, MapPin, Play, CheckCircle, Eye, Building2 } from 'lucide-vue-next'
+import { Calendar, MapPin, Play, CheckCircle, X, Eye, Building2 } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
-import BaseModal from '../components/BaseModal.vue'
 import PhotoUpload from '../components/PhotoUpload.vue'
+import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useAuthStore } from '../stores/auth.js'
 import { useConfigStore } from '../stores/config.js'
 import { visitsAPI, attachmentsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
 
 const auth = useAuthStore()
 const cfg = useConfigStore()
 const user = computed(() => auth.user)
 
 const visits = ref([])
+const searchQuery = ref('')
 const loading = ref(true)
 const actionLoading = ref(null)
 const completeModal = ref(null)
 const detailVisit = ref(null)
 const saving = ref(false)
-const activeTab = ref('active')
+const activeTab = ref('today')
 const photos = ref([])
+
+useEscClose([
+  { isOpen: () => !!detailVisit.value,    close: () => { detailVisit.value = null } },
+  { isOpen: () => !!completeModal.value,  close: () => { completeModal.value = null } },
+])
 
 const completeForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
 
+const detailTab = ref('visit')
+const detailTabs = [
+  { key: 'visit', label: 'Выезд' },
+  { key: 'site', label: 'Объект' },
+  { key: 'files', label: 'Фото объекта' },
+  { key: 'visit_files', label: 'Файлы выезда' },
+]
+
+const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
+
 const tabs = computed(() => [
-  { id: 'active', label: 'Активные', count: visits.value.filter((v) => ['planned', 'in_progress'].includes(v.status)).length },
-  { id: 'closed', label: 'Завершённые', count: visits.value.filter((v) => ['closed', 'done'].includes(v.status)).length },
-  { id: 'all', label: 'Все', count: visits.value.length },
+  { id: 'today',    label: 'Сегодня',        count: visits.value.filter((v) => v.planned_date === todayStr).length },
+  { id: 'planned',  label: 'Запланированные', count: visits.value.filter((v) => v.planned_date > todayStr && ['planned', 'in_progress'].includes(v.status)).length },
+  { id: 'past',     label: 'Прошлые',         count: visits.value.filter((v) => v.planned_date < todayStr || (v.status === 'done' && v.planned_date !== todayStr)).length },
+  { id: 'all',      label: 'Все',             count: visits.value.length },
 ])
 
 const filteredVisits = computed(() => {
-  if (activeTab.value === 'active') return visits.value.filter((v) => ['planned', 'in_progress'].includes(v.status))
-  if (activeTab.value === 'closed') return visits.value.filter((v) => ['closed', 'done'].includes(v.status))
-  return visits.value
+  let result = visits.value
+  if (activeTab.value === 'today') {
+    result = result.filter((v) => v.planned_date === todayStr)
+  } else if (activeTab.value === 'planned') {
+    result = result.filter((v) => v.planned_date > todayStr && ['planned', 'in_progress'].includes(v.status))
+  } else if (activeTab.value === 'past') {
+    result = result.filter((v) => v.planned_date < todayStr || (v.status === 'done' && v.planned_date !== todayStr))
+  }
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    result = result.filter((v) =>
+      (v.site_title || '').toLowerCase().includes(q) ||
+      (v.site_address || '').toLowerCase().includes(q) ||
+      (v.client_name || '').toLowerCase().includes(q)
+    )
+  }
+  return result
 })
 
 async function loadMyVisits() {
   loading.value = true
   try {
-    const res = await visitsAPI.getAll({ master_id: user.value.id })
-    visits.value = res.data
+    const res = await visitsAPI.getAll({ master_id: user.value.id, limit: 500 })
+    visits.value = res.data.items
   } finally {
     loading.value = false
   }
@@ -187,6 +339,7 @@ async function startVisit(v) {
 }
 
 async function openDetail(v) {
+  detailTab.value = 'visit'
   try {
     const res = await visitsAPI.getById(v.id)
     detailVisit.value = res.data
@@ -218,16 +371,25 @@ async function handleComplete() {
 }
 
 function statusClass(s) {
-  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', closed: 'bg-gray-600 text-white', done: 'bg-gray-600 text-white', cancelled: 'bg-red-100 text-red-700' }
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
   return m[s] || 'bg-gray-100 text-gray-700'
+}
+function priorityClass(p) {
+  const m = { low: 'bg-gray-100 text-gray-600', medium: 'bg-yellow-100 text-yellow-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' }
+  return m[p] || 'bg-gray-100 text-gray-700'
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
 watch(visits, (vl) => {
-  const id = window.history.state?.openVisitId
+  // Поддержка открытия выезда через history.state или query.open_visit
+  const id = window.history.state?.openVisitId || (route.query.open_visit ? Number(route.query.open_visit) : null)
   if (id && vl?.length) {
     const v = vl.find((x) => x.id === id)
     if (v) { activeTab.value = 'all'; detailVisit.value = v }
+    else {
+      // Если выезда нет в списке — загружаем напрямую
+      visitsAPI.getById(id).then(r => { detailVisit.value = r.data }).catch(() => {})
+    }
   }
 }, { once: true })
 

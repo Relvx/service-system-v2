@@ -1,31 +1,69 @@
 <template>
   <Layout>
     <div>
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between flex-wrap gap-y-3 mb-6">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Выезды</h1>
-          <p class="text-gray-600 mt-1">Всего: {{ visits.length }}</p>
+          <h1 class="text-xl md:text-3xl font-bold text-gray-900">Выезды</h1>
+          <p class="text-gray-600 mt-1">Всего: {{ total }}</p>
         </div>
-        <button @click="openCreate" class="btn btn-primary flex items-center">
+        <button v-if="auth.hasGroup('office_group') || auth.hasGroup('admin_group')" @click="openCreate" class="btn btn-primary flex items-center">
           <Plus class="w-5 h-5 mr-2" />Создать выезд
         </button>
       </div>
 
       <!-- Filters -->
-      <div class="card mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <select v-model="filters.status" class="input">
-            <option value="">Все статусы</option>
-            <option v-for="s in cfg.visitStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
-          </select>
-          <select v-model="filters.priority" class="input">
-            <option value="">Все приоритеты</option>
-            <option v-for="p in cfg.priorities" :key="p.code" :value="p.code">{{ p.display_name }}</option>
-          </select>
-          <input v-model="filters.date_from" type="date" class="input" />
-          <input v-model="filters.date_to" type="date" class="input" />
-          <button @click="loadVisits" class="btn btn-primary flex items-center justify-center">
-            <Filter class="w-5 h-5 mr-2" />Применить
+      <div class="card mb-4">
+        <button class="md:hidden w-full flex items-center justify-between text-sm font-medium text-gray-700 mb-2" @click="filtersOpen = !filtersOpen">
+          <span class="flex items-center gap-2"><Filter class="w-4 h-4" />Фильтры<span v-if="hasActiveFilters" class="w-2 h-2 bg-primary-500 rounded-full inline-block"></span></span>
+          <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="filtersOpen ? 'rotate-180' : ''" />
+        </button>
+        <div :class="filtersOpen ? 'flex' : 'hidden md:flex'" class="flex-wrap gap-3 items-end">
+          <!-- Статус -->
+          <div class="min-w-[150px]">
+            <label class="block text-xs text-gray-400 mb-1">Статус</label>
+            <select v-model="filters.status" class="input text-sm">
+              <option value="">Все статусы</option>
+              <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
+            </select>
+          </div>
+          <!-- Приоритет -->
+          <div class="min-w-[140px]">
+            <label class="block text-xs text-gray-400 mb-1">Приоритет</label>
+            <select v-model="filters.priority" class="input text-sm">
+              <option value="">Все приоритеты</option>
+              <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
+            </select>
+          </div>
+          <!-- Мастер -->
+          <div class="min-w-[160px]">
+            <label class="block text-xs text-gray-400 mb-1">Мастер</label>
+            <select v-model="filters.master_id" class="input text-sm">
+              <option value="">Все мастера</option>
+              <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
+            </select>
+          </div>
+          <!-- Дата с -->
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Дата с</label>
+            <input v-model="filters.date_from" type="date" class="input text-sm" />
+          </div>
+          <!-- Дата по -->
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Дата по</label>
+            <input v-model="filters.date_to" type="date" class="input text-sm" />
+          </div>
+          <!-- Архивные -->
+          <label v-if="auth.hasGroup('admin_group')" class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 whitespace-nowrap pb-1">
+            <input type="checkbox" v-model="showArchived" class="rounded" />
+            Архивные
+          </label>
+          <!-- Сброс -->
+          <button
+            v-if="hasActiveFilters"
+            @click="resetFilters"
+            class="btn btn-secondary text-sm flex items-center gap-1 pb-1"
+          >
+            <X class="w-4 h-4" />Сбросить
           </button>
         </div>
       </div>
@@ -34,238 +72,1071 @@
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
 
-      <div v-else class="space-y-4">
-        <div v-for="v in visits" :key="v.id" class="card hover:shadow-md transition-shadow">
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <div class="flex items-center gap-3 mb-3">
-                <h3 class="text-lg font-semibold text-gray-900">{{ v.site_title }}</h3>
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(v.status)">
-                  {{ cfg.visitStatusLabel(v.status) }}
-                </span>
-                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(v.priority)">
-                  {{ cfg.priorityLabel(v.priority) }}
-                </span>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div class="flex items-center text-gray-600"><MapPin class="w-4 h-4 mr-2" /><span class="truncate">{{ v.site_address }}</span></div>
-                <div class="flex items-center text-gray-600">
-                  <Calendar class="w-4 h-4 mr-2" />{{ formatDate(v.planned_date) }}
-                  <span v-if="v.planned_time_from"> в {{ v.planned_time_from.slice(0,5) }}</span>
-                </div>
-                <div class="flex items-center text-gray-600"><User class="w-4 h-4 mr-2" />{{ v.master_name || 'Не назначен' }}</div>
-              </div>
-              <p v-if="v.work_summary" class="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded">{{ v.work_summary }}</p>
+      <DataTable
+        v-else
+        :columns="columns"
+        :rows="visits"
+        :masked="auth.isViewer"
+        storage-key="visits_table"
+        :row-class="() => 'cursor-pointer'"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
+        @row-click="openDetail"
+        @update:page="onPageChange"
+        @update:page-size="onPageSizeChange"
+        @reload="loadVisits"
+      >
+        <template #planned_date="{ row }">
+          <span class="whitespace-nowrap">{{ formatDate(row.planned_date) }}</span>
+          <span v-if="row.planned_time_from" class="text-gray-500 text-xs block">{{ row.planned_time_from.slice(0,5) }}</span>
+        </template>
+
+        <template #status="{ row }">
+          <div class="flex flex-col gap-1">
+            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full w-fit" :class="statusClass(row.status)">
+              {{ cfg.visitStatusLabel(row.status) }}
+            </span>
+            <span v-if="row.is_archived" class="inline-flex px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded-full w-fit">Архив</span>
+          </div>
+        </template>
+
+        <template #priority="{ row }">
+          <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" :class="priorityClass(row.priority)">
+            {{ cfg.priorityLabel(row.priority) }}
+          </span>
+        </template>
+
+        <template #visit_type="{ row }">
+          <span class="text-gray-700">{{ cfg.visitTypeLabel(row.visit_type) }}</span>
+        </template>
+
+        <template #actions="{ row }">
+          <div class="flex items-center gap-2" @click.stop>
+            <template v-if="!row.is_archived">
+              <button @click="openEdit(row)" class="text-gray-500 hover:text-primary-600" title="Редактировать">
+                <Pencil class="w-4 h-4" />
+              </button>
+              <button
+                v-if="canCancel(row) && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                @click="cancelConfirm = row"
+                class="text-red-500 hover:text-red-700"
+                title="Отменить выезд"
+              >
+                <Ban class="w-4 h-4" />
+              </button>
+              <button @click="archiveConfirm = row" class="text-amber-600 hover:text-amber-800" title="В архив">
+                <Archive class="w-4 h-4" />
+              </button>
+            </template>
+            <template v-else>
+              <button v-if="auth.hasGroup('admin_group')" @click="handleUnarchive(row)" class="text-green-600 hover:text-green-800" title="Восстановить">
+                <ArchiveRestore class="w-4 h-4" />
+              </button>
+            </template>
+          </div>
+        </template>
+
+        <template #empty>
+          <div class="flex flex-col items-center gap-2">
+            <Calendar class="w-12 h-12 text-gray-300" />
+            <span>Выезды не найдены</span>
+          </div>
+        </template>
+      </DataTable>
+
+      <!-- Detail Modal -->
+      <div v-if="detailVisit" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+          <!-- Header: фиксированный -->
+          <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">{{ detailVisit.site_title }}</h2>
+              <p v-if="detailVisit.client_name" class="text-sm text-gray-500 mt-0.5">{{ detailVisit.client_name }}</p>
             </div>
-            <div class="ml-4 flex items-center gap-2">
-              <button @click="openEdit(v)" class="text-gray-500 hover:text-primary-600 text-sm font-medium flex items-center">
-                <Pencil class="w-4 h-4 mr-1" />Изменить
-              </button>
-              <button @click="openDetail(v)" class="text-primary-600 hover:text-primary-900 text-sm font-medium flex items-center">
-                <Eye class="w-4 h-4 mr-1" />Подробнее
-              </button>
+            <button @click="detailVisit = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <!-- Tabs: фиксированные -->
+          <div class="flex border-b flex-shrink-0">
+            <button
+              @click="detailTab = 'info'"
+              class="flex-1 py-2.5 text-sm font-medium transition-colors"
+              :class="detailTab === 'info' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'"
+            >Информация</button>
+            <button
+              @click="detailTab = 'files'"
+              class="flex-1 py-2.5 text-sm font-medium transition-colors"
+              :class="detailTab === 'files' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-gray-500 hover:text-gray-700'"
+            >Файлы и фото</button>
+          </div>
+          <!-- Контент: скроллируется -->
+          <div class="overflow-y-auto flex-1">
+            <!-- Info tab -->
+            <div v-if="detailTab === 'info'" class="p-4 md:p-6 space-y-4">
+              <div class="flex gap-2 flex-wrap">
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
+                <span
+                  v-for="vt in (detailVisit.visit_types && detailVisit.visit_types.length ? detailVisit.visit_types : [detailVisit.visit_type])"
+                  :key="vt"
+                  class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+                >{{ cfg.visitTypeLabel(vt) }}</span>
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
+              </div>
+              <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
+                <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Мастер(а)</p>
+                <p class="text-gray-900">
+                  {{ (detailVisit.master_names && detailVisit.master_names.length) ? detailVisit.master_names.join(', ') : (detailVisit.master_name || 'Не назначен') }}
+                </p>
+              </div>
+              <div v-if="detailVisit.visit_contact">
+                <p class="text-sm text-gray-500">Контакт на выезде</p>
+                <p class="text-gray-900">{{ detailVisit.visit_contact }}<span v-if="detailVisit.visit_contact_position" class="text-gray-500 text-sm"> · {{ detailVisit.visit_contact_position }}</span><span v-if="detailVisit.visit_contact_phone" class="text-gray-500 text-sm"> · {{ detailVisit.visit_contact_phone }}</span></p>
+              </div>
+              <div v-if="detailVisit.contract_number">
+                <p class="text-sm text-gray-500">Договор</p>
+                <p class="text-gray-900">{{ detailVisit.contract_number }}</p>
+              </div>
+              <div v-if="detailVisit.office_notes" class="bg-primary-50 rounded p-3">
+                <p class="text-xs font-medium text-primary-700 mb-1">Заметка офиса</p>
+                <p class="text-primary-900">{{ detailVisit.office_notes }}</p>
+              </div>
+              <template v-if="detailVisit.work_summary">
+                <div class="border-t pt-3">
+                  <p class="text-sm text-gray-500 mb-1">Итог работ</p>
+                  <p class="text-gray-900 whitespace-pre-wrap">{{ detailVisit.work_summary }}</p>
+                </div>
+                <div v-if="detailVisit.defects_present" class="text-orange-700 bg-orange-50 rounded p-2 text-xs">
+                  ⚠ Обнаружены дефекты<span v-if="detailVisit.defects_summary">: {{ detailVisit.defects_summary }}</span>
+                </div>
+                <div v-if="detailVisit.recommendations">
+                  <p class="text-sm text-gray-500">Рекомендации</p>
+                  <p class="text-gray-900">{{ detailVisit.recommendations }}</p>
+                </div>
+              </template>
+            </div>
+            <!-- Files tab -->
+            <div v-else class="p-4 md:p-6">
+              <AttachmentsTab entity-type="visit" :entity-id="detailVisit.id" />
             </div>
           </div>
-        </div>
-
-        <div v-if="visits.length === 0" class="text-center py-12 card">
-          <Calendar class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 mb-2">Выезды не найдены</h3>
+          <!-- Footer: фиксированный -->
+          <div class="flex justify-between items-center p-4 md:p-6 border-t flex-shrink-0 flex-wrap gap-2">
+            <div class="flex gap-2 flex-wrap">
+              <button
+                v-if="detailVisit.client_id"
+                @click="router.push(`/clients/${detailVisit.client_id}`); detailVisit = null"
+                class="btn btn-secondary flex items-center text-sm"
+              >
+                <User class="w-4 h-4 mr-1" />К клиенту
+              </button>
+              <button
+                v-if="detailVisit.status === 'done' && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                @click="openDefectCreate(detailVisit)"
+                class="btn btn-secondary flex items-center text-yellow-700 border-yellow-300 hover:bg-yellow-50 text-sm"
+              >
+                <AlertTriangle class="w-4 h-4 mr-1" />Дефект
+              </button>
+              <button
+                v-if="detailVisit.status === 'done' && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                @click="openEditResult(detailVisit)"
+                class="btn btn-secondary flex items-center text-blue-700 border-blue-300 hover:bg-blue-50 text-sm"
+              >
+                <ClipboardEdit class="w-4 h-4 mr-1" />Итог работ
+              </button>
+            </div>
+            <div class="flex gap-3">
+              <button
+                v-if="detailVisit.status !== 'done' && !detailVisit.is_archived && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                @click="openCompleteModal(detailVisit)"
+                class="btn bg-green-600 text-white hover:bg-green-700 flex items-center"
+              >
+                <CheckCircle class="w-4 h-4 mr-2" />Завершить
+              </button>
+              <button v-if="!detailVisit.is_archived && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))" @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" />Редактировать</button>
+              <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Detail Modal -->
-      <BaseModal v-if="detailVisit" :title="detailVisit.site_title" @close="detailVisit = null">
-        <div class="p-6 space-y-4">
-          <div class="flex gap-2">
-            <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="statusClass(detailVisit.status)">{{ cfg.visitStatusLabel(detailVisit.status) }}</span>
-            <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(detailVisit.priority)">{{ cfg.priorityLabel(detailVisit.priority) }}</span>
-          </div>
-          <div><p class="text-sm text-gray-500">Адрес</p><p class="text-gray-900">{{ detailVisit.site_address }}</p></div>
-          <div class="grid grid-cols-2 gap-4">
-            <div><p class="text-sm text-gray-500">Дата</p><p class="text-gray-900">{{ formatDate(detailVisit.planned_date) }}</p></div>
-            <div><p class="text-sm text-gray-500">Время</p><p class="text-gray-900">{{ detailVisit.planned_time_from?.slice(0,5) || '—' }} — {{ detailVisit.planned_time_to?.slice(0,5) || '—' }}</p></div>
-          </div>
-          <div><p class="text-sm text-gray-500">Мастер</p><p class="text-gray-900">{{ detailVisit.master_name || 'Не назначен' }}</p></div>
-          <div><p class="text-sm text-gray-500">Тип</p><p class="text-gray-900">{{ cfg.visitTypeLabel(detailVisit.visit_type) }}</p></div>
-          <div v-if="detailVisit.client_name"><p class="text-sm text-gray-500">Клиент</p><p class="text-gray-900">{{ detailVisit.client_name }}</p></div>
-          <div v-if="detailVisit.work_summary"><p class="text-sm text-gray-500">Итог работ</p><p class="text-gray-900">{{ detailVisit.work_summary }}</p></div>
-          <div v-if="detailVisit.office_notes"><p class="text-sm text-gray-500">Заметки офиса</p><p class="text-gray-900">{{ detailVisit.office_notes }}</p></div>
-          <div v-if="detailVisit.recommendations"><p class="text-sm text-gray-500">Рекомендации</p><p class="text-gray-900">{{ detailVisit.recommendations }}</p></div>
-          <div v-if="attachments.length > 0">
-            <p class="text-sm text-gray-500 mb-2 flex items-center gap-1"><ImageIcon class="w-4 h-4" aria-hidden="true" /> Фотографии ({{ attachments.length }})</p>
-            <div class="flex flex-wrap gap-2">
-              <a v-for="a in attachments" :key="a.id" :href="a.file_url" target="_blank" rel="noopener" class="block w-20 h-20">
-                <img :src="a.file_url" alt="Фото акта" class="w-full h-full object-cover rounded-lg border border-gray-200 hover:opacity-80" />
-              </a>
+      <!-- Complete Modal -->
+      <div v-if="completeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">Завершить выезд</h2>
+              <p class="text-sm text-gray-500 mt-0.5">{{ completeModal.site_title }}</p>
             </div>
+            <button @click="completeModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
+          <form @submit.prevent="handleComplete" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Итог работ <span class="text-red-500">*</span></label>
+              <textarea v-model="completeForm.work_summary" required rows="4" class="input w-full resize-none" placeholder="Опишите выполненные работы..." />
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="defects_cb" v-model="completeForm.defects_present" type="checkbox" class="w-4 h-4 rounded border-gray-300" />
+              <label for="defects_cb" class="text-sm text-gray-700">Обнаружены дефекты</label>
+            </div>
+            <div v-if="completeForm.defects_present">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание дефектов</label>
+              <textarea v-model="completeForm.defects_summary" rows="3" class="input w-full resize-none" placeholder="Описание дефектов..." />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Рекомендации</label>
+              <textarea v-model="completeForm.recommendations" rows="2" class="input w-full resize-none" placeholder="Рекомендации..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" @click="completeModal = null" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Завершить' }}
+              </button>
+            </div>
+          </form>
         </div>
-        <div class="flex justify-end gap-3 p-6 border-t">
-          <button @click="openEdit(detailVisit)" class="btn btn-secondary flex items-center"><Pencil class="w-4 h-4 mr-2" aria-hidden="true" />Редактировать</button>
-          <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+      </div>
+
+      <!-- Edit Result Modal -->
+      <div v-if="editResultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-900">Редактировать итог работ</h2>
+              <p class="text-sm text-gray-500 mt-0.5">{{ editResultModal.site_title }}</p>
+            </div>
+            <button @click="editResultModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="handleEditResult" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Итог работ</label>
+              <textarea v-model="editResultForm.work_summary" rows="4" class="input w-full resize-none" placeholder="Опишите выполненные работы..." />
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="edit_defects_cb" v-model="editResultForm.defects_present" type="checkbox" class="w-4 h-4 rounded border-gray-300" />
+              <label for="edit_defects_cb" class="text-sm text-gray-700">Обнаружены дефекты</label>
+            </div>
+            <div v-if="editResultForm.defects_present">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание дефектов</label>
+              <textarea v-model="editResultForm.defects_summary" rows="3" class="input w-full resize-none" placeholder="Описание дефектов..." />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Рекомендации</label>
+              <textarea v-model="editResultForm.recommendations" rows="2" class="input w-full resize-none" placeholder="Рекомендации..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" @click="editResultModal = null" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Сохранить' }}
+              </button>
+            </div>
+          </form>
         </div>
-      </BaseModal>
+      </div>
 
       <!-- Create / Edit Modal -->
-      <BaseModal v-if="modalOpen" :title="editing ? 'Редактировать выезд' : 'Создать выезд'" @close="closeModal">
-        <form @submit.prevent="handleSave" class="p-6 space-y-4">
-          <div>
-            <label for="visit-site" class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
-            <select id="visit-site" v-model="form.site_id" required class="input">
-              <option value="">Выберите объект</option>
-              <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }} — {{ s.address }}</option>
-            </select>
+      <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
+            <h2 class="text-xl font-semibold text-gray-900">{{ editing ? 'Редактировать выезд' : 'Создать выезд' }}</h2>
+            <button @click="closeModal" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div>
-            <label for="visit-master" class="block text-sm font-medium text-gray-700 mb-1">Мастер</label>
-            <select id="visit-master" v-model="form.assigned_user_id" class="input">
-              <option value="">Не назначен</option>
-              <option v-for="m in masters" :key="m.id" :value="m.id">{{ m.full_name }}</option>
-            </select>
-          </div>
-          <div>
-            <label for="visit-date" class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
-            <input id="visit-date" v-model="form.planned_date" type="date" required class="input" />
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="visit-time-from" class="block text-sm font-medium text-gray-700 mb-1">Время с</label>
-              <input id="visit-time-from" v-model="form.planned_time_from" type="time" class="input" />
+          <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
+            <!-- CREATE: клиент + мультивыбор объектов -->
+            <template v-if="!editing">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Клиент *</label>
+                <div class="relative">
+                  <input
+                    v-model="clientQuery"
+                    type="text"
+                    class="input pr-8"
+                    :class="{ 'border-red-400': errors.client }"
+                    placeholder="Начните вводить название..."
+                    @focus="clientDropdownOpen = true"
+                    @input="onClientQueryInput"
+                    @keydown.escape="clientDropdownOpen = false"
+                    autocomplete="off"
+                  />
+                  <ChevronDown class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <div
+                    v-if="clientDropdownOpen && filteredClients.length"
+                    class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                  >
+                    <button
+                      v-for="c in filteredClients"
+                      :key="c.id"
+                      type="button"
+                      class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      @click="selectClient(c); delete errors.client"
+                    >{{ c.name }}</button>
+                  </div>
+                </div>
+                <p v-if="errors.client" class="text-red-600 text-xs mt-1">{{ errors.client }}</p>
+              </div>
+
+              <!-- Договоры (появляются после выбора клиента) -->
+              <div v-if="selectedClient && clientContracts.length > 0">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Договоры <span class="text-gray-400 font-normal">({{ selectedContractIds.length ? `выбрано: ${selectedContractIds.length}` : 'все объекты' }})</span>
+                </label>
+                <div class="border border-gray-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100">
+                  <label
+                    v-for="c in clientContracts"
+                    :key="c.id"
+                    class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                  >
+                    <input type="checkbox" :value="c.id" v-model="selectedContractIds" class="mt-0.5 rounded flex-shrink-0" @change="onContractChange" />
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900">{{ contractLabel(c) }}</p>
+                      <p v-if="c.subject" class="text-xs text-gray-500 truncate">{{ c.subject }}</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Объекты (появляются после выбора клиента) -->
+              <div v-if="selectedClient">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Объекты * <span class="text-gray-400 font-normal">(выбрано: {{ selectedSiteIds.length }})</span>
+                </label>
+                <div v-if="clientSitesLoading" class="text-sm text-gray-400 py-2">Загрузка объектов...</div>
+                <template v-else>
+                  <div v-if="clientSites.length" class="border border-gray-200 rounded-lg max-h-44 overflow-y-auto divide-y divide-gray-100">
+                    <label
+                      v-for="s in clientSites"
+                      :key="s.id"
+                      class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                    >
+                      <input type="checkbox" :value="s.id" v-model="selectedSiteIds" class="mt-0.5 rounded flex-shrink-0" @change="delete errors.sites" />
+                      <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ s.title }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ s.address }}</p>
+                      </div>
+                    </label>
+                  </div>
+                  <p v-else class="text-sm text-gray-400 py-2">Нет объектов</p>
+                </template>
+                <p v-if="errors.sites" class="text-red-600 text-xs mt-1">{{ errors.sites }}</p>
+              </div>
+
+              <!-- Режим создания при 2+ объектах или 2+ договорах -->
+              <div v-if="selectedSiteIds.length > 1 || selectedContractIds.length > 1" class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                <p class="text-sm font-medium text-blue-800">
+                  <template v-if="selectedContractIds.length > 1 && selectedSiteIds.length > 1">
+                    Выбрано {{ selectedContractIds.length }} договора и {{ selectedSiteIds.length }} объектов — как создать?
+                  </template>
+                  <template v-else-if="selectedContractIds.length > 1">
+                    Выбрано {{ selectedContractIds.length }} договора — как создать?
+                  </template>
+                  <template v-else>
+                    Выбрано {{ selectedSiteIds.length }} объектов — как создать?
+                  </template>
+                </p>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-blue-700">
+                  <input type="radio" v-model="createMode" value="separate" class="text-blue-600" />
+                  {{ selectedSiteIds.length > 1 ? selectedSiteIds.length + ' отдельных выезда (по одному на каждый объект)' : 'Отдельные выезды по каждому договору' }}
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-blue-700">
+                  <input type="radio" v-model="createMode" value="single" class="text-blue-600" />
+                  Один выезд (один мастер посетит все объекты)
+                </label>
+              </div>
+            </template>
+
+            <!-- EDIT: обычный select объекта -->
+            <div v-else>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Объект *</label>
+              <select v-model="form.site_id" class="input" :class="{ 'border-red-400': errors.site_id }" @change="delete errors.site_id">
+                <option value="">Выберите объект</option>
+                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.title }} — {{ s.address }}</option>
+              </select>
+              <p v-if="errors.site_id" class="text-red-600 text-xs mt-1">{{ errors.site_id }}</p>
             </div>
             <div>
-              <label for="visit-time-to" class="block text-sm font-medium text-gray-700 mb-1">Время до</label>
-              <input id="visit-time-to" v-model="form.planned_time_to" type="time" class="input" />
+              <label class="block text-sm font-medium text-gray-700 mb-1">Мастера</label>
+              <div class="border border-gray-200 rounded-lg max-h-36 overflow-y-auto divide-y divide-gray-100">
+                <label
+                  v-for="m in masters"
+                  :key="m.id"
+                  class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                >
+                  <input type="checkbox" :value="m.id" v-model="form.master_ids" class="rounded flex-shrink-0" />
+                  <span class="text-sm text-gray-900">{{ m.full_name }}</span>
+                </label>
+                <div v-if="!masters.length" class="px-3 py-2 text-sm text-gray-400">Нет мастеров</div>
+              </div>
             </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="visit-type" class="block text-sm font-medium text-gray-700 mb-1">Тип</label>
-              <select id="visit-type" v-model="form.visit_type" class="input">
-                <option v-for="t in cfg.visitTypes" :key="t.code" :value="t.code">{{ t.display_name }}</option>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Дата *</label>
+              <input v-model="form.planned_date" type="date" class="input" :class="{ 'border-red-400': errors.planned_date }" @input="delete errors.planned_date" />
+              <p v-if="errors.planned_date" class="text-red-600 text-xs mt-1">{{ errors.planned_date }}</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Время</label>
+              <input v-model="form.planned_time_from" type="time" class="input" />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Тип(ы) выезда</label>
+                <div class="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  <label
+                    v-for="t in cfg.visitTypes"
+                    :key="t.sysname"
+                    class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                  >
+                    <input type="checkbox" :value="t.sysname" v-model="form.visit_types" class="rounded flex-shrink-0" />
+                    <span class="text-sm text-gray-900">{{ t.display_name }}</span>
+                  </label>
+                  <!-- Другое — свободный ввод -->
+                  <label class="flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" value="other" v-model="form.visit_types" class="mt-0.5 rounded flex-shrink-0" />
+                    <div class="flex-1 min-w-0">
+                      <span class="text-sm text-gray-900">Другое</span>
+                      <input
+                        v-if="form.visit_types.includes('other')"
+                        v-model="form.customVisitType"
+                        class="input mt-1 text-sm w-full"
+                        placeholder="Укажите тип выезда..."
+                        @click.stop
+                      />
+                    </div>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+                <select v-model="form.priority" class="input">
+                  <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
+                </select>
+              </div>
+            </div>
+            <div v-if="editing">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+              <select v-model="form.status" class="input">
+                <option v-for="s in cfg.visitStatuses" :key="s.sysname" :value="s.sysname">{{ s.display_name }}</option>
               </select>
             </div>
             <div>
-              <label for="visit-priority" class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
-              <select id="visit-priority" v-model="form.priority" class="input">
-                <option v-for="p in cfg.priorities" :key="p.code" :value="p.code">{{ p.display_name }}</option>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Контакт на выезде</label>
+              <select
+                v-if="clientContacts.length"
+                v-model="selectedContactId"
+                @change="onContactSelect"
+                :size="clientContacts.length + 1"
+                class="w-full border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 mb-2"
+              >
+                <option value="">— не выбрано —</option>
+                <option v-for="c in clientContacts" :key="c.id" :value="c.id">
+                  {{ c.full_name }}{{ c.position ? ' · ' + c.position : '' }}{{ c.phone ? ' · ' + c.phone : '' }}
+                </option>
               </select>
+              <input v-model="form.visit_contact" class="input" placeholder="Имя контактного лица" />
             </div>
+            <div v-if="form.visit_contact">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Должность контакта</label>
+              <input v-model="form.visit_contact_position" class="input" placeholder="Должность" />
+            </div>
+            <div v-if="form.visit_contact">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Телефон контакта</label>
+              <input v-model="form.visit_contact_phone" class="input" placeholder="+7-900-000-00-00" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
+              <textarea v-model="form.office_notes" class="input" rows="3" placeholder="Дополнительная информация..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+              <button type="button" @click="closeModal" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : editing ? 'Сохранить' : (selectedSiteIds.length > 1 || selectedContractIds.length > 1) && createMode === 'separate' ? `Создать ${Math.max(selectedSiteIds.length, 1)} выезда` : 'Создать выезд' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Archive Confirm -->
+      <div v-if="archiveConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">Отправить в архив?</h2>
+          <p class="text-gray-600 mb-1">Выезд <strong>{{ archiveConfirm.site_title }}</strong> будет скрыт из основного списка.</p>
+          <p class="text-sm text-gray-500 mb-6">Все данные сохранятся.</p>
+          <div class="flex justify-end gap-3">
+            <button @click="archiveConfirm = null" class="btn btn-secondary">Отмена</button>
+            <button @click="handleArchive" class="btn bg-amber-600 text-white hover:bg-amber-700">В архив</button>
           </div>
-          <div v-if="editing">
-            <label for="visit-status" class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
-            <select id="visit-status" v-model="form.status" class="input">
-              <option v-for="s in cfg.visitStatuses" :key="s.code" :value="s.code">{{ s.display_name }}</option>
-            </select>
+        </div>
+      </div>
+
+      <!-- Defect Create Modal -->
+      <div v-if="defectModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b">
+            <h2 class="text-xl font-semibold text-gray-900">Добавить дефект</h2>
+            <button @click="defectModalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <div>
-            <label for="visit-notes" class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
-            <textarea id="visit-notes" v-model="form.office_notes" class="input" rows="3" placeholder="Дополнительная информация..." />
+          <form @submit.prevent="handleDefectSave" class="p-4 md:p-6 space-y-4">
+            <div class="text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+              Объект: <span class="font-medium text-gray-900">{{ defectForm._site_title }}</span><br />
+              Выезд от <span class="font-medium text-gray-900">{{ formatDate(defectForm._planned_date) }}</span>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
+              <input v-model="defectForm.title" required class="input" placeholder="Краткое описание проблемы" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+              <textarea v-model="defectForm.description" class="input" rows="3" placeholder="Подробное описание..." />
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+                <select v-model="defectForm.priority" class="input">
+                  <option v-for="p in cfg.priorities" :key="p.sysname" :value="p.sysname">{{ p.display_name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Тип действия</label>
+                <select v-model="defectForm.action_type" class="input">
+                  <option v-for="a in cfg.defectActionTypes" :key="a.sysname" :value="a.sysname">{{ a.display_name }}</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Необходимые запчасти</label>
+              <input v-model="defectForm.suggested_parts" class="input" placeholder="Перечень запчастей..." />
+            </div>
+            <!-- Photo transfer from visit -->
+            <div v-if="visitPhotos.length > 0">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Фото из выезда
+                <span class="text-gray-400 font-normal">(все выбраны — нажмите на фото чтобы снять выбор)</span>
+              </label>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <label
+                  v-for="photo in visitPhotos"
+                  :key="photo.id"
+                  class="relative cursor-pointer group"
+                >
+                  <input
+                    type="checkbox"
+                    class="sr-only"
+                    :checked="selectedPhotos.includes(photo.id)"
+                    @change="selectedPhotos.includes(photo.id) ? selectedPhotos.splice(selectedPhotos.indexOf(photo.id), 1) : selectedPhotos.push(photo.id)"
+                  />
+                  <img :src="photo.file_url" class="w-full h-24 object-cover rounded-lg border-2 transition-colors"
+                    :class="selectedPhotos.includes(photo.id) ? 'border-primary-500' : 'border-gray-200'" />
+                  <div v-if="selectedPhotos.includes(photo.id)"
+                    class="absolute inset-0 bg-primary-500 bg-opacity-20 rounded-lg flex items-center justify-center">
+                    <div class="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
+                      <span class="text-white text-xs font-bold">✓</span>
+                    </div>
+                  </div>
+                </label>
+              </div>
+              <p v-if="selectedPhotos.length > 0" class="text-xs text-primary-600 mt-1">Выбрано: {{ selectedPhotos.length }}</p>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+              <button type="button" @click="defectModalOpen = false" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+                {{ saving ? 'Сохранение...' : 'Создать дефект' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Cancel Confirm -->
+      <div v-if="cancelConfirm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-4 md:p-6">
+          <h2 class="text-xl font-semibold text-gray-900 mb-2">Отменить выезд?</h2>
+          <p class="text-gray-600 mb-1">Выезд на объект <strong>{{ cancelConfirm.site_title }}</strong> будет переведён в статус «Отменён».</p>
+          <p class="text-sm text-gray-500 mb-6">Это действие нельзя отменить.</p>
+          <div class="flex justify-end gap-3">
+            <button @click="cancelConfirm = null" class="btn btn-secondary">Назад</button>
+            <button @click="handleCancel" class="btn bg-red-600 text-white hover:bg-red-700">Отменить выезд</button>
           </div>
-          <div class="flex justify-end gap-3 pt-4">
-            <button type="button" @click="closeModal" class="btn btn-secondary">Отмена</button>
-            <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
-              {{ saving ? 'Сохранение...' : (editing ? 'Сохранить' : 'Создать') }}
-            </button>
-          </div>
-        </form>
-      </BaseModal>
+        </div>
+      </div>
     </div>
   </Layout>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { Plus, Calendar, MapPin, User, Filter, Eye, Pencil, Image as ImageIcon } from 'lucide-vue-next'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Plus, Calendar, MapPin, User, X, Eye, Pencil, Archive, ArchiveRestore, Ban, Image as ImageIcon, AlertTriangle, ChevronDown, Filter, CheckCircle, ClipboardEdit } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
-import BaseModal from '../components/BaseModal.vue'
+import DataTable from '../components/DataTable.vue'
+import AttachmentsTab from '../components/AttachmentsTab.vue'
 import { useConfigStore } from '../stores/config.js'
-import { visitsAPI, sitesAPI, usersAPI, attachmentsAPI } from '../services/api.js'
+import { useAuthStore } from '../stores/auth.js'
+import { visitsAPI, sitesAPI, usersAPI, clientsAPI, contractsAPI, attachmentsAPI, defectsAPI } from '../services/api.js'
+import { useEscClose } from '../composables/useEscClose.js'
 
+const route = useRoute()
+const router = useRouter()
 const cfg = useConfigStore()
+const auth = useAuthStore()
 
 const visits = ref([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(50)
+const filtersOpen = ref(false)
 const loading = ref(true)
-const filters = ref({ status: '', priority: '', date_from: '', date_to: '' })
+const filters = ref({ status: '', priority: '', date_from: '', date_to: '', master_id: '' })
+const showArchived = ref(false)
+
+const hasActiveFilters = computed(() =>
+  filters.value.status || filters.value.priority || filters.value.date_from ||
+  filters.value.date_to || filters.value.master_id || showArchived.value
+)
+
+function resetFilters() {
+  filters.value = { status: '', priority: '', date_from: '', date_to: '', master_id: '' }
+  showArchived.value = false
+  page.value = 1
+  loadVisits()
+}
 const modalOpen = ref(false)
 const detailVisit = ref(null)
+const detailTab = ref('info')
 const editing = ref(null)
 const saving = ref(false)
+const archiveConfirm = ref(null)
+const cancelConfirm = ref(null)
+const defectModalOpen = ref(false)
+const defectForm = ref({ title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '', visit_id: null, site_id: null, _site_title: '', _planned_date: '' })
 const sites = ref([])
 const masters = ref([])
 const attachments = ref([])
+const errors = ref({})
+const visitPhotos = ref([])
+const selectedPhotos = ref([])
+
+const completeModal = ref(null)
+const completeForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
+
+const editResultModal = ref(null)
+const editResultForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
+
+function openEditResult(visit) {
+  editResultForm.value = {
+    work_summary: visit.work_summary || '',
+    defects_present: visit.defects_present || false,
+    defects_summary: visit.defects_summary || '',
+    recommendations: visit.recommendations || '',
+  }
+  editResultModal.value = visit
+  detailVisit.value = null
+}
+
+async function handleEditResult() {
+  saving.value = true
+  try {
+    await visitsAPI.update(editResultModal.value.id, {
+      work_summary: editResultForm.value.work_summary || null,
+      defects_present: editResultForm.value.defects_present,
+      defects_summary: editResultForm.value.defects_summary || null,
+      recommendations: editResultForm.value.recommendations || null,
+    })
+    editResultModal.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+function openCompleteModal(visit) {
+  completeForm.value = { work_summary: '', defects_present: false, defects_summary: '', recommendations: '' }
+  completeModal.value = visit
+  detailVisit.value = null
+}
+
+async function handleComplete() {
+  saving.value = true
+  try {
+    await visitsAPI.complete(completeModal.value.id, {
+      work_summary: completeForm.value.work_summary,
+      defects_present: completeForm.value.defects_present,
+      defects_summary: completeForm.value.defects_summary || null,
+      recommendations: completeForm.value.recommendations || null,
+    })
+    completeModal.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+useEscClose([
+  { isOpen: () => !!completeModal.value,    close: () => { completeModal.value = null } },
+  { isOpen: () => !!editResultModal.value,  close: () => { editResultModal.value = null } },
+  { isOpen: () => !!detailVisit.value,      close: () => { detailVisit.value = null } },
+  { isOpen: () => modalOpen.value,          close: () => { closeModal() } },
+  { isOpen: () => !!archiveConfirm.value,   close: () => { archiveConfirm.value = null } },
+  { isOpen: () => !!cancelConfirm.value,    close: () => { cancelConfirm.value = null } },
+  { isOpen: () => defectModalOpen.value,    close: () => { defectModalOpen.value = false } },
+])
+
+// Реактивный пересчёт при изменении фильтров
+watch(
+  () => [filters.value.status, filters.value.priority, filters.value.date_from, filters.value.date_to, filters.value.master_id, showArchived.value],
+  () => { page.value = 1; loadVisits() }
+)
+
+// Create form: client search + multi-site
+const allClients = ref([])
+const clientQuery = ref('')
+const clientDropdownOpen = ref(false)
+const selectedClient = ref(null)
+const clientContracts = ref([])
+const selectedContractIds = ref([])
+const siteContractMap = ref({}) // site_id → contract_id
+const clientSites = ref([])
+const clientSitesLoading = ref(false)
+const selectedSiteIds = ref([])
+const createMode = ref('separate')
+const clientContacts = ref([])
+const selectedContactId = ref('')
+
+const filteredClients = computed(() => allClients.value)
+
+let clientSearchTimer = null
+async function onClientQueryInput() {
+  clientDropdownOpen.value = true
+  selectedClient.value = null
+  clientContracts.value = []
+  selectedContractIds.value = []
+  clientSites.value = []
+  selectedSiteIds.value = []
+  clearTimeout(clientSearchTimer)
+  clientSearchTimer = setTimeout(async () => {
+    const q = clientQuery.value.trim()
+    const res = await clientsAPI.getAll({ active_only: true, limit: 50, search: q || undefined })
+    allClients.value = res.data.items
+  }, 250)
+}
+
+async function selectClient(client) {
+  selectedClient.value = client
+  clientQuery.value = client.name
+  clientDropdownOpen.value = false
+  selectedSiteIds.value = []
+  selectedContractIds.value = []
+  siteContractMap.value = {}
+  clientContracts.value = []
+  clientSites.value = []
+  clientContacts.value = []
+  selectedContactId.value = ''
+  form.value.visit_contact = ''
+  form.value.visit_contact_position = ''
+  form.value.visit_contact_phone = ''
+  try {
+    const res = await clientsAPI.getById(client.id)
+    clientContacts.value = res.data.contact_persons || []
+    if (clientContacts.value.length === 1) {
+      selectedContactId.value = clientContacts.value[0].id
+      applyContact(clientContacts.value[0])
+    }
+  } catch { clientContacts.value = [] }
+  // Загружаем договоры клиента
+  try {
+    const cr = await contractsAPI.getByClient(client.id)
+    clientContracts.value = cr.data?.items ?? cr.data ?? []
+    // Если 1 договор — автовыбираем
+    if (clientContracts.value.length === 1) {
+      selectedContractIds.value = [clientContracts.value[0].id]
+    }
+  } catch {
+    clientContracts.value = []
+  }
+  await loadSitesForContracts()
+}
+
+function applyContact(contact) {
+  form.value.visit_contact = contact.full_name || ''
+  form.value.visit_contact_position = contact.position || ''
+  form.value.visit_contact_phone = contact.phone || ''
+}
+
+function onContactSelect() {
+  if (!selectedContactId.value) {
+    form.value.visit_contact = ''
+    form.value.visit_contact_position = ''
+    form.value.visit_contact_phone = ''
+    return
+  }
+  const c = clientContacts.value.find(c => c.id === Number(selectedContactId.value))
+  if (c) applyContact(c)
+}
+
+async function onContractChange() {
+  selectedSiteIds.value = []
+  await loadSitesForContracts()
+}
+
+async function loadSitesForContracts() {
+  clientSitesLoading.value = true
+  siteContractMap.value = {}
+  try {
+    if (selectedContractIds.value.length === 0) {
+      // Нет фильтра — все объекты клиента
+      const res = await sitesAPI.getAll({ client_id: selectedClient.value.id, active_only: true, limit: 500 })
+      clientSites.value = res.data.items
+    } else if (selectedContractIds.value.length === 1) {
+      const cid = selectedContractIds.value[0]
+      const res = await contractsAPI.getById(cid)
+      clientSites.value = res.data.sites || []
+      for (const s of clientSites.value) siteContractMap.value[s.id] = cid
+    } else {
+      // Несколько договоров — объединяем объекты, без дублей
+      const allSites = []
+      const seenIds = new Set()
+      for (const cid of selectedContractIds.value) {
+        const res = await contractsAPI.getById(cid)
+        for (const s of (res.data.sites || [])) {
+          if (!seenIds.has(s.id)) {
+            seenIds.add(s.id)
+            allSites.push(s)
+            siteContractMap.value[s.id] = cid
+          }
+        }
+      }
+      clientSites.value = allSites
+    }
+  } catch {
+    clientSites.value = []
+  } finally {
+    clientSitesLoading.value = false
+  }
+}
+
+function toggleSite(id) {
+  const idx = selectedSiteIds.value.indexOf(id)
+  if (idx === -1) selectedSiteIds.value.push(id)
+  else selectedSiteIds.value.splice(idx, 1)
+}
+
+function contractLabel(c) {
+  let label = c.contract_number || 'Без номера'
+  if (c.contract_date) label += ' от ' + formatDate(c.contract_date)
+  return label
+}
+
+const columns = [
+  { key: 'planned_date',  label: 'Дата',       width: 130 },
+  { key: 'client_name',   label: 'Клиент',     width: 180 },
+  { key: 'site_title',    label: 'Объект',     width: 200 },
+  { key: 'site_address',  label: 'Адрес',      width: 200, defaultVisible: false },
+  { key: 'master_name',   label: 'Мастер',     width: 160 },
+  { key: 'visit_type',    label: 'Тип',        width: 130 },
+  { key: 'status',        label: 'Статус',     width: 140 },
+  { key: 'priority',      label: 'Приоритет',  width: 130, defaultVisible: false },
+  { key: 'actions',       label: 'Действия',   width: 110, sortable: false },
+]
 
 const form = ref({
-  site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '',
-  planned_time_to: '', visit_type: 'maintenance', priority: 'medium',
-  office_notes: '', status: 'planned',
+  site_id: '', master_ids: [], planned_date: '', planned_time_from: '',
+  planned_time_to: '', visit_types: ['maintenance'], priority: 'medium',
+  office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '', visit_contact_phone: '',
+  customVisitType: '',
 })
+const originalForm = ref(null)
+
+function buildVisitParams() {
+  const params = {}
+  if (filters.value.status) params.status = filters.value.status
+  if (filters.value.priority) params.priority = filters.value.priority
+  if (filters.value.date_from) params.date_from = filters.value.date_from
+  if (filters.value.date_to) params.date_to = filters.value.date_to
+  if (filters.value.master_id) params.master_id = filters.value.master_id
+  if (showArchived.value) params.show_archived = true
+  return params
+}
 
 async function loadVisits() {
   loading.value = true
   try {
-    const params = {}
-    if (filters.value.status) params.status = filters.value.status
-    if (filters.value.priority) params.priority = filters.value.priority
-    if (filters.value.date_from) params.date_from = filters.value.date_from
-    if (filters.value.date_to) params.date_to = filters.value.date_to
-    const res = await visitsAPI.getAll(params)
-    visits.value = res.data
+    const res = await visitsAPI.getAll({
+      ...buildVisitParams(),
+      limit: pageSize.value,
+      offset: (page.value - 1) * pageSize.value,
+    })
+    visits.value = res.data.items
+    total.value = res.data.total
+  } catch (e) {
+    console.error('loadVisits error:', e?.response?.data || e)
   } finally {
     loading.value = false
   }
 }
 
+function onPageChange(p) { page.value = p; loadVisits() }
+function onPageSizeChange(s) { pageSize.value = s; page.value = 1; loadVisits() }
+
 async function loadFormData() {
-  const [sr, mr] = await Promise.all([sitesAPI.getAll({ active_only: true }), usersAPI.getMasters()])
-  sites.value = sr.data
+  const [cr, mr] = await Promise.all([clientsAPI.getAll({ active_only: true, limit: 50 }), usersAPI.getMasters()])
+  allClients.value = cr.data.items
   masters.value = mr.data
+}
+
+function canCancel(visit) {
+  return visit.status === 'planned' || visit.status === 'in_progress'
+}
+
+async function handleCancel() {
+  try {
+    await visitsAPI.cancel(cancelConfirm.value.id)
+    cancelConfirm.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+function validate() {
+  const e = {}
+  if (editing.value) {
+    if (!form.value.site_id) e.site_id = 'Выберите объект'
+  } else {
+    if (!selectedClient.value) e.client = 'Выберите клиента'
+    if (selectedSiteIds.value.length === 0) e.sites = 'Выберите хотя бы один объект'
+  }
+  if (!form.value.planned_date) e.planned_date = 'Укажите дату'
+  errors.value = e
+  return Object.keys(e).length === 0
 }
 
 function openCreate() {
   editing.value = null
-  form.value = { site_id: '', assigned_user_id: '', planned_date: '', planned_time_from: '', planned_time_to: '', visit_type: 'maintenance', priority: 'medium', office_notes: '', status: 'planned' }
+  errors.value = {}
+  form.value = { site_id: '', master_ids: [], planned_date: '', planned_time_from: '', planned_time_to: '', visit_types: ['maintenance'], priority: 'medium', office_notes: '', status: 'planned', visit_contact: '', visit_contact_position: '', visit_contact_phone: '', customVisitType: '' }
+  clientQuery.value = ''
+  selectedClient.value = null
+  clientContracts.value = []
+  selectedContractIds.value = []
+  siteContractMap.value = {}
+  clientSites.value = []
+  selectedSiteIds.value = []
+  createMode.value = 'separate'
+  clientSitesLoading.value = false
+  clientDropdownOpen.value = false
   loadFormData()
   modalOpen.value = true
 }
 
-function openEdit(v) {
+async function openEdit(v) {
   editing.value = v
+  errors.value = {}
   form.value = {
-    site_id: v.site_id || '', assigned_user_id: v.assigned_user_id || '',
-    planned_date: v.planned_date?.slice(0, 10) || '', planned_time_from: v.planned_time_from?.slice(0, 5) || '',
-    planned_time_to: v.planned_time_to?.slice(0, 5) || '', visit_type: v.visit_type || 'maintenance',
-    priority: v.priority || 'medium', office_notes: v.office_notes || '', status: v.status || 'planned',
+    site_id: v.site_id || '',
+    master_ids: v.master_ids?.length ? [...v.master_ids] : (v.assigned_user_id ? [v.assigned_user_id] : []),
+    planned_date: v.planned_date?.slice(0, 10) || '',
+    planned_time_from: v.planned_time_from?.slice(0, 5) || '',
+    planned_time_to: v.planned_time_to?.slice(0, 5) || '',
+    visit_types: v.visit_types?.length ? [...v.visit_types] : [v.visit_type || 'maintenance'],
+    priority: v.priority || 'medium',
+    office_notes: v.office_notes || '',
+    status: v.status || 'planned',
+    visit_contact: v.visit_contact || '',
+    visit_contact_position: v.visit_contact_position || '',
+    visit_contact_phone: v.visit_contact_phone || '',
+    customVisitType: '',
   }
+  originalForm.value = { ...form.value, master_ids: [...form.value.master_ids], visit_types: [...form.value.visit_types] }
   detailVisit.value = null
-  loadFormData()
+  clientContacts.value = []
+  selectedContactId.value = ''
+  const tasks = []
+  if (!sites.value.length) tasks.push(sitesAPI.getAll({ active_only: true }).then(r => { sites.value = r.data }))
+  if (!masters.value.length) tasks.push(usersAPI.getMasters().then(r => { masters.value = r.data }))
+  if (v.client_id) tasks.push(
+    clientsAPI.getById(v.client_id).then(r => { clientContacts.value = r.data.contact_persons || [] })
+  )
+  if (tasks.length) await Promise.all(tasks)
   modalOpen.value = true
 }
 
 async function openDetail(v) {
+  detailTab.value = 'info'
   try {
-    const [vr, ar] = await Promise.all([visitsAPI.getById(v.id), attachmentsAPI.getAll(v.id)])
+    const vr = await visitsAPI.getById(v.id)
     detailVisit.value = vr.data
-    attachments.value = ar.data
   } catch {
     detailVisit.value = v
-    attachments.value = []
   }
 }
 
 async function handleSave() {
+  if (!validate()) return
   saving.value = true
   try {
-    const payload = {
-      site_id: form.value.site_id, assigned_user_id: form.value.assigned_user_id || null,
-      planned_date: form.value.planned_date, planned_time_from: form.value.planned_time_from || null,
-      planned_time_to: form.value.planned_time_to || null, visit_type: form.value.visit_type,
-      priority: form.value.priority, office_notes: form.value.office_notes || null,
+    const masterIds = form.value.master_ids.length ? form.value.master_ids : null
+    // Обрабатываем тип "Другое": заменяем 'other' на введённый текст
+    const rawTypes = form.value.visit_types.length ? form.value.visit_types : ['maintenance']
+    const visitTypes = rawTypes
+      .map(t => t === 'other' ? (form.value.customVisitType?.trim() || null) : t)
+      .filter(Boolean)
+    const base = {
+      master_ids: masterIds,
+      visit_types: visitTypes,
+      visit_type: visitTypes[0],
+      planned_date: form.value.planned_date,
+      planned_time_from: form.value.planned_time_from || null,
+      planned_time_to: form.value.planned_time_to || null,
+      priority: form.value.priority,
+      office_notes: form.value.office_notes || null,
+      visit_contact: form.value.visit_contact || null,
+      visit_contact_position: form.value.visit_contact_position || null,
+      visit_contact_phone: form.value.visit_contact_phone || null,
     }
     if (editing.value) {
-      await visitsAPI.update(editing.value.id, { ...payload, status: form.value.status })
+      const orig = originalForm.value
+      const cur = form.value
+      const noChange =
+        JSON.stringify(cur.master_ids) === JSON.stringify(orig.master_ids) &&
+        JSON.stringify(cur.visit_types) === JSON.stringify(orig.visit_types) &&
+        cur.planned_date === orig.planned_date &&
+        cur.planned_time_from === orig.planned_time_from &&
+        cur.planned_time_to === orig.planned_time_to &&
+        cur.priority === orig.priority &&
+        cur.office_notes === orig.office_notes &&
+        cur.site_id === orig.site_id &&
+        cur.status === orig.status &&
+        cur.visit_contact === orig.visit_contact &&
+        cur.visit_contact_position === orig.visit_contact_position &&
+        cur.visit_contact_phone === orig.visit_contact_phone
+      if (noChange) { closeModal(); return }
+      await visitsAPI.update(editing.value.id, { ...base, site_id: form.value.site_id, status: form.value.status })
     } else {
-      await visitsAPI.create(payload)
+      // Функция получения contract_id для конкретного объекта
+      const contractForSite = (sid) =>
+        siteContractMap.value[sid] ||
+        (selectedContractIds.value.length === 1 ? selectedContractIds.value[0] : null)
+      if (createMode.value === 'single') {
+        const siteIds = selectedSiteIds.value
+        const siteNames = siteIds.map(sid => clientSites.value.find(s => s.id === sid)?.title).filter(Boolean)
+        const notes = siteNames.length > 1
+          ? [base.office_notes, 'Объекты: ' + siteNames.join(', ')].filter(Boolean).join('\n')
+          : base.office_notes
+        const contractId = contractForSite(siteIds[0])
+        await visitsAPI.create({ ...base, site_id: siteIds[0], office_notes: notes || null, contract_id: contractId })
+      } else {
+        await Promise.all(selectedSiteIds.value.map(sid =>
+          visitsAPI.create({ ...base, site_id: sid, contract_id: contractForSite(sid) })
+        ))
+      }
     }
     closeModal()
     await loadVisits()
@@ -276,11 +1147,84 @@ async function handleSave() {
   }
 }
 
-function closeModal() { modalOpen.value = false; editing.value = null }
+async function handleArchive() {
+  try {
+    await visitsAPI.archive(archiveConfirm.value.id)
+    archiveConfirm.value = null
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function handleUnarchive(v) {
+  try {
+    await visitsAPI.unarchive(v.id)
+    await loadVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  }
+}
+
+async function openDefectCreate(v) {
+  defectForm.value = {
+    title: '', description: '', priority: 'medium', action_type: 'repair', suggested_parts: '',
+    visit_id: v.id, site_id: v.site_id,
+    _site_title: v.site_title, _planned_date: v.planned_date,
+  }
+  selectedPhotos.value = []
+  try {
+    const res = await attachmentsAPI.getByVisit(v.id)
+    visitPhotos.value = res.data.filter(a =>
+      /\.(jpg|jpeg|png|gif|webp|heic|bmp|tiff)(\?|$)/i.test(a.file_url) ||
+      a.file_url.includes('/image/upload/')
+    )
+    // Автовыбор всех фото
+    selectedPhotos.value = visitPhotos.value.map(p => p.id)
+  } catch {
+    visitPhotos.value = []
+  }
+  defectModalOpen.value = true
+}
+
+async function handleDefectSave() {
+  saving.value = true
+  try {
+    const defectRes = await defectsAPI.create({
+      visit_id: defectForm.value.visit_id,
+      site_id: defectForm.value.site_id,
+      title: defectForm.value.title,
+      description: defectForm.value.description || null,
+      priority: defectForm.value.priority,
+      action_type: defectForm.value.action_type,
+      suggested_parts: defectForm.value.suggested_parts || null,
+    })
+    const defectId = defectRes.data.id
+    // Copy selected photos to the new defect
+    if (selectedPhotos.value.length > 0) {
+      const photos = visitPhotos.value.filter(p => selectedPhotos.value.includes(p.id))
+      await Promise.all(photos.map(p =>
+        attachmentsAPI.upload({
+          defect_id: defectId,
+          kind: 'defect_photo',
+          file_url: p.file_url,
+          file_name: p.file_name,
+        })
+      ))
+    }
+    defectModalOpen.value = false
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
+  }
+}
+
+function closeModal() { modalOpen.value = false; editing.value = null; errors.value = {}; clientDropdownOpen.value = false }
 function openUrl(url) { window.open(url, '_blank') }
 
 function statusClass(s) {
-  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', closed: 'bg-gray-600 text-white', done: 'bg-gray-600 text-white', cancelled: 'bg-red-100 text-red-700' }
+  const m = { planned: 'bg-blue-100 text-blue-700', in_progress: 'bg-green-100 text-green-700', done: 'bg-gray-400 text-white', cancelled: 'bg-red-100 text-red-700' }
   return m[s] || 'bg-gray-100 text-gray-700'
 }
 function priorityClass(p) {
@@ -289,7 +1233,6 @@ function priorityClass(p) {
 }
 function formatDate(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('ru-RU') : '—' }
 
-// Open specific visit from history state (from calendar)
 watch(visits, (vl) => {
   const id = window.history.state?.openVisitId
   if (id && vl?.length) {
@@ -298,5 +1241,22 @@ watch(visits, (vl) => {
   }
 }, { once: true })
 
-onMounted(loadVisits)
+onMounted(async () => {
+  // Init filters from URL query params (e.g. from dashboard links)
+  if (route.query.status) filters.value.status = route.query.status
+  if (route.query.date_from) filters.value.date_from = route.query.date_from
+  if (route.query.date_to) filters.value.date_to = route.query.date_to
+  await loadVisits()
+  usersAPI.getMasters().then(r => { masters.value = r.data })
+  if (route.query.open_create) openCreate()
+  if (route.query.open_visit) {
+    try {
+      const vr = await visitsAPI.getById(Number(route.query.open_visit))
+      detailTab.value = 'info'
+      detailVisit.value = vr.data
+    } catch (e) {
+      console.error('Could not open visit', e)
+    }
+  }
+})
 </script>
