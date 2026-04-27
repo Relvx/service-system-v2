@@ -3,13 +3,14 @@
     <label class="block text-sm font-medium text-gray-700 mb-1">{{ label }}</label>
     <div class="flex flex-wrap gap-2 mb-2">
       <div v-for="url in modelValue" :key="url" class="relative">
-        <img :src="url" class="h-20 w-20 object-cover rounded-lg border border-gray-200" />
+        <img :src="url" alt="Загруженное фото" class="h-20 w-20 object-cover rounded-lg border border-gray-200" />
         <button
           type="button"
           @click="remove(url)"
+          aria-label="Удалить фото"
           class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
         >
-          ×
+          <span aria-hidden="true">×</span>
         </button>
       </div>
     </div>
