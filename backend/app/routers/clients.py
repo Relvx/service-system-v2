@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user, require_groups
@@ -270,6 +270,19 @@ async def archive_client(
         raise HTTPException(status_code=404, detail="Client not found")
 
     client.is_archived = True
+
+    # Каскадно архивируем договора и объекты клиента
+    await db.execute(
+        update(Contract)
+        .where(Contract.client_id == client_id)
+        .values(is_archived=True)
+    )
+    await db.execute(
+        update(Site)
+        .where(Site.client_id == client_id)
+        .values(is_archived=True)
+    )
+
     await save_log(db, current_user.id, enums.log_actions.client_delete, "client", client_id,
                    details={"name": client.name, "action": "archive"})
     await db.commit()
