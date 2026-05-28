@@ -139,32 +139,37 @@ async def get_schedule_month(
             Contract.contract_number,
             Client.name,
             Client.id,
+            ClientContact.full_name,
+            ClientContact.position,
+            ClientContact.phone,
         )
         .join(Contract, ContractSchedule.contract_id == Contract.id)
         .join(Client, Contract.client_id == Client.id)
+        .outerjoin(ClientContact, ClientContact.client_id == Client.id)
         .where(ContractSchedule.year == year, ContractSchedule.month == month)
         .where(Contract.is_archived == False, Contract.status == "active")
         .where(Client.is_archived == False)
         .where(ContractSchedule.note.isnot(None), ContractSchedule.note != "")
-        .order_by(Client.name, Contract.contract_number)
+        .order_by(Client.name, Contract.contract_number, ClientContact.is_primary.desc(), ClientContact.id)
     )
-    rows = result.all()
+    all_rows = result.all()
 
-    contract_ids = [s.contract_id for s, *_ in rows]
-    client_ids = list({client_id for _, _, _, client_id in rows})
-
-    # Все контакты для клиентов (не только primary)
+    # Дедупликация: один договор — одна строка; собираем все контакты клиента
+    seen_contracts: dict[int, dict] = {}
     contacts_map: dict[int, list[ContactInfo]] = {}
-    if client_ids:
-        contacts_result = await db.execute(
-            select(ClientContact.client_id, ClientContact.full_name, ClientContact.position, ClientContact.phone)
-            .where(ClientContact.client_id.in_(client_ids))
-            .order_by(ClientContact.client_id, ClientContact.is_primary.desc(), ClientContact.id)
-        )
-        for client_id, full_name, position, phone in contacts_result.all():
-            contacts_map.setdefault(client_id, []).append(
-                ContactInfo(full_name=full_name or None, position=position or None, phone=phone or None)
-            )
+    for s, cn, cl, client_id, full_name, position, phone in all_rows:
+        if s.contract_id not in seen_contracts:
+            seen_contracts[s.contract_id] = {
+                "sched": s, "cn": cn, "cl": cl, "client_id": client_id,
+            }
+        if full_name or phone:
+            contacts_map.setdefault(client_id, [])
+            info = ContactInfo(full_name=full_name or None, position=position or None, phone=phone or None)
+            if info not in contacts_map[client_id]:
+                contacts_map[client_id].append(info)
+
+    rows = list(seen_contracts.values())
+    contract_ids = [r["sched"].contract_id for r in rows]
 
     # Адреса объектов по договорам (через contract_sites)
     sites_map: dict[int, list[str]] = {}
@@ -181,9 +186,9 @@ async def get_schedule_month(
 
     # Фолбэк: для договоров без объектов в contract_sites — берём объекты клиента напрямую
     contracts_without_sites = [
-        (s.contract_id, client_id)
-        for s, cn, cl, client_id in rows
-        if s.contract_id not in sites_map
+        (r["sched"].contract_id, r["client_id"])
+        for r in rows
+        if r["sched"].contract_id not in sites_map
     ]
     if contracts_without_sites:
         fallback_client_ids = list({cid for _, cid in contracts_without_sites})
@@ -204,17 +209,17 @@ async def get_schedule_month(
 
     items = [
         ScheduleCell(
-            contract_id=s.contract_id,
-            client_id=client_id,
-            contract_number=cn or "",
-            client_name=cl or "",
+            contract_id=r["sched"].contract_id,
+            client_id=r["client_id"],
+            contract_number=r["cn"] or "",
+            client_name=r["cl"] or "",
             year=year,
             month=month,
-            note=s.note,
-            contacts=contacts_map.get(client_id, []),
-            site_addresses=sites_map.get(s.contract_id, []),
+            note=r["sched"].note,
+            contacts=contacts_map.get(r["client_id"], []),
+            site_addresses=sites_map.get(r["sched"].contract_id, []),
         )
-        for s, cn, cl, client_id in rows
+        for r in rows
     ]
     return ScheduleMonthOut(year=year, month=month, items=items)
 
