@@ -22,15 +22,21 @@ router = APIRouter(prefix="/schedule", tags=["schedule"])
 
 # ---------- Schemas ----------
 
+class ContactInfo(BaseModel):
+    full_name: Optional[str] = None
+    position: Optional[str] = None
+    phone: Optional[str] = None
+
+
 class ScheduleCell(BaseModel):
     contract_id: int
+    client_id: Optional[int] = None
     contract_number: str
     client_name: str
     year: int
     month: int
     note: str
-    contact_name: Optional[str] = None
-    contact_phone: Optional[str] = None
+    contacts: List[ContactInfo] = []
     site_addresses: List[str] = []
 
 
@@ -131,31 +137,33 @@ async def get_schedule_month(
             ContractSchedule,
             Contract.contract_number,
             Client.name,
-            ClientContact.full_name,
-            ClientContact.phone,
+            Client.id,
         )
         .join(Contract, ContractSchedule.contract_id == Contract.id)
         .join(Client, Contract.client_id == Client.id)
-        .outerjoin(
-            ClientContact,
-            (ClientContact.client_id == Client.id) & (ClientContact.is_primary == True),
-        )
         .where(ContractSchedule.year == year, ContractSchedule.month == month)
         .where(Contract.is_archived == False)
+        .where(Client.is_archived == False)
         .where(ContractSchedule.note.isnot(None), ContractSchedule.note != "")
         .order_by(Client.name, Contract.contract_number)
     )
-    all_rows = result.all()
-
-    # Дедупликация: один договор — одна строка (JOIN с контактами может дать дубли)
-    seen_contracts: set[int] = set()
-    rows = []
-    for row in all_rows:
-        if row[0].contract_id not in seen_contracts:
-            seen_contracts.add(row[0].contract_id)
-            rows.append(row)
+    rows = result.all()
 
     contract_ids = [s.contract_id for s, *_ in rows]
+    client_ids = list({client_id for _, _, _, client_id in rows})
+
+    # Все контакты для клиентов (не только primary)
+    contacts_map: dict[int, list[ContactInfo]] = {}
+    if client_ids:
+        contacts_result = await db.execute(
+            select(ClientContact.client_id, ClientContact.full_name, ClientContact.position, ClientContact.phone)
+            .where(ClientContact.client_id.in_(client_ids))
+            .order_by(ClientContact.client_id, ClientContact.is_primary.desc(), ClientContact.id)
+        )
+        for client_id, full_name, position, phone in contacts_result.all():
+            contacts_map.setdefault(client_id, []).append(
+                ContactInfo(full_name=full_name or None, position=position or None, phone=phone or None)
+            )
 
     # Адреса объектов по договорам
     sites_map: dict[int, list[str]] = {}
@@ -173,16 +181,16 @@ async def get_schedule_month(
     items = [
         ScheduleCell(
             contract_id=s.contract_id,
+            client_id=client_id,
             contract_number=cn or "",
             client_name=cl or "",
             year=year,
             month=month,
             note=s.note,
-            contact_name=contact_name or None,
-            contact_phone=contact_phone or None,
+            contacts=contacts_map.get(client_id, []),
             site_addresses=sites_map.get(s.contract_id, []),
         )
-        for s, cn, cl, contact_name, contact_phone in rows
+        for s, cn, cl, client_id in rows
     ]
     return ScheduleMonthOut(year=year, month=month, items=items)
 
