@@ -165,7 +165,7 @@ async def get_schedule_month(
                 ContactInfo(full_name=full_name or None, position=position or None, phone=phone or None)
             )
 
-    # Адреса объектов по договорам
+    # Адреса объектов по договорам (через contract_sites)
     sites_map: dict[int, list[str]] = {}
     if contract_ids:
         sites_result = await db.execute(
@@ -177,6 +177,29 @@ async def get_schedule_month(
         for contract_id, address in sites_result.all():
             if address:
                 sites_map.setdefault(contract_id, []).append(address)
+
+    # Фолбэк: для договоров без объектов в contract_sites — берём объекты клиента напрямую
+    contracts_without_sites = [
+        (s.contract_id, client_id)
+        for s, cn, cl, client_id in rows
+        if s.contract_id not in sites_map
+    ]
+    if contracts_without_sites:
+        fallback_client_ids = list({cid for _, cid in contracts_without_sites})
+        fallback_result = await db.execute(
+            select(Site.client_id, Site.address)
+            .where(Site.client_id.in_(fallback_client_ids), Site.is_archived == False)
+            .distinct()
+            .order_by(Site.client_id, Site.address)
+        )
+        client_sites_map: dict[int, list[str]] = {}
+        for client_id, address in fallback_result.all():
+            if address:
+                client_sites_map.setdefault(client_id, []).append(address)
+        for contract_id, client_id in contracts_without_sites:
+            addrs = client_sites_map.get(client_id, [])
+            if addrs:
+                sites_map[contract_id] = addrs
 
     items = [
         ScheduleCell(
