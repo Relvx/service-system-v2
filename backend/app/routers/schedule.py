@@ -93,6 +93,7 @@ async def get_schedule_year(
         .join(Contract, ContractSchedule.contract_id == Contract.id)
         .join(Client, Contract.client_id == Client.id)
         .where(ContractSchedule.year == year)
+        .where(Contract.is_archived == False)
         .order_by(Client.name, Contract.contract_number)
     )
     rows_raw = result.all()
@@ -140,6 +141,7 @@ async def get_schedule_month(
             (ClientContact.client_id == Client.id) & (ClientContact.is_primary == True),
         )
         .where(ContractSchedule.year == year, ContractSchedule.month == month)
+        .where(Contract.is_archived == False)
         .where(ContractSchedule.note.isnot(None), ContractSchedule.note != "")
         .order_by(Client.name, Contract.contract_number)
     )
