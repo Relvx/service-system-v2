@@ -6,6 +6,11 @@
       <p class="print-meta">Сформировано: {{ today }}</p>
     </div>
 
+    <!-- Отладка (временно) -->
+    <div v-if="!loading && rows.length" class="no-print" style="background:#fffbe6;padding:6px;font-size:10pt;margin-bottom:6px;">
+      DEBUG: rows={{ rows.length }}, contacts[0]={{ JSON.stringify(rows[0]?.contacts) }}
+    </div>
+
     <!-- Загрузка -->
     <div v-if="loading" class="print-loading no-print">
       <p>Загрузка данных...</p>
