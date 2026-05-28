@@ -7,7 +7,7 @@
     </div>
 
     <!-- Отладка (временно) -->
-    <div v-if="!loading && rows.length" class="no-print" style="background:#fffbe6;padding:6px;font-size:10pt;margin-bottom:6px;">
+    <div v-if="!loading && rows.length" style="background:#fffbe6;border:1px solid #e6c800;padding:6px;font-size:9pt;margin-bottom:6px;">
       DEBUG: rows={{ rows.length }}, contacts[0]={{ JSON.stringify(rows[0]?.contacts) }}
     </div>
 
