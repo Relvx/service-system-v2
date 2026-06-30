@@ -200,8 +200,52 @@
               К клиенту
             </button>
             <div v-else />
-            <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+            <div class="flex gap-2">
+              <button
+                v-if="detailVisit.status === 'done'"
+                @click="openEditResult(detailVisit)"
+                class="btn btn-secondary flex items-center text-blue-700 border-blue-300 hover:bg-blue-50 text-sm"
+              >
+                <ClipboardEdit class="w-4 h-4 mr-1" />Итог работ
+              </button>
+              <button @click="detailVisit = null" class="btn btn-primary">Закрыть</button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Edit Result Modal -->
+      <div v-if="editResultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="mv-editresult-title" class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div class="flex items-center justify-between p-6 border-b">
+            <div>
+              <h2 id="mv-editresult-title" class="text-xl font-semibold text-gray-900">Редактировать итог работ</h2>
+              <p class="text-sm text-gray-500 mt-0.5">{{ editResultModal.site_title }}</p>
+            </div>
+            <button @click="editResultModal = null" aria-label="Закрыть" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
+          </div>
+          <form @submit.prevent="saveEditResult" class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Итог работ</label>
+              <textarea v-model="editResultForm.work_summary" rows="4" class="input w-full resize-none" placeholder="Опишите выполненные работы..." />
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="mv_edit_defects_cb" v-model="editResultForm.defects_present" type="checkbox" class="w-4 h-4 rounded border-gray-300" />
+              <label for="mv_edit_defects_cb" class="text-sm text-gray-700">Обнаружены дефекты</label>
+            </div>
+            <div v-if="editResultForm.defects_present">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание дефектов</label>
+              <textarea v-model="editResultForm.defects_summary" rows="3" class="input w-full resize-none" placeholder="Описание дефектов..." />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Рекомендации</label>
+              <textarea v-model="editResultForm.recommendations" rows="2" class="input w-full resize-none" placeholder="Рекомендации..." />
+            </div>
+            <div class="flex justify-end gap-3 pt-4">
+              <button type="button" @click="editResultModal = null" class="btn btn-secondary">Отмена</button>
+              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">{{ saving ? 'Сохранение...' : 'Сохранить' }}</button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -247,7 +291,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Calendar, MapPin, Play, CheckCircle, X, Eye, Building2 } from 'lucide-vue-next'
+import { Calendar, MapPin, Play, CheckCircle, X, Eye, Building2, ClipboardEdit } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import PhotoUpload from '../components/PhotoUpload.vue'
 import AttachmentsTab from '../components/AttachmentsTab.vue'
@@ -269,14 +313,17 @@ const searchQuery = ref('')
 const loading = ref(true)
 const actionLoading = ref(null)
 const completeModal = ref(null)
+const editResultModal = ref(null)
+const editResultForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
 const detailVisit = ref(null)
 const saving = ref(false)
 const activeTab = ref('today')
 const photos = ref([])
 
 useEscClose([
-  { isOpen: () => !!detailVisit.value,    close: () => { detailVisit.value = null } },
-  { isOpen: () => !!completeModal.value,  close: () => { completeModal.value = null } },
+  { isOpen: () => !!editResultModal.value, close: () => { editResultModal.value = null } },
+  { isOpen: () => !!detailVisit.value,     close: () => { detailVisit.value = null } },
+  { isOpen: () => !!completeModal.value,   close: () => { completeModal.value = null } },
 ])
 
 const completeForm = ref({ work_summary: '', defects_present: false, defects_summary: '', recommendations: '' })
@@ -347,6 +394,35 @@ async function openDetail(v) {
     detailVisit.value = res.data
   } catch {
     detailVisit.value = v
+  }
+}
+
+function openEditResult(visit) {
+  editResultForm.value = {
+    work_summary: visit.work_summary || '',
+    defects_present: visit.defects_present || false,
+    defects_summary: visit.defects_summary || '',
+    recommendations: visit.recommendations || '',
+  }
+  detailVisit.value = null
+  editResultModal.value = visit
+}
+
+async function saveEditResult() {
+  saving.value = true
+  try {
+    await visitsAPI.update(editResultModal.value.id, {
+      work_summary: editResultForm.value.work_summary || null,
+      defects_present: editResultForm.value.defects_present,
+      defects_summary: editResultForm.value.defects_summary || null,
+      recommendations: editResultForm.value.recommendations || null,
+    })
+    editResultModal.value = null
+    await loadMyVisits()
+  } catch (e) {
+    alert('Ошибка: ' + (e.response?.data?.detail || e.message))
+  } finally {
+    saving.value = false
   }
 }
 

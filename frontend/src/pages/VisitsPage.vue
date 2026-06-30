@@ -247,7 +247,7 @@
                 <AlertTriangle class="w-4 h-4 mr-1" />Дефект
               </button>
               <button
-                v-if="detailVisit.status === 'done' && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))"
+                v-if="detailVisit.status === 'done' && (auth.hasGroup('office_group') || auth.hasGroup('admin_group') || auth.hasGroup('master_group'))"
                 @click="openEditResult(detailVisit)"
                 class="btn btn-secondary flex items-center text-blue-700 border-blue-300 hover:bg-blue-50 text-sm"
               >
