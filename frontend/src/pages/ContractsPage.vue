@@ -222,9 +222,9 @@
             </div>
 
             <!-- Объекты клиента -->
-            <div v-if="form.client_id && clientSites.length">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Объекты клиента (выберите для привязки)</label>
-              <div class="border border-gray-200 rounded-lg max-h-36 overflow-y-auto divide-y divide-gray-100">
+            <div v-if="form.client_id">
+              <label v-if="clientSites.length" class="block text-sm font-medium text-gray-700 mb-2">Объекты клиента (выберите для привязки)</label>
+              <div v-if="clientSites.length" class="border border-gray-200 rounded-lg max-h-36 overflow-y-auto divide-y divide-gray-100">
                 <label
                   v-for="s in clientSites"
                   :key="s.id"
@@ -237,10 +237,27 @@
                   </div>
                 </label>
               </div>
-              <p class="text-xs text-gray-500 mt-1">Выбрано: {{ selectedSiteIds.length }}</p>
-            </div>
-            <div v-else-if="form.client_id && !sitesLoading && clientSites.length === 0" class="text-sm text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-              У клиента нет объектов
+              <p v-if="clientSites.length" class="text-xs text-gray-500 mt-1">Выбрано: {{ selectedSiteIds.length }}</p>
+              <p v-else-if="!sitesLoading" class="text-sm text-gray-400 bg-gray-50 rounded-lg px-3 py-2">У клиента нет объектов</p>
+
+              <!-- Новые объекты (создаются вместе с договором) -->
+              <div v-for="(s, idx) in newSites" :key="idx" class="border border-blue-200 rounded-lg p-3 mt-2 bg-blue-50/30 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-blue-700">Новый объект #{{ idx + 1 }}</span>
+                  <button type="button" @click="newSites.splice(idx, 1)" class="text-gray-400 hover:text-red-600"><X class="w-4 h-4" /></button>
+                </div>
+                <input v-model="s.title" placeholder="Название объекта *" class="input text-sm" />
+                <input v-model="s.address" placeholder="Адрес *" class="input text-sm" />
+                <input v-model="s.onsite_contact" placeholder="Контакт на месте (необязательно)" class="input text-sm" />
+              </div>
+
+              <button
+                type="button"
+                @click="newSites.push({ title: '', address: '', onsite_contact: '' })"
+                class="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <Plus class="w-4 h-4" />Создать новый объект
+              </button>
             </div>
 
             <div>
@@ -399,6 +416,7 @@ const clientDropOpen = ref(false)
 const clientDropRef = ref(null)
 const clientSites = ref([])
 const selectedSiteIds = ref([])
+const newSites = ref([])
 const sitesLoading = ref(false)
 
 // Schedule в создании договора
@@ -414,6 +432,7 @@ async function onClientSearch() {
   form.value.client_id = null
   clientSites.value = []
   selectedSiteIds.value = []
+  newSites.value = []
   clearTimeout(clientSearchTimer)
   if (!clientSearch.value.trim()) { clientOptions.value = []; return }
   clientSearchTimer = setTimeout(async () => {
@@ -441,6 +460,7 @@ function clearClient() {
   clientSearch.value = ''
   clientSites.value = []
   selectedSiteIds.value = []
+  newSites.value = []
 }
 
 function onClickOutsideClientDrop(e) {
@@ -544,6 +564,7 @@ function openCreate() {
   clientOptions.value = []
   clientSites.value = []
   selectedSiteIds.value = []
+  newSites.value = []
   scheduleEnabled.value = false
   scheduleYear.value = new Date().getFullYear()
   scheduleMonths.value = []
@@ -554,6 +575,16 @@ function openCreate() {
 async function handleCreate() {
   const e = {}
   if (!form.value.contract_number.trim()) e.contract_number = 'Введите номер договора'
+  // Валидация новых объектов: title и address обязательны
+  const validNewSites = newSites.value.filter(s => s.title.trim() || s.address.trim())
+  for (const s of validNewSites) {
+    if (!s.title.trim() || !s.address.trim()) {
+      e.contract_number = e.contract_number || 'Заполните название и адрес у нового объекта'
+    }
+  }
+  if (validNewSites.length && !form.value.client_id) {
+    e.contract_number = e.contract_number || 'Выберите клиента для нового объекта'
+  }
   createErrors.value = e
   if (Object.keys(e).length) return
   saving.value = true
@@ -565,8 +596,19 @@ async function handleCreate() {
     if (!payload.client_id) delete payload.client_id
     const res = await contractsAPI.create(payload)
     const newId = res.data.id
-    // Привязываем выбранные объекты
-    for (const siteId of selectedSiteIds.value) {
+    // Создаём новые объекты клиента
+    const createdSiteIds = []
+    for (const s of validNewSites) {
+      const sr = await sitesAPI.create({
+        title: s.title.trim(),
+        address: s.address.trim(),
+        client_id: form.value.client_id,
+        onsite_contact: s.onsite_contact?.trim() || null,
+      })
+      createdSiteIds.push(sr.data.id)
+    }
+    // Привязываем выбранные + только что созданные объекты
+    for (const siteId of [...selectedSiteIds.value, ...createdSiteIds]) {
       await contractsAPI.addSite(newId, siteId)
     }
     // Создаём ячейки расписания

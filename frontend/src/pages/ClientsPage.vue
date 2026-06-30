@@ -184,15 +184,15 @@
       </template>
 
       <!-- Create / Edit Modal -->
-      <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-          <div class="flex items-center justify-between p-4 md:p-6 border-b">
+      <div v-if="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+          <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0">
             <h2 class="text-xl font-semibold text-gray-900">
               {{ editing ? 'Редактировать клиента' : 'Добавить клиента' }}
             </h2>
             <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600"><X class="w-6 h-6" /></button>
           </div>
-          <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4">
+          <form @submit.prevent="handleSave" class="p-4 md:p-6 space-y-4 overflow-y-auto flex-1">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
               <input v-model="form.name" class="input" :class="{ 'border-red-400': errors.name }" placeholder='ООО "Название"' @input="delete errors.name" />
@@ -214,13 +214,71 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Заметки</label>
               <textarea v-model="form.notes" class="input" rows="3" placeholder="Дополнительная информация..." />
             </div>
-            <div class="flex justify-end gap-3 pt-4">
-              <button type="button" @click="modalOpen = false" class="btn btn-secondary">Отмена</button>
-              <button type="submit" :disabled="saving" class="btn btn-primary disabled:opacity-50">
-                {{ saving ? 'Сохранение...' : (editing ? 'Сохранить' : 'Создать') }}
-              </button>
-            </div>
+
+            <!-- Доп. секции только при создании -->
+            <template v-if="!editing">
+              <!-- Объект -->
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  @click="includeSite = !includeSite"
+                  class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-gray-50 transition-colors"
+                  :class="includeSite ? 'bg-blue-50 text-blue-700' : 'text-gray-700'"
+                >
+                  <span class="flex items-center gap-2">
+                    <MapPin class="w-4 h-4" />
+                    Сразу добавить объект
+                  </span>
+                  <span class="text-xs px-2 py-0.5 rounded-full" :class="includeSite ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'">
+                    {{ includeSite ? 'Включено' : 'Выключено' }}
+                  </span>
+                </button>
+                <div v-if="includeSite" class="px-4 pb-4 pt-3 space-y-2 border-t border-gray-100">
+                  <input v-model="siteForm.title" class="input text-sm" :class="{ 'border-red-400': errors.siteTitle }" placeholder="Название объекта *" @input="delete errors.siteTitle" />
+                  <p v-if="errors.siteTitle" class="text-red-600 text-xs">{{ errors.siteTitle }}</p>
+                  <input v-model="siteForm.address" class="input text-sm" :class="{ 'border-red-400': errors.siteAddress }" placeholder="Адрес *" @input="delete errors.siteAddress" />
+                  <p v-if="errors.siteAddress" class="text-red-600 text-xs">{{ errors.siteAddress }}</p>
+                  <input v-model="siteForm.onsite_contact" class="input text-sm" placeholder="Контакт на месте (необязательно)" />
+                  <textarea v-model="siteForm.access_notes" class="input text-sm" rows="2" placeholder="Доступ на объект (необязательно)" />
+                </div>
+              </div>
+
+              <!-- Договор -->
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  @click="includeContract = !includeContract"
+                  class="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-gray-50 transition-colors"
+                  :class="includeContract ? 'bg-blue-50 text-blue-700' : 'text-gray-700'"
+                >
+                  <span class="flex items-center gap-2">
+                    <FileText class="w-4 h-4" />
+                    Сразу добавить договор
+                  </span>
+                  <span class="text-xs px-2 py-0.5 rounded-full" :class="includeContract ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'">
+                    {{ includeContract ? 'Включено' : 'Выключено' }}
+                  </span>
+                </button>
+                <div v-if="includeContract" class="px-4 pb-4 pt-3 space-y-2 border-t border-gray-100">
+                  <input v-model="contractForm.contract_number" class="input text-sm" :class="{ 'border-red-400': errors.contractNumber }" placeholder="Номер договора *" @input="delete errors.contractNumber" />
+                  <p v-if="errors.contractNumber" class="text-red-600 text-xs">{{ errors.contractNumber }}</p>
+                  <input v-model="contractForm.contract_date" type="date" class="input text-sm" />
+                  <input v-model="contractForm.subject" class="input text-sm" placeholder="Предмет договора (необязательно)" />
+                  <div class="grid grid-cols-2 gap-2">
+                    <input v-model="contractForm.amount" type="number" step="0.01" class="input text-sm" placeholder="Сумма" />
+                    <input v-model="contractForm.act_amount" type="number" step="0.01" class="input text-sm" placeholder="Сумма акта" />
+                  </div>
+                  <p v-if="includeSite" class="text-xs text-gray-500">Новый объект будет автоматически привязан к договору.</p>
+                </div>
+              </div>
+            </template>
           </form>
+          <div class="flex justify-end gap-3 p-4 md:p-6 border-t flex-shrink-0">
+            <button type="button" @click="modalOpen = false" class="btn btn-secondary">Отмена</button>
+            <button @click="handleSave" :disabled="saving" class="btn btn-primary disabled:opacity-50">
+              {{ saving ? 'Сохранение...' : (editing ? 'Сохранить' : 'Создать') }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -317,6 +375,12 @@ const saving = ref(false)
 const form = ref({ name: '', inn: '', kpp: '', notes: '' })
 const originalForm = ref(null)
 const errors = ref({})
+
+// Расширенное создание: сразу добавить объект/договор
+const includeSite = ref(false)
+const includeContract = ref(false)
+const siteForm = ref({ title: '', address: '', onsite_contact: '', access_notes: '' })
+const contractForm = ref({ contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '' })
 
 // Quick modals
 const quickClient = ref(null)
@@ -467,6 +531,13 @@ function validate() {
   if (!form.value.name.trim()) e.name = 'Введите название'
   if (form.value.inn && !/^\d{10}(\d{2})?$/.test(form.value.inn)) e.inn = 'ИНН должен содержать 10 или 12 цифр'
   if (form.value.kpp && !/^\d{9}$/.test(form.value.kpp)) e.kpp = 'КПП должен содержать 9 цифр'
+  if (!editing.value && includeSite.value) {
+    if (!siteForm.value.title.trim()) e.siteTitle = 'Введите название объекта'
+    if (!siteForm.value.address.trim()) e.siteAddress = 'Введите адрес объекта'
+  }
+  if (!editing.value && includeContract.value) {
+    if (!contractForm.value.contract_number.trim()) e.contractNumber = 'Введите номер договора'
+  }
   errors.value = e
   return Object.keys(e).length === 0
 }
@@ -475,6 +546,10 @@ function openCreate() {
   editing.value = null
   errors.value = {}
   form.value = { name: '', inn: '', kpp: '', notes: '' }
+  includeSite.value = false
+  includeContract.value = false
+  siteForm.value = { title: '', address: '', onsite_contact: '', access_notes: '' }
+  contractForm.value = { contract_number: '', contract_date: '', subject: '', amount: '', act_amount: '' }
   modalOpen.value = true
 }
 
@@ -497,7 +572,33 @@ async function handleSave() {
       }
       await clientsAPI.update(editing.value.id, form.value)
     } else {
-      await clientsAPI.create(form.value)
+      const res = await clientsAPI.create(form.value)
+      const newClientId = res.data.id
+      let newSiteId = null
+      if (includeSite.value) {
+        const sr = await sitesAPI.create({
+          title: siteForm.value.title.trim(),
+          address: siteForm.value.address.trim(),
+          client_id: newClientId,
+          onsite_contact: siteForm.value.onsite_contact?.trim() || null,
+          access_notes: siteForm.value.access_notes?.trim() || null,
+        })
+        newSiteId = sr.data.id
+      }
+      if (includeContract.value) {
+        const payload = {
+          contract_number: contractForm.value.contract_number.trim(),
+          client_id: newClientId,
+        }
+        if (contractForm.value.contract_date) payload.contract_date = contractForm.value.contract_date
+        if (contractForm.value.subject) payload.subject = contractForm.value.subject
+        if (contractForm.value.amount) payload.amount = contractForm.value.amount
+        if (contractForm.value.act_amount) payload.act_amount = contractForm.value.act_amount
+        const cr = await contractsAPI.create(payload)
+        if (newSiteId) {
+          await contractsAPI.addSite(cr.data.id, newSiteId)
+        }
+      }
     }
     modalOpen.value = false
     errors.value = {}
