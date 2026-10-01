@@ -1,0 +1,5 @@
+{
+  "name": "service-system-local",
+  "owner": {"name": "Relvx"},
+  "plugins": [{"name": "service-system", "source": "./plugin", "description": "Итоги выездов и предложения дефектов"}]
+}

@@ -30,3 +30,5 @@ __all__ = [
     "CalendarNote", "Contract", "ContractSite", "Equipment", "ServiceSchedule",
     "ContractSchedule",
 ]
+
+from app.models.work_report import VisitReview, ReportProposal, ReportConnection

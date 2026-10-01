@@ -1,0 +1,15 @@
+services:
+  frontend:
+    ports:
+      - "443:443"
+    volumes:
+      - ./deploy/https/active.conf:/etc/nginx/conf.d/default.conf:ro
+      - /srv/service-system-acme:/var/www/acme:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+  certbot:
+    image: certbot/certbot:v5.4.0
+    profiles: [tls-tools]
+    volumes:
+      - /srv/service-system-acme:/var/www/acme
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/lib/letsencrypt:/var/lib/letsencrypt

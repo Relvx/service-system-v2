@@ -79,6 +79,14 @@ async def get_defects(
     return DefectPage(items=[_row_to_out(r) for r in result.all()], total=total, limit=limit, offset=offset)
 
 
+@router.get("/{defect_id}", response_model=DefectOut)
+async def get_defect(defect_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    row = (await db.execute(_build_defect_query().where(Defect.id == defect_id))).first()
+    if row is None:
+        raise HTTPException(404, "Defect not found")
+    return _row_to_out(row)
+
+
 @router.post("", response_model=DefectOut, status_code=status.HTTP_201_CREATED)
 async def create_defect(
     body: DefectCreate,

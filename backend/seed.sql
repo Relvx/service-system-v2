@@ -7,7 +7,7 @@
 INSERT INTO visit_statuses (sysname, display_name) VALUES
     ('planned',     'Запланирован'),
     ('in_progress', 'В работе'),
-    ('closed',      'Завершён'),
+    ('done',        'Завершён'),
     ('cancelled',   'Отменён')
 ON CONFLICT (sysname) DO NOTHING;
 

@@ -338,6 +338,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { AlertTriangle, X, Eye, Plus, Trash2, Image as ImageIcon, Upload, Filter, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
 import DataTable from '../components/DataTable.vue'
@@ -651,5 +652,14 @@ function formatDate(d) {
   return new Date(d.includes('T') ? d : d + 'T00:00:00').toLocaleDateString('ru-RU')
 }
 
-onMounted(loadDefects)
+const route = useRoute()
+onMounted(async () => {
+  await loadDefects()
+  if (route.query.open_defect) {
+    try {
+      const { data } = await defectsAPI.getById(Number(route.query.open_defect))
+      await openDetail(data)
+    } catch { window.alert('Не удалось открыть дефект') }
+  }
+})
 </script>

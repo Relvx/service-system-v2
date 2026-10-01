@@ -14,3 +14,13 @@ frontend/.env
 .DS_Store
 
 ToDo.txt
+
+# Server secrets
+/.env
+/docker-compose.override.yml
+/deploy/https/active.conf
+plugin/.venv/
+plugin/**/__pycache__/
+plugin/.mcp.json
+plugin/connection.json
+*service-system-connection*.json

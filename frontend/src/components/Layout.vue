@@ -339,6 +339,7 @@ const allNav = [
   { name: 'Расписание',  href: '/schedule',   icon: CalendarRange,   groups: ['office_group', 'admin_group', 'viewer_group'] },
   { name: 'Объекты',     href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group', 'viewer_group'] },
   { name: 'Выезды',      href: '/visits',     icon: ClipboardList,   groups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
+  { name: 'Итоги выездов', href: '/work-reports', icon: ClipboardList, groups: ['office_group', 'admin_group'] },
   { name: 'Дефекты',     href: '/defects',    icon: AlertTriangle,   groups: ['office_group', 'admin_group', 'viewer_group'] },
   { name: 'Закупки',     href: '/purchases',  icon: ShoppingCart,    groups: ['office_group', 'admin_group', 'viewer_group'] },
   { name: 'Задачи',      href: '/tasks',      icon: CheckSquare,     groups: ['office_group', 'admin_group', 'viewer_group'] },

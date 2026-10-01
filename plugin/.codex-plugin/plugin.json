@@ -1,0 +1,14 @@
+{
+  "name": "service-system",
+  "version": "0.1.0",
+  "description": "Проверка итогов завершённых выездов и подготовка предложений дефектов.",
+  "author": {"name": "Relvx"},
+  "mcpServers": "./.mcp.json",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Service System",
+    "shortDescription": "Итоги выездов и предложения дефектов",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"]
+  }
+}

@@ -55,6 +55,11 @@ const routes = [
     meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
   },
   {
+    path: '/work-reports',
+    component: () => import('../pages/WorkReportsPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
     path: '/my-visits',
     component: () => import('../pages/MyVisitsPage.vue'),
     meta: { requiresAuth: true, allowedGroups: ['master_group'] },

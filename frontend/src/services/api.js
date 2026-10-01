@@ -80,7 +80,20 @@ export const visitsAPI = {
   delete: (id) => api.delete(`/visits/${id}`),
 }
 
+export const reportsAPI = {
+  getAll: (params) => api.get('/work-reports', { params }),
+  getById: (id) => api.get(`/work-reports/${id}`),
+  review: (id, data) => api.put(`/work-reports/${id}/review`, data),
+  propose: (data) => api.post('/work-reports/proposals', data),
+  confirm: (id) => api.post(`/work-reports/proposals/${id}/confirm`),
+  dismiss: (id) => api.post(`/work-reports/proposals/${id}/dismiss`),
+  connections: () => api.get('/work-reports/connections'),
+  connect: () => api.post('/work-reports/connections'),
+  revoke: (id) => api.delete(`/work-reports/connections/${id}`),
+}
+
 export const defectsAPI = {
+  getById: (id) => api.get(`/defects/${id}`),
   getAll: (params) => api.get('/defects', { params }),
   create: (data) => api.post('/defects', data),
   update: (id, data) => api.put(`/defects/${id}`, data),
