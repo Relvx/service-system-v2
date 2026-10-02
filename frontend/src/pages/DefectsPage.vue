@@ -184,6 +184,11 @@
               <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full" :class="priorityClass(selectedDefect.priority)">{{ cfg.priorityLabel(selectedDefect.priority) }}</span>
             </div>
 
+            <div class="flex flex-wrap gap-2">
+              <RouterLink v-if="selectedDefect.visit_id" :to="{ path: '/visits', query: { open_visit: selectedDefect.visit_id } }" class="btn btn-secondary text-xs">Открыть выезд</RouterLink>
+              <RouterLink v-if="selectedDefect.client_id" :to="`/clients/${selectedDefect.client_id}`" class="btn btn-secondary text-xs">Открыть клиента</RouterLink>
+              <RouterLink v-if="selectedDefect.site_id" :to="`/sites/${selectedDefect.site_id}`" class="btn btn-secondary text-xs">Открыть объект</RouterLink>
+            </div>
             <!-- Info -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div v-if="selectedDefect.site_title"><p class="text-gray-500">Объект</p><p class="font-medium">{{ selectedDefect.site_title }}</p></div>
@@ -206,6 +211,8 @@
                 </button>
               </div>
             </div>
+
+            <DefectCardActions :key="selectedDefect.id" :defect="selectedDefect" :can-manage="canManage" @updated="onDefectUpdated" />
 
             <!-- ─── Photos ───────────────────────────────────────────── -->
             <div class="pt-3 border-t">
@@ -341,6 +348,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { AlertTriangle, X, Eye, Plus, Trash2, Image as ImageIcon, Upload, Filter, ChevronDown } from 'lucide-vue-next'
 import Layout from '../components/Layout.vue'
+import DefectCardActions from '../components/DefectCardActions.vue'
 import DataTable from '../components/DataTable.vue'
 import { useConfigStore } from '../stores/config.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -525,6 +533,12 @@ async function loadPurchases(defectId) {
   } finally {
     loadingPurchases.value = false
   }
+}
+
+function onDefectUpdated(defect) {
+  selectedDefect.value = defect
+  const idx = defects.value.findIndex((d) => d.id === defect.id)
+  if (idx >= 0) defects.value[idx] = defect
 }
 
 async function updateStatus() {

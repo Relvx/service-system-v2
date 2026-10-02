@@ -93,6 +93,8 @@ export const reportsAPI = {
 }
 
 export const defectsAPI = {
+  getComments: (id) => api.get(`/defects/${id}/comments`),
+  addComment: (id, text) => api.post(`/defects/${id}/comments`, { text }),
   getById: (id) => api.get(`/defects/${id}`),
   getAll: (params) => api.get('/defects', { params }),
   create: (data) => api.post('/defects', data),

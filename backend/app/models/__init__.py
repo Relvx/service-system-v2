@@ -9,7 +9,7 @@ from app.models.client_contact import ClientContact
 from app.models.client_legal import ClientLegal
 from app.models.site import Site
 from app.models.visit import Visit
-from app.models.defect import Defect
+from app.models.defect import Defect, DefectComment
 from app.models.purchase import Purchase
 from app.models.attachment import Attachment
 from app.models.notification import Notification
@@ -26,7 +26,7 @@ __all__ = [
     "DefectStatus", "DefectActionType", "AttachmentKind",
     "PurchaseStatus", "ServiceFrequency", "NotificationType",
     "User", "Client", "ClientContact", "ClientLegal", "Site", "Visit",
-    "Defect", "Purchase", "Attachment", "Notification", "Task", "Reminder",
+    "Defect", "DefectComment", "Purchase", "Attachment", "Notification", "Task", "Reminder",
     "CalendarNote", "Contract", "ContractSite", "Equipment", "ServiceSchedule",
     "ContractSchedule",
 ]

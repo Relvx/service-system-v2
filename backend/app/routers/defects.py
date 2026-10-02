@@ -5,11 +5,12 @@ from sqlalchemy import select, func
 from pydantic import BaseModel
 
 from app.dependencies import get_db, get_current_user, require_groups
-from app.models.defect import Defect
+from app.models.defect import Defect, DefectComment
+from app.models.user import User
 from app.models.site import Site
 from app.models.client import Client
 from app.models.visit import Visit
-from app.schemas.defect import DefectOut, DefectCreate, DefectUpdate
+from app.schemas.defect import DefectOut, DefectCreate, DefectUpdate, DefectCommentCreate, DefectCommentOut
 from app.utils.audit import save_log
 from app.utils.notifications import notify_users_by_group
 from app.enums import enums
@@ -35,6 +36,7 @@ def _build_defect_query():
             Client.name.label("client_name"),
             Visit.planned_date.label("visit_date"),
             Visit.visit_type,
+            Client.id.label("client_id"),
         )
         .outerjoin(Site, Defect.site_id == Site.id)
         .outerjoin(Client, Site.client_id == Client.id)
@@ -50,6 +52,7 @@ def _row_to_out(row) -> DefectOut:
     obj.client_name = row[3]
     obj.visit_date = row[4]
     obj.visit_type = row[5]
+    obj.client_id = row[6]
     return obj
 
 
@@ -164,3 +167,35 @@ async def update_defect(
     stmt = _build_defect_query().where(Defect.id == defect_id)
     result = await db.execute(stmt)
     return _row_to_out(result.first())
+
+
+@router.get("/{defect_id}/comments", response_model=List[DefectCommentOut])
+async def get_comments(defect_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    if await db.get(Defect, defect_id) is None:
+        raise HTTPException(404, "Defect not found")
+    rows = (await db.execute(
+        select(DefectComment, User.full_name)
+        .outerjoin(User, DefectComment.user_id == User.id)
+        .where(DefectComment.defect_id == defect_id)
+        .order_by(DefectComment.created_at, DefectComment.id)
+    )).all()
+    return [DefectCommentOut(id=c.id, defect_id=c.defect_id, user_id=c.user_id,
+                            author_name=name or "Удалённый пользователь", text=c.text,
+                            created_at=c.created_at) for c, name in rows]
+
+
+@router.post("/{defect_id}/comments", response_model=DefectCommentOut, status_code=201)
+async def add_comment(defect_id: int, body: DefectCommentCreate,
+                      db: AsyncSession = Depends(get_db),
+                      current_user=Depends(require_groups("office_group", "admin_group"))):
+    if await db.get(Defect, defect_id) is None:
+        raise HTTPException(404, "Defect not found")
+    comment = DefectComment(defect_id=defect_id, user_id=current_user.id, text=body.text)
+    db.add(comment)
+    await db.flush()
+    await save_log(db, current_user.id, "defect_comment_create", "defect", defect_id,
+                   details={"comment_id": comment.id})
+    await db.commit()
+    return DefectCommentOut(id=comment.id, defect_id=defect_id, user_id=current_user.id,
+                            author_name=current_user.full_name, text=comment.text,
+                            created_at=comment.created_at)

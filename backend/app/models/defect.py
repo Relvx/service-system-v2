@@ -26,3 +26,13 @@ class Defect(Base):
     status = Column(String(20), nullable=False, default="open")
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+
+class DefectComment(Base):
+    """Обсуждение дефекта, отдельно от его описания."""
+    __tablename__ = "defect_comments"
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    defect_id = Column(BigInteger, ForeignKey("defects.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
