@@ -1,8 +1,8 @@
 """
 Конфигурация тестового окружения.
 
-Тесты работают с реальной БД (service_system_v2) и реальными seed-данными.
-Каждый тест сам создаёт и удаляет тестовые записи, не ломая общие справочники.
+Тесты работают только с явно указанной отдельной БД с суффиксом _test.
+В ней должны быть миграции и тестовые seed-данные. Рабочая .env не используется.
 
 Фикстуры сессионного уровня (scope="session"):
   - http_client     — httpx AsyncClient подключённый к FastAPI приложению
@@ -16,8 +16,20 @@
   - auth_headers(token) — dict с Authorization header
 """
 
+import os
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
+
+# Проверяем окружение до импорта приложения: config.py загружает рабочую .env.
+# Это также защищает автоматический pytest из локального pre-commit хука.
+if (not os.environ.get("DB_NAME", "").endswith("_test")
+        or not all(os.environ.get(name) for name in ("DB_USER", "DB_HOST", "DB_PORT"))
+        or "DB_PASS" not in os.environ):
+    raise pytest.UsageError(
+        "Тесты требуют отдельную БД: явно задайте DB_USER, DB_PASS, DB_HOST, "
+        "DB_PORT и DB_NAME с суффиксом _test. Рабочая .env запрещена."
+    )
 
 from app.main import app
 

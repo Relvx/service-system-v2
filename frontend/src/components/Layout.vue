@@ -335,6 +335,7 @@ const allNav = [
   { name: 'Календарь',   href: '/calendar',   icon: Calendar,        groups: ['office_group', 'admin_group', 'master_group', 'viewer_group'] },
   { name: 'Мои выезды',  href: '/my-visits',  icon: ClipboardList,   groups: ['master_group'] },
   { name: 'Клиенты',     href: '/clients',    icon: Users,           groups: ['office_group', 'admin_group', 'viewer_group'] },
+  { name: 'Заявки с сайта', href: '/website-requests', icon: ClipboardList, groups: ['office_group', 'admin_group'] },
   { name: 'Договоры',    href: '/contracts',  icon: FileText,        groups: ['office_group', 'admin_group', 'viewer_group'] },
   { name: 'Расписание',  href: '/schedule',   icon: CalendarRange,   groups: ['office_group', 'admin_group', 'viewer_group'] },
   { name: 'Объекты',     href: '/sites',      icon: Building2,       groups: ['office_group', 'admin_group', 'viewer_group'] },

@@ -5,6 +5,8 @@ Base URL: `http://localhost:8000/api`
 All endpoints (except `POST /auth/login`) require an `Authorization: Bearer <token>` header.
 Unauthenticated requests return **401**. Insufficient permissions return **403**.
 
+Website enquiries use a separate create-only integration credential; office processing uses admin/office JWT permissions. See [Website integration API and setup](WEBSITE-INTEGRATION.md).
+
 ---
 
 ## Authentication — `/api/auth`

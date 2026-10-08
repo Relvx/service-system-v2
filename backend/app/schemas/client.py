@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ClientOut(BaseModel):
@@ -56,7 +56,7 @@ class ClientContactCreate(BaseModel):
     full_name: str
     position: Optional[str] = None
     phone: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[str] = Field(None, max_length=254)
     is_primary: bool = False
 
 
@@ -64,7 +64,7 @@ class ClientContactUpdate(BaseModel):
     full_name: Optional[str] = None
     position: Optional[str] = None
     phone: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[str] = Field(None, max_length=254)
     is_primary: Optional[bool] = None
 
 

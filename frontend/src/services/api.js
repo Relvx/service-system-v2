@@ -32,6 +32,18 @@ export const authAPI = {
     api.put('/auth/change-password', { current_password, new_password }),
 }
 
+export const websiteRequestsAPI = {
+  getAll: (params) => api.get('/website-requests', { params, timeout: 15000 }),
+  getById: (id) => api.get(`/website-requests/${id}`, { timeout: 15000 }),
+  update: (id, data) => api.patch(`/website-requests/${id}`, data, { timeout: 15000 }),
+  comment: (id, text) => api.post(`/website-requests/${id}/comments`, { text }, { timeout: 15000 }),
+  link: (id, data) => api.post(`/website-requests/${id}/link`, data, { timeout: 15000 }),
+  assignees: () => api.get('/website-requests/assignees', { timeout: 15000 }),
+  connections: () => api.get('/website-requests/connections', { timeout: 15000 }),
+  connect: (data) => api.post('/website-requests/connections', data, { timeout: 15000 }),
+  revoke: (id) => api.delete(`/website-requests/connections/${id}`, { timeout: 15000 }),
+}
+
 export const usersAPI = {
   getAll: (params) => api.get('/users', { params }),
   getMasters: () => api.get('/users/masters'),

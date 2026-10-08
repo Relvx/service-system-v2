@@ -11,6 +11,13 @@ from app.schemas.notification import NotificationOut
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
+def visibility(user):
+    """Old website alerts must stop being visible after an office role is removed."""
+    if {g.sysname for g in user.groups}.intersection({'office_group', 'admin_group'}):
+        return True
+    return Notification.type.notlike('website_request_%')
+
+
 @router.get("", response_model=List[NotificationOut])
 async def get_notifications(
     db: AsyncSession = Depends(get_db),
@@ -18,7 +25,7 @@ async def get_notifications(
 ):
     result = await db.execute(
         select(Notification)
-        .where(Notification.user_id == current_user.id)
+        .where(Notification.user_id == current_user.id, visibility(current_user))
         .order_by(Notification.created_at.desc())
         .limit(50)
     )
@@ -29,9 +36,10 @@ async def get_notifications(
 async def mark_read(
     notif_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
-    result = await db.execute(select(Notification).where(Notification.id == notif_id))
+    result = await db.execute(select(Notification).where(Notification.id == notif_id,
+        Notification.user_id == current_user.id, visibility(current_user)))
     n = result.scalar_one_or_none()
     if n is None:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -44,9 +52,10 @@ async def mark_read(
 async def mark_unread(
     notif_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    current_user=Depends(get_current_user),
 ):
-    result = await db.execute(select(Notification).where(Notification.id == notif_id))
+    result = await db.execute(select(Notification).where(Notification.id == notif_id,
+        Notification.user_id == current_user.id, visibility(current_user)))
     n = result.scalar_one_or_none()
     if n is None:
         raise HTTPException(status_code=404, detail="Notification not found")
@@ -64,6 +73,7 @@ async def get_unread_count(
         select(func.count()).where(
             Notification.user_id == current_user.id,
             Notification.is_read == False,
+            visibility(current_user),
         )
     )
     return {"count": result.scalar()}
@@ -76,7 +86,7 @@ async def mark_all_read(
 ):
     await db.execute(
         update(Notification)
-        .where(Notification.user_id == current_user.id, Notification.is_read == False)
+        .where(Notification.user_id == current_user.id, Notification.is_read == False, visibility(current_user))
         .values(is_read=True)
     )
     await db.commit()

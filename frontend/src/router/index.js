@@ -60,6 +60,16 @@ const routes = [
     meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
   },
   {
+    path: '/website-requests',
+    component: () => import('../pages/WebsiteRequestsPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
+    path: '/website-requests/:id',
+    component: () => import('../pages/WebsiteRequestDetailPage.vue'),
+    meta: { requiresAuth: true, allowedGroups: ['office_group', 'admin_group'] },
+  },
+  {
     path: '/my-visits',
     component: () => import('../pages/MyVisitsPage.vue'),
     meta: { requiresAuth: true, allowedGroups: ['master_group'] },

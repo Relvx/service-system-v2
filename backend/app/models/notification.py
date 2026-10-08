@@ -21,5 +21,6 @@ class Notification(Base):
     related_visit_id = Column(BigInteger, ForeignKey("visits.id", ondelete="SET NULL"), nullable=True)
     related_defect_id = Column(BigInteger, ForeignKey("defects.id", ondelete="SET NULL"), nullable=True)
     related_purchase_id = Column(BigInteger, ForeignKey("purchases.id", ondelete="SET NULL"), nullable=True)
+    related_website_request_id = Column(BigInteger, ForeignKey("website_requests.id", ondelete="SET NULL"), nullable=True)
     is_read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
