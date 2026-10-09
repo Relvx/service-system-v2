@@ -75,6 +75,9 @@ const unreadCount = computed(() => notifications.value.filter((n) => !n.is_read)
 
 // Определяем маршрут по полям уведомления
 function notifRoute(n) {
+  if (n.related_website_request_id && (auth.hasGroup('office_group') || auth.hasGroup('admin_group'))) {
+    return { path: `/website-requests/${n.related_website_request_id}` }
+  }
   if (n.related_visit_id) {
     const visitPath = auth.hasGroup('master_group') && !auth.hasGroup('office_group') && !auth.hasGroup('admin_group')
       ? '/my-visits'
@@ -87,6 +90,7 @@ function notifRoute(n) {
 }
 
 function notifLinkLabel(n) {
+  if (n.related_website_request_id) return 'Перейти к заявке'
   if (n.related_visit_id)    return 'Перейти к выезду'
   if (n.related_defect_id)   return 'Перейти к дефекту'
   if (n.related_purchase_id) return 'Перейти к закупке'

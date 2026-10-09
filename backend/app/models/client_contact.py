@@ -18,6 +18,6 @@ class ClientContact(Base):
     full_name = Column(Text, nullable=False)
     position = Column(String(100), nullable=True)
     phone = Column(String(50), nullable=True)
-    email = Column(String(100), nullable=True)
+    email = Column(String(254), nullable=True)
     is_primary = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)

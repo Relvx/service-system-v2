@@ -8,7 +8,9 @@
 - **Vite** — build tool
 - **Axios** — HTTP client
 
-Dev server: `npm run dev` → `http://localhost:3001`
+Dev server: `npm run dev` → `http://localhost:3000`
+
+Website enquiries: `/website-requests` and `/website-requests/:id`, available to office/admin groups. The list and detail pages support assignment, separate office corrections, comments and transactional client/site linking. See [integration details](WEBSITE-INTEGRATION.md). For isolated previews, set `VITE_API_URL=/api` and `SERVICE_SYSTEM_API_PROXY` to the local test backend.
 
 ---
 

@@ -2,6 +2,8 @@
 
 Полный рерайт Service System: FastAPI + SQLAlchemy async + Vue 3 + Pinia.
 
+Интеграция сайта: [приём заявок, работа офиса и условия подключения](docs/WEBSITE-INTEGRATION.md).
+
 ## Стек
 - **Backend**: FastAPI + SQLAlchemy (asyncpg) + Alembic + Pydantic v2
 - **Frontend**: Vue 3 (Composition API + `<script setup>`) + Pinia + Vue Router 4
