@@ -1,0 +1,15 @@
+{
+  "/login": 200,
+  "assets_ok": 2,
+  "/website-requests": 200,
+  "/api/health": 200,
+  "/api/auth/me": 401,
+  "/api/website-requests": 401,
+  "http_redirect": "https://crm.analitgaz.ru/login",
+  "ip_and_website_preserved": true,
+  "tls_verified": true,
+  "new_enquiries_created": 0,
+  "certificate_renewal_dry_run": "passed",
+  "renewal_timer": "enabled/active",
+  "integration_key_validation": 422
+}

@@ -60,3 +60,40 @@ journalctl -u service-system-tls-renew.service
 Остановить таймер, восстановить прежний nginx-конфиг в `active.conf`, проверить
 `nginx -t` и перезагрузить nginx. Это убирает перенаправление на HTTPS,
 не затрагивая данные программы. Не удалять сертификаты для временного отката.
+
+
+## Домен CRM
+
+Дополнительные файлы `nginx-crm-bootstrap.conf` и `nginx-crm.conf` обслуживают
+`crm.analitgaz.ru`, сохраняя прежний вход по IP и сайт компании.
+A-запись должна указывать на 72.56.237.245; старых AAAA быть не должно.
+
+1. Загрузить эти файлы и `install-crm-vhost.py` на сервер. Установить bootstrap:
+   `python3 deploy/https/install-crm-vhost.py deploy/https/nginx-crm-bootstrap.conf`.
+   Установщик меняет только собственный блок в active.conf, сохраняет inode
+   bind-mounted файла, делает закрытую копию и проверяет Nginx перед reload.
+2. Проверить публичный ACME webroot, затем выпустить сертификат существующим
+   Certbot (из `/opt/service-system-v2`):
+
+   ```sh
+   docker compose run --rm certbot certonly --non-interactive --webroot \
+     -w /var/www/acme --cert-name service-system-crm -d crm.analitgaz.ru
+   ```
+
+   Используется существующая учётная запись ACME.
+3. Применить `nginx-crm.conf` тем же установщиком. Сертификат обязателен.
+4. Установить `renew-crm.sh` как `/usr/local/sbin/service-system-crm-renew-tls`
+   с правами 0755, unit и timer `service-system-crm-tls-renew.*` — в
+   `/etc/systemd/system/`. После daemon-reload включить timer и проверить
+   `certbot renew --cert-name service-system-crm --dry-run`.
+   Все таймеры используют общий lock; IP/preview таймеры сохраняются.
+5. Проверить /login, /api/health, защиту /api/auth/me и /api/website-requests,
+   ресурсы, HTTP→HTTPS и сохранение IP/preview. Фронтенд рабочего образа
+   использует относительный `/api`, пересборка и изменение CORS не нужны.
+6. После HTTPS-проверки изменить только SERVICE_SYSTEM_LEAD_URL сайта
+   на `https://crm.analitgaz.ru/api/integrations/website/service-requests`
+   в закрытом env, сохранить ключ и остальные настройки; пересоздать только
+   сайт и worker. Это также переводит ссылку почтовых уведомлений на CRM.
+
+При первом входе по домену нужно авторизоваться заново: localStorage токена
+браузер хранит отдельно для IP и домена. Учётные записи и данные не меняются.

@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew Service System CRM domain TLS certificate
+Requires=docker.service
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/service-system-crm-renew-tls
